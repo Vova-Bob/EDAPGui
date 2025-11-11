@@ -106,7 +106,7 @@ _Python 3.11 — рекомендована версія. Можна викор�
 
 1. Клонуйте репозиторій
 ```sh
-> git clone https://github.com/sumzer0-git/EDAPGui
+> git clone https://github.com/Vova-Bob/EDAPGui
 ```
 2. Встановіть залежності
 ```sh
