@@ -106,23 +106,23 @@ _Python 3.11 — рекомендована версія. Можна викор�
 
 1. Клонуйте репозиторій
 ```sh
-> git clone https://github.com/Vova-Bob/EDAPGui
+git clone https://github.com/Vova-Bob/EDAPGui
 ```
 2. Встановіть залежності
 ```sh
-> cd EDAPGui
-> pip install -r requirements.txt
+cd EDAPGui
+pip install -r requirements.txt
 ```
 або запустіть 'install_requirements.bat':
 ```sh
-> cd EDAPGui
-> install_requirements.bat
+cd EDAPGui
+install_requirements.bat
 ```
 3. Запустіть скрипт
 ```sh
-> python EDAPGui.py
+python EDAPGui.py
 АБО можливо доведеться виконати
-> python3 EDAPGui.py
+python3 EDAPGui.py
 якщо встановлено і python 2, і 3.
 ```
 
