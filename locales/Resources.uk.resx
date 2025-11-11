@@ -1,0 +1,408 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value>
+  </resheader>
+  <data name="Window.Title" xml:space="preserve">
+    <value>EDAutopilot {version}</value>
+  </data>
+  <data name="Menu.File" xml:space="preserve">
+    <value>Файл</value>
+  </data>
+  <data name="Menu.Help" xml:space="preserve">
+    <value>Довідка</value>
+  </data>
+  <data name="Menu.CalibrateTarget" xml:space="preserve">
+    <value>Калібрувати ціль</value>
+  </data>
+  <data name="Menu.CalibrateCompass" xml:space="preserve">
+    <value>Калібрувати компас</value>
+  </data>
+  <data name="Menu.EnableCVView" xml:space="preserve">
+    <value>Увімкнути режим CV</value>
+  </data>
+  <data name="Menu.Restart" xml:space="preserve">
+    <value>Перезапустити</value>
+  </data>
+  <data name="Menu.Exit" xml:space="preserve">
+    <value>Вийти</value>
+  </data>
+  <data name="Menu.CheckForUpdates" xml:space="preserve">
+    <value>Перевірити оновлення</value>
+  </data>
+  <data name="Menu.ViewChangelog" xml:space="preserve">
+    <value>Переглянути список змін</value>
+  </data>
+  <data name="Menu.JoinDiscord" xml:space="preserve">
+    <value>Приєднатися до Discord</value>
+  </data>
+  <data name="Menu.About" xml:space="preserve">
+    <value>Про застосунок</value>
+  </data>
+  <data name="Tab.Main" xml:space="preserve">
+    <value>Головне</value>
+  </data>
+  <data name="Tab.Settings" xml:space="preserve">
+    <value>Налаштування</value>
+  </data>
+  <data name="Tab.Debug" xml:space="preserve">
+    <value>Налагодження/Тест</value>
+  </data>
+  <data name="LabelFrame.Mode" xml:space="preserve">
+    <value>РЕЖИМ</value>
+  </data>
+  <data name="LabelFrame.Ship" xml:space="preserve">
+    <value>КОРАБЕЛЬ</value>
+  </data>
+  <data name="LabelFrame.Waypoints" xml:space="preserve">
+    <value>Вейпойнти</value>
+  </data>
+  <data name="LabelFrame.Log" xml:space="preserve">
+    <value>ЖУРНАЛ</value>
+  </data>
+  <data name="LabelFrame.Autopilot" xml:space="preserve">
+    <value>АВТОПІЛОТ</value>
+  </data>
+  <data name="LabelFrame.Buttons" xml:space="preserve">
+    <value>КНОПКИ</value>
+  </data>
+  <data name="LabelFrame.Fuel" xml:space="preserve">
+    <value>ПАЛИВО</value>
+  </data>
+  <data name="LabelFrame.Overlay" xml:space="preserve">
+    <value>НАКЛАДКА</value>
+  </data>
+  <data name="LabelFrame.Voice" xml:space="preserve">
+    <value>ГОЛОС</value>
+  </data>
+  <data name="LabelFrame.ELWScanner" xml:space="preserve">
+    <value>СКАНЕР ELW</value>
+  </data>
+  <data name="LabelFrame.Debug" xml:space="preserve">
+    <value>НАЛАГОДЖЕННЯ</value>
+  </data>
+  <data name="LabelFrame.SingleWaypointAssist" xml:space="preserve">
+    <value>Асистент одиночного вейпойнту</value>
+  </data>
+  <data name="Checkbox.FSDRouteAssist" xml:space="preserve">
+    <value>Асистент маршруту FSD</value>
+  </data>
+  <data name="Checkbox.SupercruiseAssist" xml:space="preserve">
+    <value>Асистент супер-круїзу</value>
+  </data>
+  <data name="Checkbox.WaypointAssist" xml:space="preserve">
+    <value>Асистент вейпойнтів</value>
+  </data>
+  <data name="Checkbox.RobigoAssist" xml:space="preserve">
+    <value>Асистент Робіго</value>
+  </data>
+  <data name="Checkbox.AFKCombatAssist" xml:space="preserve">
+    <value>Асистент AFK бою</value>
+  </data>
+  <data name="Checkbox.DSSAssist" xml:space="preserve">
+    <value>Асистент DSS</value>
+  </data>
+  <data name="Label.RollRate" xml:space="preserve">
+    <value>Швидкість крену:</value>
+  </data>
+  <data name="Label.PitchRate" xml:space="preserve">
+    <value>Швидкість тангажу:</value>
+  </data>
+  <data name="Label.YawRate" xml:space="preserve">
+    <value>Швидкість рискання:</value>
+  </data>
+  <data name="Label.SunPitchUpTime" xml:space="preserve">
+    <value>Нахил від Сонця +/- Час:</value>
+  </data>
+  <data name="Button.TestRollRate" xml:space="preserve">
+    <value>Перевірити швидкість крену</value>
+  </data>
+  <data name="Button.TestPitchRate" xml:space="preserve">
+    <value>Перевірити швидкість тангажу</value>
+  </data>
+  <data name="Button.TestYawRate" xml:space="preserve">
+    <value>Перевірити швидкість рискання</value>
+  </data>
+  <data name="Label.WaypointButton" xml:space="preserve">
+    <value>&lt;список не завантажено&gt;</value>
+  </data>
+  <data name="Button.WaypointLoaded" xml:space="preserve">
+    <value>завантажено: {filename}</value>
+  </data>
+  <data name="Button.ResetList" xml:space="preserve">
+    <value>Скинути список</value>
+  </data>
+  <data name="LabelFrame.LogList" xml:space="preserve">
+    <value>ЖУРНАЛ</value>
+  </data>
+  <data name="Checkbox.EnableRandomness" xml:space="preserve">
+    <value>Увімкнути випадковість</value>
+  </data>
+  <data name="Checkbox.ActivateEliteEachKey" xml:space="preserve">
+    <value>Активувати Elite для кожної клавіші</value>
+  </data>
+  <data name="Checkbox.AutomaticLogout" xml:space="preserve">
+    <value>Автоматичний вихід</value>
+  </data>
+  <data name="Label.SunBrightThreshold" xml:space="preserve">
+    <value>Поріг яскравості Сонця:</value>
+  </data>
+  <data name="Label.NavAlignTries" xml:space="preserve">
+    <value>Спроби вирівнювання навігації:</value>
+  </data>
+  <data name="Label.JumpTries" xml:space="preserve">
+    <value>Спроби стрибка:</value>
+  </data>
+  <data name="Label.DockingRetries" xml:space="preserve">
+    <value>Спроби стикування:</value>
+  </data>
+  <data name="Label.WaitForAutodock" xml:space="preserve">
+    <value>Очікування автодокування:</value>
+  </data>
+  <data name="Label.DSSButton" xml:space="preserve">
+    <value>Кнопка DSS: </value>
+  </data>
+  <data name="Radio.DSSPrimary" xml:space="preserve">
+    <value>Основна</value>
+  </data>
+  <data name="Radio.DSSSecondary" xml:space="preserve">
+    <value>Додаткова</value>
+  </data>
+  <data name="Label.StartFSD" xml:space="preserve">
+    <value>Запуск FSD:</value>
+  </data>
+  <data name="Label.StartSC" xml:space="preserve">
+    <value>Запуск SC:</value>
+  </data>
+  <data name="Label.StartRobigo" xml:space="preserve">
+    <value>Запуск Робіго:</value>
+  </data>
+  <data name="Label.StopAll" xml:space="preserve">
+    <value>Зупинити все:</value>
+  </data>
+  <data name="Label.RefuelThreshold" xml:space="preserve">
+    <value>Поріг дозаправки:</value>
+  </data>
+  <data name="Label.ScoopTimeout" xml:space="preserve">
+    <value>Таймаут заправки:</value>
+  </data>
+  <data name="Label.FuelThresholdAbort" xml:space="preserve">
+    <value>Поріг аварійної зупинки за паливом:</value>
+  </data>
+  <data name="Label.XOffset" xml:space="preserve">
+    <value>Зсув X:</value>
+  </data>
+  <data name="Label.YOffset" xml:space="preserve">
+    <value>Зсув Y:</value>
+  </data>
+  <data name="Label.FontSize" xml:space="preserve">
+    <value>Розмір шрифту:</value>
+  </data>
+  <data name="Checkbox.EnableOverlay" xml:space="preserve">
+    <value>Увімкнути (потрібен перезапуск)</value>
+  </data>
+  <data name="Checkbox.EnableVoice" xml:space="preserve">
+    <value>Увімкнути</value>
+  </data>
+  <data name="Checkbox.ELWScanner" xml:space="preserve">
+    <value>Увімкнути</value>
+  </data>
+  <data name="Button.SaveAllSettings" xml:space="preserve">
+    <value>Зберегти всі налаштування</value>
+  </data>
+  <data name="Radio.DebugAll" xml:space="preserve">
+    <value>Дебаг + інформація + помилки</value>
+  </data>
+  <data name="Radio.DebugInfo" xml:space="preserve">
+    <value>Інформація + помилки</value>
+  </data>
+  <data name="Radio.DebugError" xml:space="preserve">
+    <value>Лише помилки (типово)</value>
+  </data>
+  <data name="Button.OpenLogFile" xml:space="preserve">
+    <value>Відкрити файл журналу</value>
+  </data>
+  <data name="Label.System" xml:space="preserve">
+    <value>Система:</value>
+  </data>
+  <data name="Label.Station" xml:space="preserve">
+    <value>Станція:</value>
+  </data>
+  <data name="Checkbox.SingleWaypointAssist" xml:space="preserve">
+    <value>Асистент одиночного вейпойнту</value>
+  </data>
+  <data name="Label.TradeComputer" xml:space="preserve">
+    <value>Trade Computer Extension (TCE)</value>
+  </data>
+  <data name="Label.TceDest" xml:space="preserve">
+    <value>JSON TCE призначення:</value>
+  </data>
+  <data name="Button.LoadTceDestination" xml:space="preserve">
+    <value>Завантажити призначення TCE</value>
+  </data>
+  <data name="Checkbox.DebugOverlay" xml:space="preserve">
+    <value>Налагоджувальна накладка</value>
+  </data>
+  <data name="Status.Prefix" xml:space="preserve">
+    <value>Статус: </value>
+  </data>
+  <data name="Status.InfoPlaceholder" xml:space="preserve">
+    <value>&lt;інфо&gt; </value>
+  </data>
+  <data name="Status.Idle" xml:space="preserve">
+    <value>Очікування</value>
+  </data>
+  <data name="Tooltip.FSDRouteAssist" xml:space="preserve">
+    <value>Виконуватиме ваш маршрут.&#10;На кожному стрибку послідовність виконає забір пального.</value>
+  </data>
+  <data name="Tooltip.SupercruiseAssist" xml:space="preserve">
+    <value>Триматиме корабель націленим на ціль.&#10;Ціллю може бути лише станція, щоб працювало автодокування.</value>
+  </data>
+  <data name="Tooltip.WaypointAssist" xml:space="preserve">
+    <value>Попросить файл вейпойнтів.&#10;Файл містить назви систем, що буде введено до Галактичної карти.</value>
+  </data>
+  <data name="Tooltip.RobigoAssist" xml:space="preserve">
+    <value></value>
+  </data>
+  <data name="Tooltip.DSSAssist" xml:space="preserve">
+    <value>Під час подорожі між зірками виконуватиме сканування DSS.</value>
+  </data>
+  <data name="Tooltip.SingleWaypointAssist" xml:space="preserve">
+    <value>Попросить шлях до файлу вейпойнтів з однією ціллю.</value>
+  </data>
+  <data name="Tooltip.ELWScanner" xml:space="preserve">
+    <value>Виконуватиме сканування FSS між стрибками FSD та повідомлятиме про цікаві світи.</value>
+  </data>
+  <data name="Tooltip.AFKCombatAssist" xml:space="preserve">
+    <value>Використовується для AFK-корабля в зоні розшуку.</value>
+  </data>
+  <data name="Tooltip.RollRate" xml:space="preserve">
+    <value>Швидкість крену корабля у град/сек.&#10;Вищі значення — краща маневровість.</value>
+  </data>
+  <data name="Tooltip.PitchRate" xml:space="preserve">
+    <value>Швидкість тангажу корабля у град/сек.&#10;Вищі значення — краща маневровість.</value>
+  </data>
+  <data name="Tooltip.YawRate" xml:space="preserve">
+    <value>Швидкість рискання корабля у град/сек.&#10;Вищі значення — краща маневровість.</value>
+  </data>
+  <data name="Tooltip.SunPitchUpTime" xml:space="preserve">
+    <value>Для кораблів, що перегріваються.&#10;Додаткові секунди тангажу вгору під час обходу Сонця.</value>
+  </data>
+  <data name="Tooltip.SunBrightThreshold" xml:space="preserve">
+    <value>Нижня межа виявлення яскравості.&#10;Діапазон 0-255, дозволяє відсікати темні об&apos;єкти.</value>
+  </data>
+  <data name="Tooltip.NavAlignTries" xml:space="preserve">
+    <value>Кількість спроб вирівнювання для автопілота.</value>
+  </data>
+  <data name="Tooltip.JumpTries" xml:space="preserve">
+    <value>Кількість спроб виконати стрибок.</value>
+  </data>
+  <data name="Tooltip.DockingRetries" xml:space="preserve">
+    <value>Кількість спроб виконати стикування.</value>
+  </data>
+  <data name="Tooltip.WaitForAutodock" xml:space="preserve">
+    <value>Після дозволу на посадку чекати стільки часу на автодокування.</value>
+  </data>
+  <data name="Tooltip.StartFSD" xml:space="preserve">
+    <value>Кнопка запуску асистента FSD.</value>
+  </data>
+  <data name="Tooltip.StartSC" xml:space="preserve">
+    <value>Кнопка запуску асистента супер-круїзу.</value>
+  </data>
+  <data name="Tooltip.StartRobigo" xml:space="preserve">
+    <value>Кнопка запуску асистента Робіго.</value>
+  </data>
+  <data name="Tooltip.StopAll" xml:space="preserve">
+    <value>Кнопка зупинки всіх асистентів.</value>
+  </data>
+  <data name="Tooltip.RefuelThreshold" xml:space="preserve">
+    <value>Якщо рівень пального нижче порогу — буде дозаправка.</value>
+  </data>
+  <data name="Tooltip.ScoopTimeout" xml:space="preserve">
+    <value>Час очікування заповнення баку.&#10;Вказує на повільний забір пального.</value>
+  </data>
+  <data name="Tooltip.FuelThresholdAbort" xml:space="preserve">
+    <value>Рівень пального, за якого асистент завершить роботу.</value>
+  </data>
+  <data name="Tooltip.XOffset" xml:space="preserve">
+    <value>Зсув тексту накладки відносно лівого краю.</value>
+  </data>
+  <data name="Tooltip.YOffset" xml:space="preserve">
+    <value>Зсув тексту накладки відносно верхнього краю.</value>
+  </data>
+  <data name="Tooltip.FontSize" xml:space="preserve">
+    <value>Розмір шрифту накладки.</value>
+  </data>
+  <data name="Tooltip.Calibrate" xml:space="preserve">
+    <value>Проводить підбір масштабу для вашої системи.&#10;Див. HOWTO-Calibrate.md.</value>
+  </data>
+  <data name="Tooltip.WaypointListButton" xml:space="preserve">
+    <value>Завантажити файл з вейпойнтами.</value>
+  </data>
+  <data name="Tooltip.CapMouseXY" xml:space="preserve">
+    <value>Надає координати станції у системній карті.&#10;Після натискання клацніть станцію для копіювання координат.</value>
+  </data>
+  <data name="Tooltip.ResetWaypointList" xml:space="preserve">
+    <value>Скидає прогрес списку вейпойнтів.&#10;Асистент почне з першої точки.</value>
+  </data>
+  <data name="Checkbox.EnableCVView" xml:space="preserve">
+    <value>Увімкнути режим CV</value>
+  </data>
+  <data name="Checkbox.EnableOverlayMenu" xml:space="preserve">
+    <value>Увімкнути (потрібен перезапуск)</value>
+  </data>
+  <data name="Checkbox.DebugOverlay" xml:space="preserve">
+    <value>Налагоджувальна накладка</value>
+  </data>
+  <data name="Dialog.WaypointFileTitle" xml:space="preserve">
+    <value>Файл вейпойнтів</value>
+  </data>
+  <data name="Dialog.FileTypeJson" xml:space="preserve">
+    <value>Файли JSON</value>
+  </data>
+  <data name="Dialog.FileTypeAll" xml:space="preserve">
+    <value>Усі файли</value>
+  </data>
+  <data name="Dialog.WaypointListResetTitle" xml:space="preserve">
+    <value>Скидання списку вейпойнтів</value>
+  </data>
+  <data name="Dialog.WaypointListResetMessage" xml:space="preserve">
+    <value>Після скидання списку асистент почне з першої точки під час наступного запуску.</value>
+  </data>
+  <data name="Dialog.WaypointListErrorTitle" xml:space="preserve">
+    <value>Помилка списку вейпойнтів</value>
+  </data>
+  <data name="Dialog.WaypointListErrorMessage" xml:space="preserve">
+    <value>Потрібно вимкнути асистент вейпойнтів перед скиданням списку.</value>
+  </data>
+  <data name="Dialog.ExceptionTitle" xml:space="preserve">
+    <value>Помилка</value>
+  </data>
+  <data name="Dialog.InvalidFloat" xml:space="preserve">
+    <value>Введено некоректне значення з плаваючою комою.</value>
+  </data>
+  <data name="Dialog.CalibrationTitle" xml:space="preserve">
+    <value>Калібрування</value>
+  </data>
+  <data name="Dialog.CalibrationTargetPrompt" xml:space="preserve">
+    <value>Натисніть OK, щоб розпочати калібрування. Ви маєте бути в космосі та мати націлену зоряну систему в центрі екрана.</value>
+  </data>
+  <data name="Dialog.CalibrationCompassPrompt" xml:space="preserve">
+    <value>Натисніть OK, щоб розпочати калібрування. Ви маєте бути в космосі та бачити компас.</value>
+  </data>
+  <data name="Message.CalibrationStarting" xml:space="preserve">
+    <value>Початок калібрування.</value>
+  </data>
+  <data name="Message.CalibrationComplete" xml:space="preserve">
+    <value>Калібрування завершено.</value>
+  </data>
+</root>

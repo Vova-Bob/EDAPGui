@@ -4,10 +4,13 @@ from enum import Enum
 from math import atan, degrees
 import random
 from tkinter import messagebox
+from pathlib import Path
 
 import cv2
 
 from simple_localization import LocalizationManager
+
+from resource_manager import ResourceManager
 
 from EDAP_EDMesg_Server import EDMesgServer
 from EDGalaxyMap import EDGalaxyMap
@@ -32,6 +35,9 @@ from StatusParser import StatusParser
 from Voice import *
 from Robigo import *
 from TCE_Integration import TceIntegration
+
+# Локалізація повідомлень калібрування.
+RESOURCES = ResourceManager(Path(__file__).parent / "locales" / "Resources.uk.resx")
 
 """
 File:EDAP.py    EDAutopilot
@@ -537,13 +543,14 @@ class EDAutopilot:
 
     def calibrate_target(self):
         """ Routine to find the optimal scaling values for the template images. """
-        msg = 'Select OK to begin Calibration. You must be in space and have a star system targeted in center screen.'
+        # Локалізація повідомлення початку калібрування цілі.
+        msg = RESOURCES.get('Dialog.CalibrationTargetPrompt')
         self.vce.say(msg)
-        ans = messagebox.askokcancel('Calibration', msg)
+        ans = messagebox.askokcancel(RESOURCES.get('Dialog.CalibrationTitle'), msg)
         if not ans:
             return
 
-        self.ap_ckb('log+vce', 'Calibration starting.')
+        self.ap_ckb('log+vce', RESOURCES.get('Message.CalibrationStarting'))
 
         set_focus_elite_window()
 
@@ -561,17 +568,18 @@ class EDAutopilot:
         self.overlay.overlay_clear()
         self.overlay.overlay_paint()
 
-        self.ap_ckb('log+vce', 'Calibration complete.')
+        self.ap_ckb('log+vce', RESOURCES.get('Message.CalibrationComplete'))
 
     def calibrate_compass(self):
         """ Routine to find the optimal scaling values for the template images. """
-        msg = 'Select OK to begin Calibration. You must be in space and have the compass visible.'
+        # Локалізація повідомлення початку калібрування компаса.
+        msg = RESOURCES.get('Dialog.CalibrationCompassPrompt')
         self.vce.say(msg)
-        ans = messagebox.askokcancel('Calibration', msg)
+        ans = messagebox.askokcancel(RESOURCES.get('Dialog.CalibrationTitle'), msg)
         if not ans:
             return
 
-        self.ap_ckb('log+vce', 'Calibration starting.')
+        self.ap_ckb('log+vce', RESOURCES.get('Message.CalibrationStarting'))
 
         set_focus_elite_window()
 
@@ -589,7 +597,7 @@ class EDAutopilot:
         self.overlay.overlay_clear()
         self.overlay.overlay_paint()
 
-        self.ap_ckb('log+vce', 'Calibration complete.')
+        self.ap_ckb('log+vce', RESOURCES.get('Message.CalibrationComplete'))
 
     def calibrate_target_worker(self):
         """ Calibrate target """

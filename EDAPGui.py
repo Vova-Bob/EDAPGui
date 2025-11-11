@@ -20,6 +20,7 @@ from tkinter import filedialog as fd
 from tkinter import messagebox
 from tkinter import ttk
 from idlelib.tooltip import Hovertip
+from resource_manager import ResourceManager
 
 from Voice import *
 from MousePt import MousePoint
@@ -71,45 +72,87 @@ def hyperlink_callback(url):
 class APGui():
     def __init__(self, root):
         self.root = root
-        root.title("EDAutopilot " + EDAP_VERSION)
+        # Локалізація: ініціалізація менеджера ресурсів та доступу до рядків.
+        self.resource_manager = ResourceManager(Path(__file__).parent / "locales" / "Resources.uk.resx")
+        self.tr = lambda key, **kwargs: self.resource_manager.get(key, **kwargs)
+        # Локалізація заголовка головного вікна.
+        root.title(self.tr('Window.Title', version=EDAP_VERSION))
         # root.overrideredirect(True)
         # root.geometry("400x550")
         # root.configure(bg="blue")
         root.protocol("WM_DELETE_WINDOW", self.close_window)
         root.resizable(False, False)
 
+        # Локалізація підказок для всіх елементів UI.
         self.tooltips = {
-            'FSD Route Assist': "Will execute your route. \nAt each jump the sequence will perform some fuel scooping.",
-            'Supercruise Assist': "Will keep your ship pointed to target, \nyou target can only be a station for the autodocking to work.",
-            'Waypoint Assist': "When selected, will prompt for the waypoint file. \nThe waypoint file contains System names that \nwill be entered into Galaxy Map and route plotted.",
-            'Robigo Assist': "",
-            'DSS Assist': "When selected, will perform DSS scans while you are traveling between stars.",
-            'Single Waypoint Assist': "",
-            'ELW Scanner': "Will perform FSS scans while FSD Assist is traveling between stars. \nIf the FSS shows a signal in the region of Earth, \nWater or Ammonia type worlds, it will announce that discovery.",
-            'AFK Combat Assist': "Used with a AFK Combat ship in a Rez Zone.",
-            'RollRate': "Roll rate your ship has in deg/sec. Higher the number the more maneuverable the ship.",
-            'PitchRate': "Pitch (up/down) rate your ship has in deg/sec. Higher the number the more maneuverable the ship.",
-            'YawRate': "Yaw rate (rudder) your ship has in deg/sec. Higher the number the more maneuverable the ship.",
-            'SunPitchUp+Time': "This field are for ship that tend to overheat. \nProviding 1-2 more seconds of Pitch up when avoiding the Sun \nwill overcome this problem.",
-            'Sun Bright Threshold': "The low level for brightness detection, \nrange 0-255, want to mask out darker items",
-            'Nav Align Tries': "How many attempts the ap should make at alignment.",
-            'Jump Tries': "How many attempts the ap should make to jump.",
-            'Docking Retries': "How many attempts to make to dock.",
-            'Wait For Autodock': "After docking granted, \nwait this amount of time for us to get docked with autodocking",
-            'Start FSD': "Button to start FSD route assist.",
-            'Start SC': "Button to start Supercruise assist.",
-            'Start Robigo': "Button to start Robigo assist.",
-            'Stop All': "Button to stop all assists.",
-            'Refuel Threshold': "If fuel level get below this level, \nit will attempt refuel.",
-            'Scoop Timeout': "Number of second to wait for full tank, \nmight mean we are not scooping well or got a small scooper",
-            'Fuel Threshold Abort': "Level at which AP will terminate, \nbecause we are not scooping well.",
-            'X Offset': "Offset left the screen to start place overlay text.",
-            'Y Offset': "Offset down the screen to start place overlay text.",
-            'Font Size': "Font size of the overlay.",
-            'Calibrate': "Will iterate through a set of scaling values \ngetting the best match for your system. \nSee HOWTO-Calibrate.md",
-            'Waypoint List Button': "Read in a file with with your Waypoints.",
-            'Cap Mouse XY': "This will provide the StationCoord value of the Station in the SystemMap. \nSelecting this button and then clicking on the Station in the SystemMap \nwill return the x,y value that can be pasted in the waypoints file",
-            'Reset Waypoint List': "Reset your waypoint list, \nthe waypoint assist will start again at the first point in the list."
+            'FSD Route Assist': self.tr('Tooltip.FSDRouteAssist'),
+            'Supercruise Assist': self.tr('Tooltip.SupercruiseAssist'),
+            'Waypoint Assist': self.tr('Tooltip.WaypointAssist'),
+            'Robigo Assist': self.tr('Tooltip.RobigoAssist'),
+            'DSS Assist': self.tr('Tooltip.DSSAssist'),
+            'Single Waypoint Assist': self.tr('Tooltip.SingleWaypointAssist'),
+            'ELW Scanner': self.tr('Tooltip.ELWScanner'),
+            'AFK Combat Assist': self.tr('Tooltip.AFKCombatAssist'),
+            'RollRate': self.tr('Tooltip.RollRate'),
+            'PitchRate': self.tr('Tooltip.PitchRate'),
+            'YawRate': self.tr('Tooltip.YawRate'),
+            'SunPitchUp+Time': self.tr('Tooltip.SunPitchUpTime'),
+            'Sun Bright Threshold': self.tr('Tooltip.SunBrightThreshold'),
+            'Nav Align Tries': self.tr('Tooltip.NavAlignTries'),
+            'Jump Tries': self.tr('Tooltip.JumpTries'),
+            'Docking Retries': self.tr('Tooltip.DockingRetries'),
+            'Wait For Autodock': self.tr('Tooltip.WaitForAutodock'),
+            'Start FSD': self.tr('Tooltip.StartFSD'),
+            'Start SC': self.tr('Tooltip.StartSC'),
+            'Start Robigo': self.tr('Tooltip.StartRobigo'),
+            'Stop All': self.tr('Tooltip.StopAll'),
+            'Refuel Threshold': self.tr('Tooltip.RefuelThreshold'),
+            'Scoop Timeout': self.tr('Tooltip.ScoopTimeout'),
+            'Fuel Threshold Abort': self.tr('Tooltip.FuelThresholdAbort'),
+            'X Offset': self.tr('Tooltip.XOffset'),
+            'Y Offset': self.tr('Tooltip.YOffset'),
+            'Font Size': self.tr('Tooltip.FontSize'),
+            'Calibrate': self.tr('Tooltip.Calibrate'),
+            'Waypoint List Button': self.tr('Tooltip.WaypointListButton'),
+            'Cap Mouse XY': self.tr('Tooltip.CapMouseXY'),
+            'Reset Waypoint List': self.tr('Tooltip.ResetWaypointList')
+        }
+
+        # Локалізація підписів елементів керування.
+        self.display_texts = {
+            'FSD Route Assist': self.tr('Checkbox.FSDRouteAssist'),
+            'Supercruise Assist': self.tr('Checkbox.SupercruiseAssist'),
+            'Waypoint Assist': self.tr('Checkbox.WaypointAssist'),
+            'Robigo Assist': self.tr('Checkbox.RobigoAssist'),
+            'AFK Combat Assist': self.tr('Checkbox.AFKCombatAssist'),
+            'DSS Assist': self.tr('Checkbox.DSSAssist'),
+            'RollRate': self.tr('Label.RollRate'),
+            'PitchRate': self.tr('Label.PitchRate'),
+            'YawRate': self.tr('Label.YawRate'),
+            'SunPitchUp+Time': self.tr('Label.SunPitchUpTime'),
+            'Sun Bright Threshold': self.tr('Label.SunBrightThreshold'),
+            'Nav Align Tries': self.tr('Label.NavAlignTries'),
+            'Jump Tries': self.tr('Label.JumpTries'),
+            'Docking Retries': self.tr('Label.DockingRetries'),
+            'Wait For Autodock': self.tr('Label.WaitForAutodock'),
+            'Start FSD': self.tr('Label.StartFSD'),
+            'Start SC': self.tr('Label.StartSC'),
+            'Start Robigo': self.tr('Label.StartRobigo'),
+            'Stop All': self.tr('Label.StopAll'),
+            'Refuel Threshold': self.tr('Label.RefuelThreshold'),
+            'Scoop Timeout': self.tr('Label.ScoopTimeout'),
+            'Fuel Threshold Abort': self.tr('Label.FuelThresholdAbort'),
+            'X Offset': self.tr('Label.XOffset'),
+            'Y Offset': self.tr('Label.YOffset'),
+            'Font Size': self.tr('Label.FontSize'),
+            'Enable Randomness': self.tr('Checkbox.EnableRandomness'),
+            'Activate Elite for each key': self.tr('Checkbox.ActivateEliteEachKey'),
+            'Automatic logout': self.tr('Checkbox.AutomaticLogout'),
+            'Enable Overlay': self.tr('Checkbox.EnableOverlay'),
+            'Enable Voice': self.tr('Checkbox.EnableVoice'),
+            'ELW Scanner': self.tr('Checkbox.ELWScanner'),
+            'Single Waypoint Assist': self.tr('Checkbox.SingleWaypointAssist'),
+            'Debug Overlay': self.tr('Checkbox.DebugOverlay')
         }
 
         self.gui_loaded = False
@@ -352,7 +395,7 @@ class APGui():
         self.FSD_A_running = False
         self.log_msg("FSD Route Assist stop")
         self.ed_ap.vce.say("FSD Route Assist Off")
-        self.update_statusline("Idle")
+        self.update_statusline(self.tr('Status.Idle'))
 
     def start_sc(self):
         logger.debug("Entered: start_sc")
@@ -367,7 +410,7 @@ class APGui():
         self.SC_A_running = False
         self.log_msg("SC Assist stop")
         self.ed_ap.vce.say("Supercruise Assist Off")
-        self.update_statusline("Idle")
+        self.update_statusline(self.tr('Status.Idle'))
 
     def start_waypoint(self):
         logger.debug("Entered: start_waypoint")
@@ -382,7 +425,7 @@ class APGui():
         self.WP_A_running = False
         self.log_msg("Waypoint Assist stop")
         self.ed_ap.vce.say("Waypoint Assist Off")
-        self.update_statusline("Idle")
+        self.update_statusline(self.tr('Status.Idle'))
 
     def start_robigo(self):
         logger.debug("Entered: start_robigo")
@@ -397,7 +440,7 @@ class APGui():
         self.RO_A_running = False
         self.log_msg("Robigo Assist stop")
         self.ed_ap.vce.say("Robigo Assist Off")
-        self.update_statusline("Idle")
+        self.update_statusline(self.tr('Status.Idle'))
 
     def start_dss(self):
         logger.debug("Entered: start_dss")
@@ -412,7 +455,7 @@ class APGui():
         self.DSS_A_running = False
         self.log_msg("DSS Assist stop")
         self.ed_ap.vce.say("DSS Assist Off")
-        self.update_statusline("Idle")
+        self.update_statusline(self.tr('Status.Idle'))
 
     def start_single_waypoint_assist(self):
         """ The debug command to go to a system or station or both."""
@@ -433,7 +476,7 @@ class APGui():
         self.SWP_A_running = False
         self.log_msg("Single Waypoint Assist stop")
         self.ed_ap.vce.say("Single Waypoint Assist Off")
-        self.update_statusline("Idle")
+        self.update_statusline(self.tr('Status.Idle'))
 
     def about(self):
         webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui")
@@ -478,7 +521,8 @@ class APGui():
         self.jumpcount.configure(text=txt)
 
     def update_statusline(self, txt):
-        self.status.configure(text="Status: " + txt)
+        # Локалізація рядка стану.
+        self.status.configure(text=f"{self.tr('Status.Prefix')}{txt}")
         self.log_msg(f"Status update: {txt}")
 
     def ship_tst_pitch(self):
@@ -491,25 +535,26 @@ class APGui():
         self.ed_ap.ship_tst_yaw()
 
     def open_wp_file(self):
+        # Локалізація діалогу відкриття файлу.
         filetypes = (
-            ('json files', '*.json'),
-            ('All files', '*.*')
+            (self.tr('Dialog.FileTypeJson'), '*.json'),
+            (self.tr('Dialog.FileTypeAll'), '*.*')
         )
-        filename = fd.askopenfilename(title="Waypoint File", initialdir='./waypoints/', filetypes=filetypes)
+        filename = fd.askopenfilename(title=self.tr('Dialog.WaypointFileTitle'), initialdir='./waypoints/', filetypes=filetypes)
         if filename != "":
             res = self.ed_ap.waypoint.load_waypoint_file(filename)
             if res:
-                self.wp_filelabel.set("loaded: " + Path(filename).name)
+                self.wp_filelabel.set(self.tr('Button.WaypointLoaded', filename=Path(filename).name))
             else:
-                self.wp_filelabel.set("<no list loaded>")
+                self.wp_filelabel.set(self.tr('Label.WaypointButton'))
 
     def reset_wp_file(self):
         if self.WP_A_running != True:
-            mb = messagebox.askokcancel("Waypoint List Reset", "After resetting the Waypoint List, the Waypoint Assist will start again from the first point in the list at the next start.")
+            mb = messagebox.askokcancel(self.tr('Dialog.WaypointListResetTitle'), self.tr('Dialog.WaypointListResetMessage'))
             if mb == True:
                 self.ed_ap.waypoint.mark_all_waypoints_not_complete()
         else:
-            mb = messagebox.showerror("Waypoint List Error", "Waypoint Assist must be disabled before you can reset the list.")
+            messagebox.showerror(self.tr('Dialog.WaypointListErrorTitle'), self.tr('Dialog.WaypointListErrorMessage'))
 
     def save_settings(self):
         self.entry_update()
@@ -552,7 +597,7 @@ class APGui():
             self.ed_ap.config['TCEDestinationFilepath'] = str(self.TCE_Destination_Filepath.get())
             self.ed_ap.config['DebugOverlay'] = self.checkboxvar['Debug Overlay'].get()
         except:
-            messagebox.showinfo("Exception", "Invalid float entered")
+            messagebox.showinfo(self.tr('Dialog.ExceptionTitle'), self.tr('Dialog.InvalidFloat'))
 
     # ckbox.state:(ACTIVE | DISABLED)
 
@@ -735,10 +780,14 @@ class APGui():
 
             if ftype == FORM_TYPE_CHECKBOX:
                 self.checkboxvar[field] = IntVar()
-                lab = Checkbutton(row, text=field, anchor='w', width=27, justify=LEFT, variable=self.checkboxvar[field], command=(lambda field=field: self.check_cb(field)))
+                # Локалізація підписів прапорців.
+                label_text = self.display_texts.get(field, field)
+                lab = Checkbutton(row, text=label_text, anchor='w', width=27, justify=LEFT, variable=self.checkboxvar[field], command=(lambda field=field: self.check_cb(field)))
                 self.lab_ck[field] = lab
             else:
-                lab = tk.Label(row, anchor='w', width=20, pady=3, text=field + ": ")
+                # Локалізація підписів полів вводу.
+                label_text = self.display_texts.get(field, f"{field}: ")
+                lab = tk.Label(row, anchor='w', width=20, pady=3, text=label_text)
                 if ftype == FORM_TYPE_SPINBOX:
                     ent = tk.Spinbox(row, width=10, from_=rfrom, to=rto, increment=inc)
                 else:
@@ -767,25 +816,26 @@ class APGui():
         #
         # Define all the menus
         #
+        # Локалізація пунктів меню.
         menubar = Menu(win, background='#ff8000', foreground='black', activebackground='white', activeforeground='black')
         file = Menu(menubar, tearoff=0)
-        file.add_command(label="Calibrate Target", command=self.calibrate_callback)
-        file.add_command(label="Calibrate Compass", command=self.calibrate_compass_callback)
+        file.add_command(label=self.tr('Menu.CalibrateTarget'), command=self.calibrate_callback)
+        file.add_command(label=self.tr('Menu.CalibrateCompass'), command=self.calibrate_compass_callback)
         self.checkboxvar['Enable CV View'] = IntVar()
         self.checkboxvar['Enable CV View'].set(int(self.ed_ap.config['Enable_CV_View']))  # set IntVar value to the one from config
-        file.add_checkbutton(label='Enable CV View', onvalue=1, offvalue=0, variable=self.checkboxvar['Enable CV View'], command=(lambda field='Enable CV View': self.check_cb(field)))
+        file.add_checkbutton(label=self.tr('Menu.EnableCVView'), onvalue=1, offvalue=0, variable=self.checkboxvar['Enable CV View'], command=(lambda field='Enable CV View': self.check_cb(field)))
         file.add_separator()
-        file.add_command(label="Restart", command=self.restart_program)
-        file.add_command(label="Exit", command=self.close_window)  # win.quit)
-        menubar.add_cascade(label="File", menu=file)
+        file.add_command(label=self.tr('Menu.Restart'), command=self.restart_program)
+        file.add_command(label=self.tr('Menu.Exit'), command=self.close_window)  # win.quit)
+        menubar.add_cascade(label=self.tr('Menu.File'), menu=file)
 
         help = Menu(menubar, tearoff=0)
-        help.add_command(label="Check for Updates", command=self.check_updates)
-        help.add_command(label="View Changelog", command=self.open_changelog)
+        help.add_command(label=self.tr('Menu.CheckForUpdates'), command=self.check_updates)
+        help.add_command(label=self.tr('Menu.ViewChangelog'), command=self.open_changelog)
         help.add_separator()
-        help.add_command(label="Join Discord", command=self.open_discord)
-        help.add_command(label="About", command=self.about)
-        menubar.add_cascade(label="Help", menu=help)
+        help.add_command(label=self.tr('Menu.JoinDiscord'), command=self.open_discord)
+        help.add_command(label=self.tr('Menu.About'), command=self.about)
+        menubar.add_cascade(label=self.tr('Menu.Help'), menu=help)
 
         win.config(menu=menubar)
 
@@ -795,9 +845,10 @@ class APGui():
         page0 = Frame(nb)
         page1 = Frame(nb)
         page2 = Frame(nb)
-        nb.add(page0, text="Main")  # main page
-        nb.add(page1, text="Settings")  # options page
-        nb.add(page2, text="Debug/Test")  # debug/test page
+        # Локалізація підписів вкладок.
+        nb.add(page0, text=self.tr('Tab.Main'))  # main page
+        nb.add(page1, text=self.tr('Tab.Settings'))  # options page
+        nb.add(page2, text=self.tr('Tab.Debug'))  # debug/test page
 
         # main options block
         blk_main = tk.Frame(page0)
@@ -805,46 +856,47 @@ class APGui():
         blk_main.columnconfigure([0, 1], weight=1, minsize=100, uniform="group1")
 
         # ap mode checkboxes block
-        blk_modes = LabelFrame(blk_main, text="MODE")
+        blk_modes = LabelFrame(blk_main, text=self.tr('LabelFrame.Mode'))
         blk_modes.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
         self.makeform(blk_modes, FORM_TYPE_CHECKBOX, modes_check_fields)
 
         # ship values block
-        blk_ship = LabelFrame(blk_main, text="SHIP")
+        blk_ship = LabelFrame(blk_main, text=self.tr('LabelFrame.Ship'))
         blk_ship.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
         self.entries['ship'] = self.makeform(blk_ship, FORM_TYPE_SPINBOX, ship_entry_fields, 0, 0.5)
 
-        lbl_sun_pitch_up = tk.Label(blk_ship, text='SunPitchUp +/- Time:', anchor='w', width=20)
+        lbl_sun_pitch_up = tk.Label(blk_ship, text=self.tr('Label.SunPitchUpTime'), anchor='w', width=20)
         lbl_sun_pitch_up.grid(row=3, column=0, pady=3, sticky=(N, S, E, W))
         spn_sun_pitch_up = tk.Spinbox(blk_ship, width=10, from_=-100, to=100, increment=0.5)
         spn_sun_pitch_up.grid(row=3, column=1, padx=2, pady=2, sticky=(N, S, E, W))
         spn_sun_pitch_up.bind('<FocusOut>', self.entry_update)
         self.entries['ship']['SunPitchUp+Time'] = spn_sun_pitch_up
 
-        btn_tst_roll = Button(blk_ship, text='Test Roll Rate', command=self.ship_tst_roll)
+        btn_tst_roll = Button(blk_ship, text=self.tr('Button.TestRollRate'), command=self.ship_tst_roll)
         btn_tst_roll.grid(row=4, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-        btn_tst_pitch = Button(blk_ship, text='Test Pitch Rate', command=self.ship_tst_pitch)
+        btn_tst_pitch = Button(blk_ship, text=self.tr('Button.TestPitchRate'), command=self.ship_tst_pitch)
         btn_tst_pitch.grid(row=5, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-        btn_tst_yaw = Button(blk_ship, text='Test Yaw Rate', command=self.ship_tst_yaw)
+        btn_tst_yaw = Button(blk_ship, text=self.tr('Button.TestYawRate'), command=self.ship_tst_yaw)
         btn_tst_yaw.grid(row=6, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         # waypoints button block
-        blk_wp_buttons = tk.LabelFrame(page0, text="Waypoints")
+        blk_wp_buttons = tk.LabelFrame(page0, text=self.tr('LabelFrame.Waypoints'))
         blk_wp_buttons.grid(row=1, column=0, padx=10, pady=5, columnspan=2, sticky=(N, S, E, W))
         blk_wp_buttons.columnconfigure([0, 1], weight=1, minsize=100, uniform="group1")
 
         self.wp_filelabel = StringVar()
-        self.wp_filelabel.set("<no list loaded>")
+        # Локалізація напису для кнопки вибору файлу вейпойнтів.
+        self.wp_filelabel.set(self.tr('Label.WaypointButton'))
         btn_wp_file = Button(blk_wp_buttons, textvariable=self.wp_filelabel, command=self.open_wp_file)
         btn_wp_file.grid(row=0, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
         tip_wp_file = Hovertip(btn_wp_file, self.tooltips['Waypoint List Button'], hover_delay=1000)
 
-        btn_reset = Button(blk_wp_buttons, text='Reset List', command=self.reset_wp_file)
+        btn_reset = Button(blk_wp_buttons, text=self.tr('Button.ResetList'), command=self.reset_wp_file)
         btn_reset.grid(row=1, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
         tip_reset = Hovertip(btn_reset, self.tooltips['Reset Waypoint List'], hover_delay=1000)
 
         # log window
-        log = LabelFrame(page0, text="LOG")
+        log = LabelFrame(page0, text=self.tr('LabelFrame.Log'))
         log.grid(row=3, column=0, padx=12, pady=5, sticky=(N, S, E, W))
         scrollbar = Scrollbar(log)
         scrollbar.grid(row=0, column=1, sticky=(N, S))
@@ -858,65 +910,66 @@ class APGui():
         blk_main.columnconfigure([0, 1], weight=1, minsize=100, uniform="group1")
 
         # autopilot settings block
-        blk_ap = LabelFrame(blk_settings, text="AUTOPILOT")
+        blk_ap = LabelFrame(blk_settings, text=self.tr('LabelFrame.Autopilot'))
         blk_ap.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
         self.entries['autopilot'] = self.makeform(blk_ap, FORM_TYPE_SPINBOX, autopilot_entry_fields)
         self.checkboxvar['Enable Randomness'] = BooleanVar()
-        cb_random = Checkbutton(blk_ap, text='Enable Randomness', anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Enable Randomness'], command=(lambda field='Enable Randomness': self.check_cb(field)))
+        # Локалізація прапорця випадковості.
+        cb_random = Checkbutton(blk_ap, text=self.display_texts['Enable Randomness'], anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Enable Randomness'], command=(lambda field='Enable Randomness': self.check_cb(field)))
         cb_random.grid(row=5, column=0, columnspan=2, sticky=(W))
         self.checkboxvar['Activate Elite for each key'] = BooleanVar()
-        cb_activate_elite = Checkbutton(blk_ap, text='Activate Elite for each key', anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Activate Elite for each key'], command=(lambda field='Activate Elite for each key': self.check_cb(field)))
+        cb_activate_elite = Checkbutton(blk_ap, text=self.display_texts['Activate Elite for each key'], anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Activate Elite for each key'], command=(lambda field='Activate Elite for each key': self.check_cb(field)))
         cb_activate_elite.grid(row=6, column=0, columnspan=2, sticky=(W))
         self.checkboxvar['Automatic logout'] = BooleanVar()
-        cb_logout = Checkbutton(blk_ap, text='Automatic logout', anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Automatic logout'], command=(lambda field='Automatic logout': self.check_cb(field)))
+        cb_logout = Checkbutton(blk_ap, text=self.display_texts['Automatic logout'], anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Automatic logout'], command=(lambda field='Automatic logout': self.check_cb(field)))
         cb_logout.grid(row=7, column=0, columnspan=2, sticky=(W))
 
         # buttons settings block
-        blk_buttons = LabelFrame(blk_settings, text="BUTTONS")
+        blk_buttons = LabelFrame(blk_settings, text=self.tr('LabelFrame.Buttons'))
         blk_buttons.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
         blk_dss = Frame(blk_buttons)
         blk_dss.grid(row=0, column=0, columnspan=2, padx=0, pady=0, sticky=(N, S, E, W))
-        lb_dss = Label(blk_dss, width=18, anchor='w', pady=3, text="DSS Button: ")
+        lb_dss = Label(blk_dss, width=18, anchor='w', pady=3, text=self.tr('Label.DSSButton'))
         lb_dss.grid(row=0, column=0, sticky=(W))
         self.radiobuttonvar['dss_button'] = StringVar()
-        rb_dss_primary = Radiobutton(blk_dss, pady=3, text="Primary", variable=self.radiobuttonvar['dss_button'], value="Primary", command=(lambda field='dss_button': self.check_cb(field)))
+        rb_dss_primary = Radiobutton(blk_dss, pady=3, text=self.tr('Radio.DSSPrimary'), variable=self.radiobuttonvar['dss_button'], value="Primary", command=(lambda field='dss_button': self.check_cb(field)))
         rb_dss_primary.grid(row=0, column=1, sticky=(W))
-        rb_dss_secandary = Radiobutton(blk_dss, pady=3, text="Secondary", variable=self.radiobuttonvar['dss_button'], value="Secondary", command=(lambda field='dss_button': self.check_cb(field)))
+        rb_dss_secandary = Radiobutton(blk_dss, pady=3, text=self.tr('Radio.DSSSecondary'), variable=self.radiobuttonvar['dss_button'], value="Secondary", command=(lambda field='dss_button': self.check_cb(field)))
         rb_dss_secandary.grid(row=1, column=1, sticky=(W))
         self.entries['buttons'] = self.makeform(blk_buttons, FORM_TYPE_ENTRY, buttons_entry_fields, 2)
 
         # refuel settings block
-        blk_fuel = LabelFrame(blk_settings, text="FUEL")
+        blk_fuel = LabelFrame(blk_settings, text=self.tr('LabelFrame.Fuel'))
         blk_fuel.grid(row=1, column=0, padx=2, pady=2, sticky=(N, S, E, W))
         self.entries['refuel'] = self.makeform(blk_fuel, FORM_TYPE_SPINBOX, refuel_entry_fields)
 
         # overlay settings block
-        blk_overlay = LabelFrame(blk_settings, text="OVERLAY")
+        blk_overlay = LabelFrame(blk_settings, text=self.tr('LabelFrame.Overlay'))
         blk_overlay.grid(row=1, column=1, padx=2, pady=2, sticky=(N, S, E, W))
         self.checkboxvar['Enable Overlay'] = BooleanVar()
-        cb_enable = Checkbutton(blk_overlay, text='Enable (requires restart)', onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Enable Overlay'], command=(lambda field='Enable Overlay': self.check_cb(field)))
+        cb_enable = Checkbutton(blk_overlay, text=self.display_texts['Enable Overlay'], onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Enable Overlay'], command=(lambda field='Enable Overlay': self.check_cb(field)))
         cb_enable.grid(row=0, column=0, columnspan=2, sticky=(W))
         self.entries['overlay'] = self.makeform(blk_overlay, FORM_TYPE_SPINBOX, overlay_entry_fields, 1, 1.0, 0.0, 3000.0)
 
         # tts / voice settings block
-        blk_voice = LabelFrame(blk_settings, text="VOICE")
+        blk_voice = LabelFrame(blk_settings, text=self.tr('LabelFrame.Voice'))
         blk_voice.grid(row=2, column=0, padx=2, pady=2, sticky=(N, S, E, W))
         self.checkboxvar['Enable Voice'] = BooleanVar()
-        cb_enable = Checkbutton(blk_voice, text='Enable', onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Enable Voice'], command=(lambda field='Enable Voice': self.check_cb(field)))
+        cb_enable = Checkbutton(blk_voice, text=self.display_texts['Enable Voice'], onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Enable Voice'], command=(lambda field='Enable Voice': self.check_cb(field)))
         cb_enable.grid(row=0, column=0, columnspan=2, sticky=(W))
 
         # Scanner settings block
-        blk_voice = LabelFrame(blk_settings, text="ELW SCANNER")
+        blk_voice = LabelFrame(blk_settings, text=self.tr('LabelFrame.ELWScanner'))
         blk_voice.grid(row=2, column=1, padx=2, pady=2, sticky=(N, S, E, W))
         self.checkboxvar['ELW Scanner'] = BooleanVar()
-        cb_enable = Checkbutton(blk_voice, text='Enable', onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['ELW Scanner'], command=(lambda field='ELW Scanner': self.check_cb(field)))
+        cb_enable = Checkbutton(blk_voice, text=self.display_texts['ELW Scanner'], onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['ELW Scanner'], command=(lambda field='ELW Scanner': self.check_cb(field)))
         cb_enable.grid(row=0, column=0, columnspan=2, sticky=(W))
 
         # settings button block
         blk_settings_buttons = tk.Frame(page1)
         blk_settings_buttons.grid(row=3, column=0, padx=10, pady=5, sticky=(N, S, E, W))
         blk_settings_buttons.columnconfigure([0, 1], weight=1, minsize=100)
-        btn_save = Button(blk_settings_buttons, text='Save All Settings', command=self.save_settings)
+        btn_save = Button(blk_settings_buttons, text=self.tr('Button.SaveAllSettings'), command=self.save_settings)
         btn_save.grid(row=0, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         # debug block
@@ -925,46 +978,46 @@ class APGui():
         blk_debug.columnconfigure([0, 1], weight=1, minsize=100, uniform="group2")
 
         # debug settings block
-        blk_debug_settings = LabelFrame(blk_debug, text="DEBUG")
+        blk_debug_settings = LabelFrame(blk_debug, text=self.tr('LabelFrame.Debug'))
         blk_debug_settings.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
         self.radiobuttonvar['debug_mode'] = StringVar()
-        rb_debug_debug = Radiobutton(blk_debug_settings, pady=3, text="Debug + Info + Errors", variable=self.radiobuttonvar['debug_mode'], value="Debug", command=(lambda field='debug_mode': self.check_cb(field)))
+        rb_debug_debug = Radiobutton(blk_debug_settings, pady=3, text=self.tr('Radio.DebugAll'), variable=self.radiobuttonvar['debug_mode'], value="Debug", command=(lambda field='debug_mode': self.check_cb(field)))
         rb_debug_debug.grid(row=0, column=1, columnspan=2, sticky=(W))
-        rb_debug_info = Radiobutton(blk_debug_settings, pady=3, text="Info + Errors", variable=self.radiobuttonvar['debug_mode'], value="Info", command=(lambda field='debug_mode': self.check_cb(field)))
+        rb_debug_info = Radiobutton(blk_debug_settings, pady=3, text=self.tr('Radio.DebugInfo'), variable=self.radiobuttonvar['debug_mode'], value="Info", command=(lambda field='debug_mode': self.check_cb(field)))
         rb_debug_info.grid(row=1, column=1, columnspan=2, sticky=(W))
-        rb_debug_error = Radiobutton(blk_debug_settings, pady=3, text="Errors only (default)", variable=self.radiobuttonvar['debug_mode'], value="Error", command=(lambda field='debug_mode': self.check_cb(field)))
+        rb_debug_error = Radiobutton(blk_debug_settings, pady=3, text=self.tr('Radio.DebugError'), variable=self.radiobuttonvar['debug_mode'], value="Error", command=(lambda field='debug_mode': self.check_cb(field)))
         rb_debug_error.grid(row=2, column=1, columnspan=2, sticky=(W))
-        btn_open_logfile = Button(blk_debug_settings, text='Open Log File', command=self.open_logfile)
+        btn_open_logfile = Button(blk_debug_settings, text=self.tr('Button.OpenLogFile'), command=self.open_logfile)
         btn_open_logfile.grid(row=3, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         # debug settings block
-        blk_single_waypoint_asst = LabelFrame(page2, text="Single Waypoint Assist")
+        blk_single_waypoint_asst = LabelFrame(page2, text=self.tr('LabelFrame.SingleWaypointAssist'))
         blk_single_waypoint_asst.grid(row=1, column=0, padx=10, pady=5, columnspan=2, sticky=(N, S, E, W))
         blk_single_waypoint_asst.columnconfigure(0, weight=1, minsize=10, uniform="group1")
         blk_single_waypoint_asst.columnconfigure(1, weight=3, minsize=10, uniform="group1")
 
-        lbl_system = tk.Label(blk_single_waypoint_asst, text='System:')
+        lbl_system = tk.Label(blk_single_waypoint_asst, text=self.tr('Label.System'))
         lbl_system.grid(row=0, column=0, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         txt_system = Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_system)
         txt_system.grid(row=0, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
-        lbl_station = tk.Label(blk_single_waypoint_asst, text='Station:')
+        lbl_station = tk.Label(blk_single_waypoint_asst, text=self.tr('Label.Station'))
         lbl_station.grid(row=1, column=0, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         txt_station = Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_station)
         txt_station.grid(row=1, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         self.checkboxvar['Single Waypoint Assist'] = BooleanVar()
-        cb_single_waypoint = Checkbutton(blk_single_waypoint_asst, text='Single Waypoint Assist', onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Single Waypoint Assist'], command=(lambda field='Single Waypoint Assist': self.check_cb(field)))
+        cb_single_waypoint = Checkbutton(blk_single_waypoint_asst, text=self.display_texts['Single Waypoint Assist'], onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Single Waypoint Assist'], command=(lambda field='Single Waypoint Assist': self.check_cb(field)))
         cb_single_waypoint.grid(row=2, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
-        lbl_tce = tk.Label(blk_single_waypoint_asst, text='Trade Computer Extension (TCE)', fg="blue", cursor="hand2")
+        lbl_tce = tk.Label(blk_single_waypoint_asst, text=self.tr('Label.TradeComputer'), fg="blue", cursor="hand2")
         lbl_tce.bind("<Button-1>", lambda e: hyperlink_callback("https://forums.frontier.co.uk/threads/trade-computer-extension-mk-ii.223056/"))
         lbl_tce.grid(row=3, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-        lbl_tce_dest = tk.Label(blk_single_waypoint_asst, text='TCE Dest json:')
+        lbl_tce_dest = tk.Label(blk_single_waypoint_asst, text=self.tr('Label.TceDest'))
         lbl_tce_dest.grid(row=4, column=0, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         txt_tce_dest = Entry(blk_single_waypoint_asst, textvariable=self.TCE_Destination_Filepath)
         txt_tce_dest.bind('<FocusOut>', self.entry_update)
         txt_tce_dest.grid(row=4, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
 
-        btn_load_tce = Button(blk_single_waypoint_asst, text='Load TCE Destination', command=self.load_tce_dest)
+        btn_load_tce = Button(blk_single_waypoint_asst, text=self.tr('Button.LoadTceDestination'), command=self.load_tce_dest)
         btn_load_tce.grid(row=5, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         blk_debug_buttons = tk.Frame(page2)
@@ -972,17 +1025,18 @@ class APGui():
         blk_debug_buttons.columnconfigure([0, 1], weight=1, minsize=100)
 
         self.checkboxvar['Debug Overlay'] = BooleanVar()
-        cb_debug_overlay = Checkbutton(blk_debug_buttons, text='Debug Overlay', onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Debug Overlay'], command=(lambda field='Debug Overlay': self.check_cb(field)))
+        cb_debug_overlay = Checkbutton(blk_debug_buttons, text=self.display_texts['Debug Overlay'], onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Debug Overlay'], command=(lambda field='Debug Overlay': self.check_cb(field)))
         cb_debug_overlay.grid(row=6, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
-        btn_save = Button(blk_debug_buttons, text='Save All Settings', command=self.save_settings)
+        btn_save = Button(blk_debug_buttons, text=self.tr('Button.SaveAllSettings'), command=self.save_settings)
         btn_save.grid(row=7, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         # Statusbar
         statusbar = Frame(win)
         statusbar.grid(row=4, column=0)
-        self.status = tk.Label(win, text="Status: ", bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT, width=29)
-        self.jumpcount = tk.Label(statusbar, text="<info> ", bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT, width=40)
+        # Локалізація підписів рядка стану та лічильника стрибків.
+        self.status = tk.Label(win, text=self.tr('Status.Prefix'), bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT, width=29)
+        self.jumpcount = tk.Label(statusbar, text=self.tr('Status.InfoPlaceholder'), bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT, width=40)
         self.status.pack(in_=statusbar, side=LEFT, fill=BOTH, expand=True)
         self.jumpcount.pack(in_=statusbar, side=RIGHT, fill=Y, expand=False)
 
