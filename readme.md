@@ -1,164 +1,169 @@
-See [ChangeLog](/ChangeLog.md) for latest updates.<br>
-Join discord if need support or wish to provide inputs on new features:  https://discord.gg/HCgkfSc
+See [ChangeLog](/ChangeLog.md) для найсвіжіших оновлень.<br>
+Приєднуйтеся до discord, якщо потрібна підтримка або хочете запропонувати нові функції:  https://discord.gg/HCgkfSc
 <br>
 
-# ED Autopilot Main Features
-This Elite Dangerous (ED) Autopilot supports the following main features:
+# Основні можливості ED Autopilot
+Цей Elite Dangerous (ED) Autopilot підтримує такі основні можливості:
 ## FSD Route assist
-For the FSD Route Assist, you select your destination in the GalaxyMap and then enable this assistant and it will perform all the jumps to get you to your destination, AFK.  Furthermore while
-executing route assistance it will perform detailed system scanning (honk) when jumping into a system and optionally perform FSS scanning
-to determine if Earth, Water, or Ammonia type world is present.
+Для FSD Route Assist виберіть пункт призначення у GalaxyMap, увімкніть цей асистент — і він виконає всі стрибки, щоб доставити вас до цілі, AFK. Крім того,
+під час виконання маршруту він виконуватиме детальне сканування системи (honk) після кожного стрибка та за потреби виконуватиме FSS-сканування,
+щоб визначити, чи є світи Earth, Water або Ammonia.
 ## Supercruise assist
-The supercruise (SC) assistant (and not using ED's SC Assist which takes up a slot, for a piece of software?) 
-will keep you on target and when "TO DISENGAGE" is presented and will autodrop out of SC and perform autodocking with the targeted Station. <br>
+Supercruise (SC) assistant (на відміну від SC Assist гри, що займає слот)
+утримуватиме ціль, і коли з’явиться «TO DISENGAGE», автоматично вийде з SC і виконає autodocking з вибраною станцією. <br>
 ## Waypoint assist
-With Waypoint Assist you define the route in a file and this assist will jump to those waypoints.  If a Station is defined to dock at, the assistant will transition to SC Assist and
-dock with the station.  A early version of a trading capability is also included.<br>
-Additional information can be found [here](docs/Waypoint.md).
+З Waypoint Assist ви задаєте маршрут у файлі, і асистент стрибатиме за цими waypoint. Якщо визначено Station для docking,
+асистент переключиться на SC Assist і
+пришвартується до станції. Також включено ранню версію функції торгівлі.<br>
+Додаткову інформацію можна знайти [тут](docs/Waypoint.md).
 ## Robigo Mines assist
-The Robigo Assist performs the Robigo Mines passenger mission loop which includes mission selection, mission completetion, and the full loop to Sirius Atmospherics.<br>
-Additional information can be found [here](docs/Robigo.md). 
+Robigo Assist виконує цикл passenger-місій Robigo Mines, включно з вибором місій, завершенням місій та
+повним циклом до Sirius Atmospherics.<br>
+Додаткову інформацію можна знайти [тут](docs/Robigo.md).
 ## AFK Combat escape assist
 ## Single Waypoint assist
-Note: Currently available on the debug tab.
+Примітка: наразі доступно на вкладці debug.
 
-With Single Waypoint Assist you define the target system in the text box (paste from Inara/Spansh etc.) and click the checkbox to plot a route and jump to that system.<br>
+З Single Waypoint Assist ви вводите цільову систему в текстове поле (вставте з Inara/Spansh тощо) і ставите checkbox,
+щоб побудувати маршрут і виконати стрибки до цієї system.<br>
 
-# Additional Features
+# Додаткові можливості
 ## Voice
-If Voice enabled, the autopilot will inform you of its actions.
+Якщо Voice увімкнено, автопілот повідомлятиме про свої дії.
 
-## TCE (Trade Computer Extension) Integration
-Basic integration with TCE. The current TCE destination may be loaded as a Single Waypoint Assist target with the Load TCE Destination button on the Debug tab. 
-Refer to [TCE on Frontiers Forums](https://forums.frontier.co.uk/threads/trade-computer-extension-mk-ii.223056/) for info on TCE.
+## Інтеграція з TCE (Trade Computer Extension)
+Базова інтеграція з TCE. Поточний пункт призначення TCE можна завантажити як ціль для Single Waypoint Assist кнопкою Load TCE Destination на вкладці Debug.
+Деталі про TCE дивіться у [теми TCE на форумі Frontiers](https://forums.frontier.co.uk/threads/trade-computer-extension-mk-ii.223056/).
 
-This autopilot uses Computer Vision (grabs screens and performs template matching) and issues keystrokes.  It does not perform any runtime modifications 
-of Elite Dangerous, it is an external-ED construct (similar to us commanders) 
+Цей автопілот використовує Computer Vision (захоплює екрани та виконує зіставлення шаблонів) і надсилає натискання клавіш. Він не виконує
+жодних runtime-змін
+Elite Dangerous, це зовнішній щодо ED компонент (подібно до нас, командирів).
 
   ```
   ./docs
-  * Calibration.md for details on how to calibrate EDAPGui for your system if required 
-  * Waypoint.md for details on how to generate a waypoint file 
-  * RollPitchYaw.md for details on how to tune the Pitch, Roll, Yaw values
-  * Robgio.md for details on the Robigo Mines loop
+  * Calibration.md — як відкалібрувати EDAPGui для вашої системи за потреби
+  * Waypoint.md — як створити файл waypoint
+  * RollPitchYaw.md — як налаштувати значення Pitch, Roll, Yaw
+  * Robgio.md — подробиці циклу Robigo Mines
   ```
 
-Note: this autopilot is based on https://github.com/skai2/EDAutopilot , some of the routines were used and turned into classes and tweaks were done on sequences
- and how image matching was performed.   Kudo's to skai2mail@gmail.com
- 
-Also Note: This repository is provided for educational purposes as a in depth programming example of interacting with file based data, computer vision processing, user feedback via voice, win32 integration using python, threading interaction, and python classes.  
+Примітка: цей автопілот базується на https://github.com/skai2/EDAutopilot , деякі процедури використано й перетворено на класи,
+а також налаштовано послідовності та методи зіставлення зображень. Подяка skai2mail@gmail.com
 
-# Limitations:
-* Will only work with Windows (not Linux)
-* Default HUD colors must be used, if you changed those colors, this autopilot will not work
-* Borderless Elite Dangerous (ED) configuration required,  Windowed does not work due to how the screen is grabbed
-* Screen Resolution/scale X, Y:  The templates were captured on a 3440x1440 resolution/game configuration.  These need to be scaled
-  for different resolutions.  The _config-resolution.json_ file captures these resolutions with the corresponding ScaleX, Y values.  If a resolution is not defined
-  for your monitor the code will attempt to divide /3440  and /1440 to get the scale factor (not likely to be correct)
+Ще одна примітка: цей репозиторій надано для освітніх цілей як розгорнутий приклад програмування взаємодії з файловими даними,
+оброблення зображень, зворотного зв’язку через voice, інтеграції win32 у python, взаємодії потоків і python-класів.
+
+# Обмеження:
+* Працює лише в Windows (не Linux)
+* Потрібно використовувати стандартні кольори HUD; якщо ви їх зміните, автопілот не працюватиме
+* Потрібна конфігурація Elite Dangerous (ED) Borderless; Windowed не працює через спосіб захоплення екрана
+* Роздільна здатність/масштаб екрана X, Y: шаблони створено на конфігурації з роздільною здатністю 3440x1440. Їх необхідно масштабувати
+  для інших роздільних здатностей. Файл _config-resolution.json_ містить ці роздільні здатності з відповідними значеннями ScaleX, Y. Якщо роздільну здатність не визначено
+  для вашого монітора, код спробує поділити на /3440 та /1440, щоб отримати коефіцієнт масштабування (ймовірно, неточно)
   ```
-  * See docs/Calibration.md for details on how to calibrate EDAPGui for your system *
+  * Див. docs/Calibration.md, щоб дізнатися, як відкалібрувати EDAPGui для вашої системи *
   ```
-  * Field of View (Graphics->Display) setting plays here.  I run about 10-15% on the slider scale.  If you have a large FOV then the 
-    template images will likely be too large
-* Focus: ED must have focus when running, so you can't do other things on other windows if AP is active.
-           If you change focus, then keyboard events will be sent to the focused window, can mess with the 
-           window
-* Control Rates: Must provide the roll, pitch, yaw rates for your ship. See HOWTO-RollPitchYaw.md, start with values from Outfitting for your ship 
-* Autodocking: For the AP to recongize the "TO DISENGAGE"  so it will not matter what key you have this mapped to. 
-* Routing: If using Economical Route setting, then may run into problems in jumping.  With Economical, the Stars may not be on the "other-side" of the 
-  Sun as with Fastest routing.
-  As such, when rolling toward the Target, the Sun may fade the console making Compass matching difficult.  Need to think through this one more.  The Sun shining on the 
-  console kills the matching.  You can see that if you enable CV View
-* The Left Panel (Navigation) must be on the Navigation tab as the script assumes so.  It will be reset after a FSD jump back to Nav,
-  but if in SC Assist, need to ensure it is configured there to support docking request
-* "Advanced Autodocking" module must be outfitted on ship to support autodock 
-* The ELW Scanner may have issues for you, the screen region (defined in Screen_Region.py) isolates the region to where Earth, Water, and Ammonia
-  signal would be present.  If using different resolution from 3440x1440 then this region will need to be adjusted for your resolution for
-  proper detection
-* Must have required keybinding set for proper autopilot behavior.  See autopilot.log for any Warnings on missing key bindings
-* If you jump into a system with 2 suns next to each other, will likely over heat and drop from Supercruise.
-* Have seen a few cases where after doing refueling, depending on ship acceleration, we don't get away from Sun far enough before engaging FSD
-  and can over heat
+  * Налаштування Field of View (Graphics->Display) важливе. Я використовую близько 10-15% на шкалі. Якщо у вас великий FOV,
+    шаблонні зображення, імовірно, будуть завеликі
+* Фокус: під час роботи ED має бути у фокусі, тому не можна працювати з іншими вікнами, поки AP активний.
+           Якщо змінити фокус, клавіатурні події надсилатимуться у вибране вікно, що може зіпсувати
+           це вікно
+* Control Rates: потрібно вказати швидкості roll, pitch, yaw для вашого корабля. Дивіться HOWTO-RollPitchYaw.md, почніть зі значень із Outfitting для свого корабля
+* Autodocking: щоб AP розпізнав «TO DISENGAGE», неважливо, до якої клавіші прив’язано цю дію.
+* Routing: під час використання Economical Route можуть виникнути проблеми зі стрибками. За Economical зірки можуть не бути на «іншому боці»
+  Sun, як при Fastest.
+  Тож під час roll у напрямку Target Sun може засвітити консоль, ускладнивши зіставлення Compass. Треба ще продумати це. Світло від Sun
+  вбиває зіставлення. Це видно, якщо увімкнути CV View
+* Left Panel (Navigation) має бути на вкладці Navigation, як очікує скрипт. Після стрибка FSD вона повернеться до Nav,
+  але в SC Assist потрібно переконатися, що вкладка налаштована для підтримки docking request
+* Модуль «Advanced Autodocking» має бути встановлено на корабель для підтримки autodock
+* ELW Scanner може працювати неідеально: screen region (визначена у Screen_Region.py) виділяє область, де будуть сигнали Earth, Water та Ammonia.
+  Якщо використовуєте роздільну здатність, відмінну від 3440x1440, цю область потрібно скоригувати для вашої роздільної здатності,
+  щоб визначення працювало
+* Необхідно мати потрібні keybinding для коректної роботи автопілота. Дивіться autopilot.log щодо попереджень про відсутні прив’язки
+* Якщо стрибнути в систему з двома suns поруч, імовірно, корабель перегріється і вийде з Supercruise.
+* Бували випадки, коли після дозаправлення, залежно від розгону корабля, ми не відлітаємо від Sun достатньо далеко перед увімкненням FSD,
+  і можемо перегрітися
 
-# Installation
-_Requires **python 3** and **git**_
+# Встановлення
+_Потрібні **python 3** і **git**_
 
-_Python 3.11 is the recommended version of Python. Python 3.9 or 3.10 may also be used._
-If you don't have Python installed, here is a link to [Python 3.11 installer](https://www.python.org/downloads/release/python-3110/). Scroll to the bottom and select the installer with the description "Recommended".
+_Python 3.11 — рекомендована версія. Можна використовувати Python 3.9 або 3.10._
+Якщо у вас не встановлено Python, ось посилання на [інсталятор Python 3.11](https://www.python.org/downloads/release/python-3110/). Прокрутіть униз і виберіть інсталятор із позначкою «Recommended».
 
-## Simple
-If you just want to download and run EDAP and have no interest in the source code, use this method:
+## Простий варіант
+Якщо ви лише хочете завантажити й запустити EDAP і не цікавитеся вихідним кодом, скористайтеся цим методом:
 
-1. Download the source by clicking on the green '<> Code' button above, and then click 'Download ZIP'.
-2. Unzip the zip file to a folder of your choice.
-3. Locate the file 'start_ed_ap.bat' in the folder.
-4. Double click (run) the file 'start_ed_ap.bat'.
-5. The install should proceed, download all necessary files and complete.
-6. Double click (run) the file 'start_ed_ap.bat' again to start EDAP.
+1. Завантажте джерело, натиснувши зелену кнопку '<> Code' вище, а потім «Download ZIP».
+2. Розпакуйте zip у будь-яку папку.
+3. Знайдіть файл 'start_ed_ap.bat' у папці.
+4. Двічі клацніть (запустіть) файл 'start_ed_ap.bat'.
+5. Інсталяція має розпочатися, завантажити всі необхідні файли й завершитися.
+6. Двічі клацніть (запустіть) файл 'start_ed_ap.bat' знову, щоб стартувати EDAP.
 
-## Advanced
-If you are interested in Python and making changes to the code, or seeing how it works, use this method:
+## Розширений варіант
+Якщо ви цікавитеся Python і хочете вносити зміни в код або подивитися, як він працює, скористайтеся цим методом:
 
-1. Clone this repository
+1. Клонуйте репозиторій
 ```sh
 > git clone https://github.com/sumzer0-git/EDAPGui
 ```
-2. Install requirements
+2. Встановіть залежності
 ```sh
 > cd EDAPGui
 > pip install -r requirements.txt
 ```
-or run 'install_requirements.bat':
+або запустіть 'install_requirements.bat':
 ```sh
 > cd EDAPGui
 > install_requirements.bat
 ```
-3. Run script
+3. Запустіть скрипт
 ```sh
 > python EDAPGui.py
-OR you may have to run
+АБО можливо доведеться виконати
 > python3 EDAPGui.py
-if you have both python 2 and 3 installed.
+якщо встановлено і python 2, і 3.
 ```
 
-If you encounter any issues during pip install, try running:
+Якщо під час pip install виникають проблеми, спробуйте виконати:
 > python -m pip install -r requirements.txt
-instead of > pip install -r requirements.txt
+замість > pip install -r requirements.txt
 
-The following error may occur:
+Може з’явитися така помилка:
 > AttributeError: '_thread._local' object has no attribute 'srcdc'
 
-The error is usually as a result of mss incompatibility. Try pip install mss==8.0.3 or pip install mss==8.0.3.
+Зазвичай ця помилка пов’язана з несумісністю mss. Спробуйте pip install mss==8.0.3 або pip install mss==8.0.3.
 
-# Running ED_AP
-* With Elite Dangerous (ED) running, start ED_AP:
-    * By double clicking start_ed_ap.bat in Windows Explorer (preferred method).
-    * By typing 'python EDAPGui.py' in a console window.
-    * By running EDAPGui.py directly in a Python supporting IDE.
-* The ED_AP Gui should appear and there may be messages in the log warning of issues to be fixed. Refer to the information on this page how to resolve those issues.
+# Запуск ED_AP
+* Коли Elite Dangerous (ED) запущено, стартуйте ED_AP:
+    * Подвійним кліком на start_ed_ap.bat у Windows Explorer (бажаний спосіб).
+    * Ввівши 'python EDAPGui.py' у консольному вікні.
+    * Запустивши EDAPGui.py безпосередньо в IDE з підтримкою Python.
+* Має з’явитися ED_AP Gui, і в log можуть бути повідомлення з попередженнями про проблеми, які потрібно усунути. Деталі щодо їх вирішення є на цій сторінці.
 
-# Getting Started
-Once ED_AP is running there are few steps to complete the first time ED AP is run. These will help avoid common issues.
-1. Perform screen calibration, detailed [here](docs/Calibration.md). This will configure ED_AP for your screen resolution. Many issues can be avoided with correct calibration.
-2. Check and if necessary, change keybinding options, detailed below. Pay special attention that the Ins, Home, End and Pg Up are not used by ED as these are used by EDAP.
-3. Note: the autopilot.log file will capture any required keybindings that are not set.
-4. Select the correct ship file matching the ship you are flying, this will configure the pitch, roll and yaw rates to match. Depending on the ship, you may need to tune the values for best response a detailed [here](docs/RollPitchYaw.md).
-5. Perform an in-system test:
-    * In ED, use Left Panel to select a local target.
-    * In the autopilot enable SC Assist or hit the 'Ins' key.
-    * When a assist starts it will set focus to the Elite Dangerous window.
-    * Ship will undock if docked, jump to SC, maneuver to the target and upon arriving at the target, will attempt to dock if it is a station.
-    * Any flight issues, check ship tuning.
-6. Perform an out-of-system test:
-   * In ED, use Galaxy Map select a target system.
-   * In the autopilot enable FSD Assist or hit the 'Home' key.
-   * When a assist starts it will set focus to the Elite Dangerous window.
-   * Ship will undock if docked, jump to SC, maneuver to the target, perform an FSD jump. Upon arrival in the system, it will manuever aroung the star, fuel scoop as necessary and either stop if no in system target is selected, or attempt to fly to the target and  attempt to dock if it is a station.
-   * Any flight issues, check ship tuning.
+# Початок роботи
+Після запуску ED_AP потрібно виконати кілька кроків при першому старті, щоб уникнути поширених проблем.
+1. Виконайте калібрування екрана — деталі [тут](docs/Calibration.md). Це налаштує ED_AP під вашу роздільну здатність. Багатьох проблем можна уникнути правильним калібруванням.
+2. Перевірте та за потреби змініть параметри keybinding, описані нижче. Особливо переконайтеся, що клавіші Ins, Home, End і Pg Up не використовує ED, бо їх застосовує EDAP.
+3. Примітка: файл autopilot.log фіксуватиме всі необхідні прив’язки, яких бракує.
+4. Виберіть правильний файл корабля, що відповідає вашому кораблю — це налаштує швидкості pitch, roll і yaw. Залежно від корабля, можливо, доведеться підлаштувати значення для найкращої реакції — детально [тут](docs/RollPitchYaw.md).
+5. Виконайте тест у межах системи:
+    * В ED скористайтеся Left Panel, щоб вибрати локальний target.
+    * В автопілоті увімкніть SC Assist або натисніть 'Ins'.
+    * Коли асистент стартує, він переключить фокус на вікно Elite Dangerous.
+    * Корабель виконає undock (якщо пришвартований), перейде в SC, вийде на target і після прибуття спробує пришвартуватися, якщо це станція.
+    * Якщо виникають проблеми з польотом, перевірте налаштування корабля.
+6. Виконайте тест поза системою:
+   * В ED на Galaxy Map виберіть цільову систему.
+   * В автопілоті увімкніть FSD Assist або натисніть 'Home'.
+   * Коли асистент стартує, він переключить фокус на вікно Elite Dangerous.
+   * Корабель виконає undock (якщо пришвартований), перейде в SC, вийде на target, виконає стрибок FSD. Прибувши в систему, облетить star, виконає fuel scoop за потреби й або зупиниться, якщо внутрішньосистемна ціль не вибрана, або спробує долетіти до target і пришвартуватися, якщо це станція.
+   * Якщо виникають проблеми з польотом, перевірте налаштування корабля.
 
 
-# Required Keybindings
-The following keybindings are required by AP, so make sure a key is assigned to each by going into the Elite Dangerous options and assigning a key. After changing keybindings run AP again for the chagnes to be read. An error will appear if any of the keybindings are missing in Elite Dangerous.
+# Потрібні keybinding
+Наступні keybinding потрібні для AP, тож переконайтеся, що кожна з них призначена в налаштуваннях Elite Dangerous. Після зміни keybinding знову запустіть AP, щоб він прочитав зміни. Якщо будь-яку прив’язку пропущено, з’явиться помилка.
 
 | Binding               | Name                     | Location under OPTIONS > CONTROLS            |
 |-----------------------|--------------------------|----------------------------------------------|
@@ -213,98 +218,94 @@ The following keybindings are required by AP, so make sure a key is assigned to 
 
 
 
-# Autopilot Options:
-* FSD Route Assist: will execute your route.  At each jump the sequence will perform some fuel scooping, however, if 
-    fuel level goes down below a threshold  the sequence will stop at the Star until refueling is complete.  
-    If refueling doesn't complete after 35 seconds it will abort and continue to next route point.  If fuel goes below 
-    10% (configurable), the route assist will terminate
-* Supercruise Assist: will keep your ship pointed to target, you target can only be a station for
-    the autodocking to work.  If a settlement is targetted or target is obscured you will end up being kicked out of SC 
-    via "Dropped Too Close" or "Dropping from Orbital Cruise" (however, no damage to ship), throttle will be set to
-    Zero and exit SC Assist.  Otherwise, when the 'TO DISENGAGE' appears the SC Assist will drop you out of SC
-    and attempt request docking (after traveling closer to the Station), if docking granted it will.    
-    put throttle to zero and the autodocking computer will take over. Once docked it will auto-refuel and go into StarPort Services.
-    Note: while in SC, a interdictor response is included.   Also, as approaching the station, if it shows the Station is occluded
-    this assistant will navigate around the planet and proceed with docking
-* Waypoint Assist: When selected, will prompt for the waypoint file.  The waypoint file contains System names that will be 
-    entered into Galaxy Map and route plotted.  If the last entry in the waypoint file is "REPEAT", it will start from the beginning.
-    If the waypoint file entry has an associated Station/StationCoord entry, the assistant will route a course to that station
-    upon entering that system.  The assistant will then autodock, refuel and repair.  If a trading sequence is define, it will then
-    execute that trade.  See HOWTO-Waypoint.md
-* Robigo Assist:  Performs the Robigo Mines Passenger missions.  See Robigo.md under the docs folder
-* AFK Combat Assist: used with a AFK Combat ship in a Rez Zone.  It will detect if shields have
-    dropped and if so, will boost away and go into supercruise for ~10sec... then drop, put pips to
-    system and weapons and deploy fighter, then terminate.  While in the Rez Zone, if your fighter has
-    been destroyed it will deploy another figher (assumes you have two bays)
-* ELW Scanner: will perform FSS scans while FSD Assist is traveling between stars.  If the FSS
-    shows a signal in the region of Earth, Water or Ammonia type worlds, it will announce that discovery
-    and log it into elw.txt file.  Note: it does not do the FSS scan, you would need to terminate FSD Assist
-    and manually perform the detailed FSS scan to get credit.  Or come back later to the elw.txt file
-    and go to those systems to perform additional detailed scanning. The elw.txt file looks like:<br>
+# Параметри Autopilot:
+* FSD Route Assist: виконає ваш маршрут. На кожному стрибку послідовність виконуватиме певний fuel scooping, але якщо
+    рівень пального падає нижче порогу, послідовність зупиниться біля Star, доки дозаправлення не завершиться.
+    Якщо дозаправлення не завершується за 35 секунд, послідовність переривається й переходить до наступного пункту. Якщо паливо падає нижче
+    10% (налаштовується), route assist завершиться
+* Supercruise Assist: утримує корабель на target. Ціллю має бути станція, щоб працювало autodocking.
+    Якщо target — settlement або ціль перекрита, ви вийдете з SC
+    через "Dropped Too Close" або "Dropping from Orbital Cruise" (без пошкоджень), throttle буде встановлено
+    на Zero, і SC Assist завершиться. Якщо ж з’являється 'TO DISENGAGE', SC Assist виведе корабель із SC
+    та спробує надіслати request docking (після підльоту ближче до Station); якщо docking схвалено,
+    встановить throttle 0, і autodocking computer перебере управління. Після docking автоматично виконає refuel і перейде в StarPort Services.
+    Примітка: у SC включено реакцію на interdictor. Також під час підльоту до станції, якщо Station перекрита,
+    асистент облетить planet і продовжить docking
+* Waypoint Assist: при виборі запропонує файл waypoint. Файл waypoint містить назви System для
+    введення в Galaxy Map і побудови маршруту. Якщо останній запис у файлі — "REPEAT", цикл почнеться знову.
+    Якщо запис waypoint містить Station/StationCoord, асистент прокладе курс до цієї станції
+    після входу в систему. Асистент виконає autodock, refuel і repair. Якщо визначено послідовність торгівлі, вона
+    буде виконана. Див. HOWTO-Waypoint.md
+* Robigo Assist: виконує passenger-місії Robigo Mines. Див. Robigo.md у каталозі docs
+* AFK Combat Assist: використовується з AFK Combat ship у Rez Zone. Виявляє падіння shields,
+    після чого boost відлітає та переходить у supercruise приблизно на 10 секунд… потім виходить, розподіляє pips на
+    system і weapons, випускає fighter, а потім завершує роботу. Під час перебування у Rez Zone, якщо ваш fighter знищено,
+    випустить інший (передбачається дві bays)
+* ELW Scanner: виконує FSS-сканування під час польотів FSD Assist між зорями. Якщо FSS
+    показує сигнал у діапазоні світів Earth, Water чи Ammonia, повідомить про знахідку
+    й запише її в elw.txt. Примітка: скан FSS не виконується повністю — потрібно завершити FSD Assist
+    й вручну провести докладне FSS-сканування, щоб отримати кредит. Або поверніться пізніше до elw.txt
+    і відвідайте ці системи для додаткового сканування. Файл elw.txt виглядає так:<br>
       _Oochoss BL-M d8-3  %(dot,sig):   0.39,   0.79 Ammonia date: 2022-01-22 11:17:51.338134<br>
        Slegi BG-E c28-2  %(dot,sig):   0.36,   0.75 Water date: 2022-01-22 11:55:30.714843<br>
        Slegi TM-L c24-4  %(dot,sig):   0.31,   0.85 Earth date: 2022-01-22 12:04:47.527793<br>_
-* Calibrate: will iterate through a set of scaling values getting the best match for your system.  See HOWTO-Calibrate.md
-* Cap Mouse X, Y:  this will provide the StationCoord value of the Station in the SystemMap.  Selecting this button
-    and then clicking on the Station in the SystemMap will return the x,y value that can be pasted in the waypoints file
-* SunPitchUp+Time field are for ship that tend to overheat. Providing 1-2 more seconds of Pitch up when avoiding the Sun
-    will overcome this problem.  This will be Ship unique and this value will be saved along with the Roll, Pitch, Yaw values 
+* Calibrate: перебирає набір значень масштабування, щоб знайти найкраще для вашої системи. Див. HOWTO-Calibrate.md
+* Cap Mouse X, Y: надає значення StationCoord для Station у SystemMap. Виберіть кнопку,
+    а потім клацніть Station у SystemMap — отримаєте координати x,y, які можна вставити у файл waypoints
+* Поле SunPitchUp+Time призначене для кораблів, схильних до перегріву. Додаткові 1-2 секунди Pitch up під час уникнення Sun
+    допоможуть. Значення унікальне для корабля й зберігається разом зі значеннями Roll, Pitch, Yaw
 * Menu
-  * Open : read in a file with roll, pitch, yaw values for ship
-  * Save : save the roll,pitch,yaw, and sunpitchup time values to a files
-  * Enable Voice : Turns on/off voice
-  * Enable CV View: Turn on/off debug images showing the image matching as it happens.  The numbers displayed
-    indicate the % matched with the criteria for matching. Example:  0.55 > 0.5  means 55% match and the criteria
-    is that it has to be > 50%, so in this case the match is true
-    
-## Hot Keys (configurable)
-* Home - Start FSD Assist
-* Ins  - Start SC Assist
-* Pg Up - Start Robigo Assist
-* End  - Terminate any running assistants
+  * Open : прочитати файл зі значеннями roll, pitch, yaw для корабля
+  * Save : зберегти значення roll, pitch, yaw і sunpitchup time у файли
+  * Enable Voice : увімкнути/вимкнути voice
+  * Enable CV View: увімкнути/вимкнути debug images, що показують процес зіставлення. Показані числа
+    відображають % відповідності та поріг. Приклад: 0.55 > 0.5 означає 55% збіг, критерій > 50%, тож збіг істинний
 
-Hot keys are now configurable in the config-AP.json file, so you can remap them. Be sure not to use any keys you have mapped in ED.  You can find the key names here:
-https://pythonhosted.org/pynput/keyboard.html
+## Гарячі клавіші (можна змінити)
+* Home — старт FSD Assist
+* Ins  — старт SC Assist
+* Pg Up — старт Robigo Assist
+* End  — завершення будь-яких активних асистентів
 
-## Config File: config-AP.json
-The following settings from the AP.json file are **not** available through the GUI and must be changed directly within AP.json:
+Гарячі клавіші тепер задаються у файлі config-AP.json, тож ви можете переназначити їх. Головне — не використовувати клавіші, які вже задіяні в ED. Список назв клавіш: https://pythonhosted.org/pynput/keyboard.html
+
+## Config-файл: config-AP.json
+Наступні налаштування з AP.json **недоступні** через GUI й мають змінюватися безпосередньо в AP.json:
   ```py
-    "Robigo_Single_Loop": False,   # True means only 1 loop will execute and then terminate upon docking, will not perform mission processing
-    "EnableRandomness": False,     # add some additional random sleep times to avoid AP detection (0-3sec at specific locations)
-    "OverlayTextFont": "Eurostyle", 
-    "OverlayGraphicEnable": False, # not implemented yet
-    "DiscordWebhook": False,       # discord not implemented yet
+    "Robigo_Single_Loop": False,   # True означає виконати лише один цикл, після docking завершити, без оброблення місій
+    "EnableRandomness": False,     # додати додаткові випадкові sleep (0-3 сек у певних місцях), щоб уникнути виявлення AP
+    "OverlayTextFont": "Eurostyle",
+    "OverlayGraphicEnable": False, # ще не реалізовано
+    "DiscordWebhook": False,       # інтеграцію з discord ще не реалізовано
     "DiscordWebhookURL": "",
     "DiscordUserID": "",
-    "VoiceID": 1,                  # my Windows only have 3 defined (0-2)
-    "FCDepartureTime": 30.0,       # When leaving a Fleet Carrier, this is the amount of time in Secs to fly away before enabling SC.
-    "Language": "en"               # Language for OCR checks (i.e. 'en', 'fr', 'de')
+    "VoiceID": 1,                  # у моїй Windows визначено лише 3 (0-2)
+    "FCDepartureTime": 30.0,       # Під час виходу з Fleet Carrier — час у секундах, щоб відлетіти перед увімкненням SC.
+    "Language": "en"               # Мова для OCR-перевірок (наприклад 'en', 'fr', 'de')
 ```
-                                                              
-## Elite Dangerous, Role Play and Autopilot
-* I am a CMDR in the Elite Dangerous universe and I have a trusty Diamondback Explorer
-* In my travels out into the black I have become frustrated with my flight computers abilities.  I don't want to stay
-  up hours and hours manually performing Sun avoidance just to jump to the next system.  
-* In a nutshell, Lakon Spaceways lacks vision.  Heck, they provide Autopilot for docking, undocking, and Supercruise but can't provide
-  a simple route AP?   Geezzz
-* Well, I have my trusty personal quantum-based computing device (roughly 10TeraHz CPU, 15 Petabyte RAM), which is the size of a credit-card, that has vision processing capability, has ability to inteface with my Diamondback Explorer Flight Computer 
-  so I'm going to develop my own autopilot.   This falls under the "consumers right to enhance", signed into law in the year 3301 and ratified by all the Galatic powers
-* So CMDRs, lets enhance our ships so we can get some sleep and do real work as opposed to hours of maneuvering around Suns
 
-## WARNING:
+## Elite Dangerous, рольова гра та автопілот
+* Я — CMDR у всесвіті Elite Dangerous і маю надійний Diamondback Explorer
+* Під час подорожей у глибокий космос я втомився від можливостей свого бортового комп’ютера. Не хочу годинами вручну уникати Sun тільки для стрибка в наступну систему.
+* Якщо коротко, Lakon Spaceways бракує бачення. Вони дають Autopilot для docking, undocking і Supercruise, але не можуть зробити
+  простий route AP? Ну й справи
+* У мене є особистий квантовий обчислювальний пристрій (близько 10 TeraHz CPU, 15 Petabyte RAM) розміром із кредитку з можливістю обробки зображень і взаємодії з моїм Diamondback Explorer Flight Computer,
+  тож я розроблю власний автопілот. Це підпадає під «право споживача на вдосконалення», ухвалене законом у 3301 році й ратифіковане всіма галактичними силами
+* Тож, CMDRs, вдосконалюймо наші кораблі, щоб ми могли поспати та займатися справами замість годин маневрування навколо Suns
 
-Use at your own risk.  Have performed over 2000 FSD jumps with this autopilot and have aborted the FSD Assist
-about 6 times due to jumping into a system that had 2 suns next to each other and pretty much the ship overheated
-and dropped out of supercruise.   The ship did not get destroyed but had to use a heat sink to get out of the
-situation
+## ПОПЕРЕДЖЕННЯ:
 
-# Email Contact
+Використовуйте на власний ризик. З цим автопілотом виконано понад 2000 стрибків FSD, і FSD Assist довелося переривати
+приблизно 6 разів через стрибки в систему з двома suns поряд, коли корабель перегрівався
+і виходив із supercruise. Корабель не було знищено, але довелося використати heat sink, щоб вийти із ситуації
+
+# Контакт електронною поштою
 
 sumzer0@yahoo.com
 
 
-# Screen Shots
+# Знімки екрана
 ![Alt text](screen/screen_cap_main.png?raw=true "Main Tab")
 ![Alt text](screen/screen_cap_settings.png?raw=true "Settings Tab")
 ![Alt text](screen/screen_cap_debug.png?raw=true "Debug Tab")
-                                                               
+

@@ -1,38 +1,35 @@
 # Roll, Pitch, Yaw (RPY)
-The values for Pitch and Roll are critical for proper Autopilot behavior. Yaw is also used, but to a lesser degree.
-Each ship type will have different RPY values that need to be determined using the instructions below. Once the RPY
-values have been determined for a ship type, EDAP will store the values and will automatically load the correct values
-when the active ship is changed. A ship config can also be manually loaded using the load button.
+Значення Pitch і Roll критично важливі для коректної роботи Autopilot. Yaw теж використовується, але меншою мірою.
+Кожен тип корабля має власні значення RPY, які потрібно визначити за інструкціями нижче. Після визначення
+значень RPY для конкретного типу корабля EDAP збереже їх і автоматично завантажуватиме правильні значення,
+коли активний корабель змінюється. Конфіг корабля також можна завантажити вручну кнопкою load.
 
-Take the RPY values from Outfitting, pay attention to the order, it is Pitch, Roll, Yaw in Outfitting.  Also pay
-attention to the order on the GUI as it is Roll, Pitch, Yaw.
+Візьміть значення RPY з Outfitting, зверніть увагу на порядок: там це Pitch, Roll, Yaw. Також зверніть
+увагу на порядок у GUI: Roll, Pitch, Yaw.
 
-The RPY values from Outfitting are the rates the ship can achieve while in normal space, while in supercruise
-the rates are much lower.  Since Autopilot utilizes these rates in Supercruise, they must be adjusted.  See tests
-done by one CMDR: https://forums.frontier.co.uk/threads/supercruise-handling-of-ships.396845/.  
-Also see: https://lavewiki.com/ship-control
+Значення RPY з Outfitting — це швидкості, яких корабель досягає у normal space, тоді як у supercruise
+ці швидкості значно нижчі. Оскільки Autopilot використовує ці швидкості в Supercruise, їх потрібно скоригувати.
+Дивіться дослідження одного CMDR: https://forums.frontier.co.uk/threads/supercruise-handling-of-ships.396845/.
+Також дивіться: https://lavewiki.com/ship-control
 
-1. To start, use the values from Outfitting or start with the values from another similar ship.  
-2. Go into supercruise with a system as target. Set speed to 50%.
-3. For the Roll Rate:
-   1. Maneuver so that the navigation dot is at the top of the compass (at the 12 o'clock position).
-   2. Press the Test Roll button. The ship will roll 360 degrees so that the navigation dot is at 12 o'clock again.
-   3. If the roll overshoots, then increase the value in the Roll field, decrease if the roll undershoots. Overshooting 
-   translates into not being able to control properly, it is better to undershoot than overshoot.
-   4. Repeat the above a couple of times until the roll rate is acceptable.
-4. For the Pitch Rate:
-   1. Maneuver so that the navigation dot is in the center of the compass ahead of the ship.
-   2. Press the Test Pitch button. The ship will pitch 360 degrees so that the navigation dot is at the center again.
-   3. If the pitch overshoots target then the pitch value needs to be increased, decrease if pitch undershoots. Overshooting 
-   translates into not being able to control properly, it is better to undershoot than overshoot.  
-   4. Repeat the above a couple of times until the pitch rate is acceptable.
-5. For the Yaw Rate:
-   1. Maneuver so that the navigation dot is in the center of the compass ahead of the ship.
-   2. Press the Test Yaw button. The ship will yaw 360 degrees so that the navigation dot is at the center again.
-   3. If the pitch overshoots target then the yaw value needs to be increased, decrease if yaw undershoots. Overshooting 
-   translates into not being able to control properly, it is better to undershoot than overshoot.  
-   4. Repeat the above a couple of times until the pitch rate is acceptable.
-6. Save your settings.
+1. Для початку використайте значення з Outfitting або стартуйте зі значень іншого подібного корабля.
+2. Увійдіть до supercruise з вибраною системою як target. Встановіть швидкість 50%.
+3. Для Roll Rate:
+   1. Розверніться так, щоб навігаційна точка була у верхній частині Compass (на позиції 12 години).
+   2. Натисніть кнопку Test Roll. Корабель виконає roll на 360 градусів, тож навігаційна точка знову опиниться на 12 годинах.
+   3. Якщо roll перелітає, збільште значення в полі Roll; зменшіть, якщо roll не дотягує. Перельот означає, що керування буде нестабільним, краще злегка недокрутити.
+   4. Повторіть кілька разів, доки швидкість roll не буде прийнятною.
+4. Для Pitch Rate:
+   1. Розверніться так, щоб навігаційна точка була в центрі Compass перед кораблем.
+   2. Натисніть кнопку Test Pitch. Корабель виконає pitch на 360 градусів, тож навігаційна точка знову буде в центрі.
+   3. Якщо pitch перелітає ціль, збільште значення pitch; зменшіть, якщо не дотягує. Перельот означає погане керування, краще недокрутити.
+   4. Повторіть кілька разів, доки швидкість pitch не буде прийнятною.
+5. Для Yaw Rate:
+   1. Розверніться так, щоб навігаційна точка була в центрі Compass перед кораблем.
+   2. Натисніть кнопку Test Yaw. Корабель виконає yaw на 360 градусів, тож навігаційна точка знову буде в центрі.
+   3. Якщо yaw перелітає ціль, збільште значення yaw; зменшіть, якщо не дотягує. Перельот означає погане керування, краще недокрутити.
+   4. Повторіть кілька разів, доки швидкість yaw не буде прийнятною.
+6. Збережіть налаштування.
 
-As of this writing, only the DBX, ASPX, Cutter, and Sidewinder configuration files (RPY values) were tested.  
-Additional configs were provided in this release but not tested (based on values from Outfitting)
+На момент написання лише конфігураційні файли DBX, ASPX, Cutter і Sidewinder (значення RPY) протестовані.
+Додаткові конфіги надано в цьому релізі, але не протестовано (базуються на значеннях з Outfitting).
