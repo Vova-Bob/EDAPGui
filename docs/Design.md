@@ -1,54 +1,54 @@
-  
-# Approach
-## FSD Assist FLow
-* Leave space station if docked.
-* Enter supercruise if necessary.
-* Align to selected system.
-* Jump to system.
-* When entering a new System, Speed to 0
-* Pitch up until sun is out of field of view
-* Accelerate to 100 for "some #" of seconds, speed to 50, fuel scooping will start
-* If our fuel is below a threshold (hardcode, need to lookup) then put speed to 0
-* If refuel required then wait for refuel complete or <#> sec elapsed
-* Accel back to 100, delay some seconds while we get away from Sun
-* Perform DSS on the System
-* If ELW Scanner enabled, go into FSS, do image matching in specific region looking for filled circle or frequency signal present.
-  If so, log wether an Earth, Water or Ammonia world based on where the frequency signal is at in the image
-* Perform Nav align looking at the Compass on the console, perform roll and pitch based on Nav point in the compass
-* Perform Target align (as the target should be pretty close in front of us) 
-* If reached destination system then terminate, however if we still have a target to a Station, then auto-enable SC Assist
-  else have not reach destination, so issue FSD and loop 
- 
-## SC Assist Flow
-* Leave space station if docked.
-* Enter supercruise if necessary.
-* Loop: 
-  * Do Target align, keeping is us a tight deadband on the target
-  * Do image match checking to see if SC Disengage pops up, if so, break loop
-  * Check for interdiction, if so execut response 
-  * Check for Station occluded by the Planet, if so maneauver around planet
-* Accel for ~10sec... then put speed to 0 (this put us < 7.5km)
-* Do Left Menu... Right twice to get to Contact and the Right to request docking
-  * Do this up to 3 times, if needed
-  * if docking rejected, put that info in the log
-* If docking accepted, we are at speed 0 so let Docking Computer take over
-* wait for up to 120 sec for dock complete... select refuel and repair
-* If a trade is defined, execute the trade
 
-## Waypoint Assist Flow
-* prompt/open/readin  waypoint file
-* Loop:
-  * get next waypoint System name, perform GalMap selection plotting for System
-  * execute FSD Route Assist
-  * if waypoint defines Station to dock with Station Coord
-    * Open SystemMap select Station by Mouse clicking/hold at X, Y location defined in the file
-    * execute SC Assist to travel and dock with station
-    * when docked, refuel, repair
-    * if a trade is defined (*NumDown fields are not -1) then execute the trade
-    * undock from station
- 
-# Enhancement ideas
-* A lot more error trapping needs to be put into the code, there is also a lot of corner cases to deal with
-* Handle Thargoid interdiction will in Hyperspace
-* Enhance SC Interdiction flow (hard to test)
-* FSS/ELW screen region needs to be able to handle diff screen resolutions
+# Підхід
+## Послідовність роботи FSD Assist
+* Вийти зі станції, якщо пришвартовані.
+* За потреби увійти до supercruise.
+* Вирівнятися на вибрану систему.
+* Виконати стрибок у систему.
+* Під час входу до нової системи встановити швидкість 0.
+* Підіймати ніс, доки сонце не зникне з поля зору.
+* Розігнатися до 100 на «певну кількість» секунд, зменшити швидкість до 50, почнеться fuel scooping.
+* Якщо наш запас пального нижче порогу (hardcode, треба уточнити), встановити швидкість 0.
+* Якщо потрібне дозаправлення, чекати завершення або доки не мине <#> секунд.
+* Знову розігнатися до 100, затриматися на кілька секунд, поки відлітаємо від Сонця.
+* Виконати DSS для системи.
+* Якщо ELW Scanner увімкнений, зайти у FSS, виконати розпізнавання зображення в конкретній області, шукаючи заповнене коло або сигнал на певній частоті.
+  Якщо так, записати, чи це Earth, Water або Ammonia world залежно від розташування сигналу на зображенні.
+* Виконати вирівнювання за навігацією, дивлячись на Compass на консолі, виконати roll і pitch залежно від положення Nav point у Compass.
+* Виконати вирівнювання на ціль (адже ціль має бути майже прямо перед нами).
+* Якщо досягнуто кінцеву систему призначення, завершити роботу, однак якщо все ще вибрано Station як ціль, автоматично ввімкнути SC Assist,
+  інакше, якщо призначення не досягнуто, активувати FSD і повторити цикл.
+
+## Послідовність роботи SC Assist
+* Вийти зі станції, якщо пришвартовані.
+* За потреби увійти до supercruise.
+* Цикл:
+  * Виконувати вирівнювання на ціль, утримуючи її в тісній зоні допуску.
+  * Виконувати розпізнавання зображення, щоб перевірити появу повідомлення SC Disengage; якщо так — вийти з циклу.
+  * Перевірити наявність interdiction, якщо так — виконати реакцію.
+  * Перевірити, чи Station закрита Planet; якщо так — облетіти Planet.
+* Розігнатися приблизно на 10 секунд, потім встановити швидкість 0 (це ставить нас ближче ніж 7.5 км).
+* Відкрити Left Menu… двічі Right, щоб перейти до Contact, і ще раз Right, щоб надіслати request docking.
+  * Виконати до 3 разів за потреби.
+  * Якщо docking відхилено, записати інформацію у log.
+* Якщо docking прийнято, ми вже на швидкості 0, тож дозволити Docking Computer взяти управління.
+* Чекати до 120 секунд, поки dock завершиться… вибрати refuel і repair.
+* Якщо визначена торгівля, виконати trade.
+
+## Послідовність роботи Waypoint Assist
+* Запросити/відкрити/прочитати waypoint file.
+* Цикл:
+  * Отримати назву наступної системи, виконати вибір у GalMap для plotting системи.
+  * Виконати FSD Route Assist.
+  * Якщо waypoint визначає Station для docking зі Station Coord:
+    * Відкрити SystemMap, вибрати Station кліком миші/утриманням у позиції X, Y, визначеній у файлі.
+    * Виконати SC Assist, щоб долетіти й пришвартуватися.
+    * Після docking виконати refuel і repair.
+    * Якщо визначено trade (*NumDown поля не дорівнюють -1), виконати торгівлю.
+    * Відшвартуватися від станції.
+
+# Ідеї для покращень
+* Потрібно значно більше оброблення помилок, є багато крайових сценаріїв.
+* Обробити Thargoid interdiction у Hyperspace.
+* Покращити SC Interdiction flow (важко тестувати).
+* Область екрана FSS/ELW повинна підтримувати різні роздільні здатності.
