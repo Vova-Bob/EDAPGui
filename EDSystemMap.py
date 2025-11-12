@@ -30,6 +30,8 @@ class EDSystemMap:
          being the default if no match is made with the other options. Navigation is unique in that it uses
          the Nav Panel instead of the System Map.
         @param bookmark_position: The position in the bookmark list, starting at 1 for the first bookmark.
+        @param expected_name: Optional destination name that should appear in Status.json when targeting
+         succeeds. If omitted, any change in destination will be accepted.
         @return: True if bookmark could be selected, else False
         """
         if self.is_odyssey and bookmark_position != -1:
@@ -114,9 +116,13 @@ class EDSystemMap:
         while time() < end_time:
             data = self.status_parser.get_cleaned_data()
             dest_name = data.get('Destination_Name', '')
+            dest_upper = dest_name.upper() if dest_name else ''
 
             if expected_upper:
-                if dest_name.upper() == expected_upper:
+                if dest_name and (dest_upper == expected_upper or expected_upper in dest_upper):
+                    return True
+                if (previous_mod_time is not None and self.status_parser.last_mod_time is not None
+                        and self.status_parser.last_mod_time > previous_mod_time and dest_name):
                     return True
             else:
                 if dest_name and dest_name != previous_destination:

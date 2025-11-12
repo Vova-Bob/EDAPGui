@@ -562,8 +562,9 @@ class EDWayPoint:
 
                     if gal_bookmark:
                         # Set destination via gal bookmark, not system bookmark
+                        # Galaxy map destinations resolve to systems, so validate using the system name.
                         res = self.ap.galaxy_map.set_gal_map_dest_bookmark(
-                            self.ap, gal_bookmark_type, gal_bookmark_num, next_wp_station)
+                            self.ap, gal_bookmark_type, gal_bookmark_num, next_wp_system)
                         if not res:
                             self.ap.ap_ckb('log+vce', f"Unable to set Galaxy Map bookmark.")
                             _abort = True
