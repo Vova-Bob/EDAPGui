@@ -5,7 +5,7 @@ from EDlogger import logger
 from OCR import OCR
 from Screen_Regions import reg_scale_for_station
 from StatusParser import StatusParser
-from time import sleep
+from time import sleep, time
 
 
 class EDSystemMap:
@@ -22,7 +22,8 @@ class EDSystemMap:
         self.reg = {'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
                     }
 
-    def set_sys_map_dest_bookmark(self, ap, bookmark_type: str, bookmark_position: int) -> bool:
+    def set_sys_map_dest_bookmark(self, ap, bookmark_type: str, bookmark_position: int,
+                                  expected_name: str | None = None) -> bool:
         """ Set the System Map destination using a bookmark.
         @param ap: ED_AP reference.
         @param bookmark_type: The bookmark type (Favorite, Body, Station, Settlement or Navigation), Favorite
@@ -32,6 +33,11 @@ class EDSystemMap:
         @return: True if bookmark could be selected, else False
         """
         if self.is_odyssey and bookmark_position != -1:
+            status = self.status_parser.get_cleaned_data()
+            previous_destination = str(status.get('Destination_Name', '') or '')
+            previous_mod_time = self.status_parser.last_mod_time
+            expected_upper = expected_name.upper() if expected_name else None
+
             # Check if this is a nav-panel bookmark
             if not bookmark_type.lower().startswith("nav"):
                 self.goto_system_map()
@@ -63,7 +69,12 @@ class EDSystemMap:
                 # Close System Map
                 ap.keys.send('SystemMapOpen')
                 sleep(0.5)
-                return True
+
+                if self._wait_for_destination_update(previous_destination, expected_upper, previous_mod_time):
+                    return True
+
+                logger.warning("System map bookmark selection failed to update destination.")
+                return False
 
             elif bookmark_type.lower().startswith("nav"):
                 # TODO - Move to, or call Nav Panel code instead?
@@ -85,7 +96,36 @@ class EDSystemMap:
                 ap.keys.send('UI_Select')
                 ap.keys.send("UI_Back")
                 ap.keys.send("HeadLookReset")
-                return True
+
+                if self._wait_for_destination_update(previous_destination, expected_upper, previous_mod_time):
+                    return True
+
+                logger.warning("Nav panel bookmark selection failed to update destination.")
+                return False
+
+        return False
+
+    def _wait_for_destination_update(self, previous_destination: str, expected_upper: str | None,
+                                      previous_mod_time: float | None, timeout: float = 5.0) -> bool:
+        if expected_upper and previous_destination.upper() == expected_upper:
+            return True
+
+        end_time = time() + timeout
+        while time() < end_time:
+            data = self.status_parser.get_cleaned_data()
+            dest_name = data.get('Destination_Name', '')
+
+            if expected_upper:
+                if dest_name.upper() == expected_upper:
+                    return True
+            else:
+                if dest_name and dest_name != previous_destination:
+                    return True
+                if (previous_mod_time is not None and self.status_parser.last_mod_time is not None
+                        and self.status_parser.last_mod_time > previous_mod_time and dest_name):
+                    return True
+
+            sleep(0.25)
 
         return False
 

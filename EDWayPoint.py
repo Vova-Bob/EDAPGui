@@ -562,7 +562,8 @@ class EDWayPoint:
 
                     if gal_bookmark:
                         # Set destination via gal bookmark, not system bookmark
-                        res = self.ap.galaxy_map.set_gal_map_dest_bookmark(self.ap, gal_bookmark_type, gal_bookmark_num)
+                        res = self.ap.galaxy_map.set_gal_map_dest_bookmark(
+                            self.ap, gal_bookmark_type, gal_bookmark_num, next_wp_station)
                         if not res:
                             self.ap.ap_ckb('log+vce', f"Unable to set Galaxy Map bookmark.")
                             _abort = True
@@ -570,7 +571,8 @@ class EDWayPoint:
 
                     elif sys_bookmark:
                         # Set destination via system bookmark
-                        res = self.ap.system_map.set_sys_map_dest_bookmark(self.ap, sys_bookmark_type, sys_bookmark_num)
+                        res = self.ap.system_map.set_sys_map_dest_bookmark(
+                            self.ap, sys_bookmark_type, sys_bookmark_num, next_wp_station)
                         if not res:
                             self.ap.ap_ckb('log+vce', f"Unable to set System Map bookmark.")
                             _abort = True
