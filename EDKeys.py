@@ -13,6 +13,19 @@ import xmltodict
 
 from Screen import set_focus_elite_window
 from directinput import *
+
+ASCII_SCANCODE_MAP: dict[str, int] = {}
+
+# Побудова карти сканкодів для латинських букв та часто вживаних символів.
+for _char_code in range(ord('A'), ord('Z') + 1):
+    _char = chr(_char_code)
+    ASCII_SCANCODE_MAP[_char] = SCANCODE.get(f'Key_{_char}', 0)
+
+for _digit in range(0, 10):
+    ASCII_SCANCODE_MAP[str(_digit)] = SCANCODE.get(f'Key_{_digit}', 0)
+
+ASCII_SCANCODE_MAP[' '] = SCANCODE.get('Key_Space', 0)
+ASCII_SCANCODE_MAP['-'] = SCANCODE.get('Key_Minus', 0)
 from EDlogger import logger
 
 """
@@ -330,3 +343,27 @@ class EDKeys:
             if key == v:
                 collisions.append(k)
         return collisions
+
+    def type_ascii(self, text: str, interval: float = 0.25) -> None:
+        """Вводить ASCII-текст незалежно від розкладки (латиниця + цифри)."""
+        if not text:
+            return
+
+        text_upper = text.upper()
+        logger.debug(f"Route input: sending ASCII system name '{text_upper}' (layout independent).")
+
+        # За потреби активуємо вікно ED перед друком.
+        if self.activate_window:
+            set_focus_elite_window()
+            sleep(0.05)
+
+        for char in text_upper:
+            scancode = ASCII_SCANCODE_MAP.get(char)
+            if not scancode:
+                logger.warning(f"Route input: unsupported char '{char}', skipping.")
+                continue
+
+            PressKey(scancode)
+            sleep(self.key_mod_delay)
+            ReleaseKey(scancode)
+            sleep(interval)

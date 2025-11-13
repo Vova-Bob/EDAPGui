@@ -25,7 +25,7 @@ from EDKeys import *
 from EDafk_combat import AFK_Combat
 from EDInternalStatusPanel import EDInternalStatusPanel
 from NavRouteParser import NavRouteParser
-from OCR import OCR
+from OCR import OCR, normalize_ocr_text, ru_contains_disengage_keywords
 from EDNavigationPanel import EDNavigationPanel
 from Overlay import *
 from StatusParser import StatusParser
@@ -107,6 +107,7 @@ class EDAutopilot:
             "EDMesgEventsPort": 15571,
             "DebugOverlay": False,
         }
+        self.supported_ocr_languages = ('en', 'ru')
         # NOTE!!! When adding a new config value above, add the same after read_config() to set
         # a default value or an error will occur reading the new value!
 
@@ -160,15 +161,15 @@ class EDAutopilot:
             self.write_config(self.config)
 
         # Determine which OCR language to use (UI language is controlled by the GUI separately)
-        supported_ocr_languages = ('en', 'ru')
         ocr_language = self.config.get('OCRLanguage', 'en')
-        if ocr_language not in supported_ocr_languages:
+        if ocr_language not in self.supported_ocr_languages:
             logger.warning(f"Unsupported OCR language '{ocr_language}', falling back to English.")
             ocr_language = 'en'
             self.config['OCRLanguage'] = ocr_language
 
         # Load localized OCR strings for the selected in-game language
-        self.ocr_locale = LocalizationManager('locales', ocr_language)
+        self.ocr_language = ocr_language
+        self.ocr_locale = LocalizationManager('locales', self.ocr_language)
 
         shp_cnf = self.read_ship_configs()
         # if we read it then point to it, otherwise use the default table above
@@ -216,7 +217,7 @@ class EDAutopilot:
         self.scr.scaleX = self.config['TargetScale']
         self.scr.scaleY = self.config['TargetScale']
 
-        self.ocr = OCR(self.scr, ocr_language)
+        self.ocr = OCR(self.scr, self.ocr_language)
         self.templ = Image_Templates.Image_Templates(self.scr.scaleX, self.scr.scaleY, self.scr.scaleX)
         self.scrReg = Screen_Regions.Screen_Regions(self.scr, self.templ)
         self.jn = EDJournal(cb)
@@ -307,6 +308,36 @@ class EDAutopilot:
 
     def update_config(self):
         self.write_config(self.config)
+
+    def set_ocr_language(self, language: str) -> bool:
+        if not language or language not in self.supported_ocr_languages:
+            logger.warning(f"Attempted to set unsupported OCR language '{language}'.")
+            return False
+
+        if language == self.ocr_language:
+            return True
+
+        previous_language = self.ocr_language
+        self.config['OCRLanguage'] = language
+        self.ocr_language = language
+
+        try:
+            self.ocr_locale.change_language(language)
+        except Exception as exc:
+            logger.error(f"Failed to switch OCR localization to '{language}': {exc}")
+            self.ocr_language = previous_language
+            self.config['OCRLanguage'] = previous_language
+            return False
+
+        self.ocr.set_language(language)
+
+        if hasattr(self.nav_panel, 'update_ocr_language'):
+            self.nav_panel.update_ocr_language()
+        if hasattr(self.internal_panel, 'update_ocr_language'):
+            self.internal_panel.update_ocr_language()
+
+        logger.info(f"OCR language switched to '{language}'.")
+        return True
 
     def write_config(self, data, fileName='./configs/AP.json'):
         try:
@@ -1065,12 +1096,16 @@ class EDAutopilot:
         image = masked_image
 
         # OCR the selected item
-        sim_match = 0.35  # Similarity match 0.0 - 1.0 for 0% - 100%)
         sim = 0.0
         ocr_textlist = self.ocr.image_simple_ocr(image)
-        if ocr_textlist is not None:
-            sim = self.ocr.string_similarity(self.ocr_locale["PRESS_TO_DISENGAGE_MSG"], str(ocr_textlist))
-            logger.info(f"Disengage similarity with {str(ocr_textlist)} is {sim}")
+        raw_text = ' '.join(ocr_textlist) if ocr_textlist else ''
+        normalized_target = normalize_ocr_text(self.ocr_locale["PRESS_TO_DISENGAGE_MSG"], self.ocr_language)
+        normalized_ocr = normalize_ocr_text(raw_text, self.ocr_language)
+        if normalized_ocr:
+            sim = self.ocr.string_similarity(normalized_target, normalized_ocr)
+            logger.info(f"Disengage similarity with {str(ocr_textlist)} is {sim} (normalized='{normalized_ocr}')")
+        else:
+            logger.debug("Disengage OCR returned empty string after normalization")
 
         # Draw box around region
         if self.debug_overlay:
@@ -1082,15 +1117,35 @@ class EDAutopilot:
         if self.cv_view:
             image = cv2.rectangle(image, (0, 0), (1000, 30), (0, 0, 0), -1)
             cv2.putText(image, f'Text: {str(ocr_textlist)}', (1, 10), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
-            cv2.putText(image, f'Similarity: {sim:5.4f} > {sim_match}', (1, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
+            cv2.putText(image, f'Similarity: {sim:5.4f}', (1, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 1, cv2.LINE_AA)
             cv2.imshow('disengage2', image)
             cv2.moveWindow('disengage2', self.cv_view_x - 460, self.cv_view_y + 650)
             cv2.waitKey(30)
 
-        if sim > sim_match:
-            logger.info("'PRESS [] TO DISENGAGE' detected. Disengaging Supercruise")
-            #cv2.imwrite(f'test/disengage.png', image)
-            return True
+        # -------------------------------
+        # Ключові слова
+        # -------------------------------
+        if self.ocr_language == 'ru':
+            keyword_hit = ru_contains_disengage_keywords(normalized_ocr)
+        else:
+            # Англійська логіка — залишити як була, але на нормалізованих рядках
+            has_press = 'press' in normalized_ocr
+            has_diseng = 'diseng' in normalized_ocr or 'stop' in normalized_ocr
+            keyword_hit = has_press and has_diseng
+
+        # -------------------------------
+        # Фінальна перевірка тригера
+        # -------------------------------
+        if self.ocr_language == 'ru':
+            # Російська — суворіший matching, але більш надійний
+            if sim >= 0.50 or keyword_hit:
+                logger.info("'PRESS [] TO DISENGAGE' detected. Disengaging Supercruise")
+                return True
+        else:
+            # Англійська — залишити стару поведінку (поріг 0.35)
+            if sim >= 0.35 or keyword_hit:
+                logger.info("'PRESS [] TO DISENGAGE' detected. Disengaging Supercruise")
+                return True
 
         return False
 
