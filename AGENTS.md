@@ -96,3 +96,71 @@ Agents must ask before switching to another task.
 
 ### When generating localization keys:
 - Use consistent structured keys:
+ui.window.title
+ui.button.start
+ui.button.stop
+ui.tooltip.start
+ui.message.error
+voice.welcome
+voice.route_assist_on
+ocr.trigger.disengage
+
+
+---
+
+## Language Switching Support
+Agents must maintain the ability to switch:
+- **UI Language** (EN/UA/RU)
+- **Voice Language**
+- **Game OCR Language**
+
+Switch must be in menu:
+
+
+Help → Language →
+• English
+• Українська
+
+
+---
+
+## Safety Requirements
+- Never change autopilot logic.
+- Never alter ED/AP flight algorithms.
+- Never change bindings or keypress logic.
+- Never alter time-critical OCR code.
+
+---
+
+## Files of Primary Importance
+Priority order for modification:
+
+1. `EDAPGui.py`
+2. `LocalizationManager.py`
+3. `locales/*.json`
+4. `ED_AP.py`
+5. `Voice.py`
+6. `configs/AP.json`
+7. `README.md`
+
+---
+
+## Output Format Requirements for Agents
+All outputs must be:
+
+- Minimal, clear, professional.
+- With explanations when needed.
+- With code blocks for every change.
+- No unnecessary verbosity.
+
+---
+
+## When In Doubt
+If an agent is unsure:
+- Ask for clarification before acting.
+- Request the specific file.
+- Never guess architecture.
+
+---
+
+## End of AGENTS.md
