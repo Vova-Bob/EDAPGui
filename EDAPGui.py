@@ -192,6 +192,8 @@ class APGui():
         self.single_waypoint_station = StringVar()
         self.TCE_Destination_Filepath = StringVar()
 
+        self.radiobuttonvar['ocr_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('OCRLanguage', 'en'))
+
         self.FSD_A_running = False
         self.SC_A_running = False
         self.WP_A_running = False
@@ -271,10 +273,7 @@ class APGui():
         # global trap for these keys, the 'end' key will stop any current AP action
         # the 'home' key will start the FSD Assist.  May want another to start SC Assist
 
-        keyboard.add_hotkey(self.ed_ap.config['HotKey_StopAllAssists'], self.stop_all_assists)
-        keyboard.add_hotkey(self.ed_ap.config['HotKey_StartFSD'], self.callback, args=('fsd_start', None))
-        keyboard.add_hotkey(self.ed_ap.config['HotKey_StartSC'],  self.callback, args=('sc_start',  None))
-        keyboard.add_hotkey(self.ed_ap.config['HotKey_StartRobigo'],  self.callback, args=('robigo_start',  None))
+        self._register_global_hotkeys()
 
         # check for updates
         self.check_updates()
@@ -283,6 +282,20 @@ class APGui():
         self.gui_loaded = True
         # Send a log entry which will flush out the buffer.
         self.callback('log', self._t('ui.log.loaded'))
+
+    def _register_global_hotkeys(self) -> None:
+        """Реєструє глобальні гарячі клавіші та гарантує виконання у потоці Tk."""
+
+        def bind(combo: str, target, *args) -> None:
+            def handler() -> None:
+                self.root.after(0, lambda: target(*args))
+
+            keyboard.add_hotkey(combo, handler)
+
+        bind(self.ed_ap.config['HotKey_StopAllAssists'], self.stop_all_assists)
+        bind(self.ed_ap.config['HotKey_StartFSD'], self.callback, 'fsd_start', None)
+        bind(self.ed_ap.config['HotKey_StartSC'], self.callback, 'sc_start', None)
+        bind(self.ed_ap.config['HotKey_StartRobigo'], self.callback, 'robigo_start', None)
 
     # callback from the EDAP, to configure GUI items
     def callback(self, msg, body=None):
@@ -921,6 +934,16 @@ class APGui():
         except KeyError:
             return code
 
+    def _get_ocr_language_display(self, code):
+        if code == 'ru':
+            key = 'ui.radio.ocr_language.ru'
+        else:
+            key = 'ui.radio.ocr_language.en'
+        try:
+            return self._t(key)
+        except KeyError:
+            return code
+
     def _refresh_waypoint_label(self):
         if not hasattr(self, 'wp_filelabel'):
             return
@@ -965,6 +988,18 @@ class APGui():
         self.ed_ap.config['Language'] = lang
         self.refresh_ui_texts()
         self.log_msg(self._t('ui.log.language_switched', language=self._language_display_name(lang)))
+
+    def on_ocr_language_change(self, lang):
+        current = self.ed_ap.config.get('OCRLanguage', 'en')
+        if lang == current:
+            return
+
+        if not self.ed_ap.set_ocr_language(lang):
+            self.radiobuttonvar['ocr_language'].set(current)
+            return
+
+        self.radiobuttonvar['ocr_language'].set(lang)
+        self.log_msg(self._t('ui.log.ocr_language_switched', language=self._get_ocr_language_display(lang)))
 
     def gui_gen(self, win):
 
@@ -1174,6 +1209,32 @@ class APGui():
         cb_logout = Checkbutton(blk_ap, text=self._t('ui.checkbox.automatic_logout'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Automatic logout'], command=(lambda field='Automatic logout': self.check_cb(field)))
         self._register_widget_text(cb_logout, 'ui.checkbox.automatic_logout')
         cb_logout.grid(row=7, column=0, columnspan=2, sticky=(N, S, E, W))
+
+        lbl_ocr_language = tk.Label(blk_ap, text=self._t('ui.label.ocr_language'), anchor='e')
+        self._register_widget_text(lbl_ocr_language, 'ui.label.ocr_language')
+        lbl_ocr_language.grid(row=8, column=0, padx=NUMERIC_LABEL_PADX, pady=2, sticky='e')
+        frm_ocr_language = tk.Frame(blk_ap)
+        frm_ocr_language.grid(row=8, column=1, padx=NUMERIC_ENTRY_PADX, pady=2, sticky='w')
+        rb_ocr_en = Radiobutton(
+            frm_ocr_language,
+            pady=3,
+            text=self._t('ui.radio.ocr_language.en'),
+            variable=self.radiobuttonvar['ocr_language'],
+            value='en',
+            command=lambda lang='en': self.on_ocr_language_change(lang)
+        )
+        self._register_widget_text(rb_ocr_en, 'ui.radio.ocr_language.en')
+        rb_ocr_en.grid(row=0, column=0, sticky='w')
+        rb_ocr_ru = Radiobutton(
+            frm_ocr_language,
+            pady=3,
+            text=self._t('ui.radio.ocr_language.ru'),
+            variable=self.radiobuttonvar['ocr_language'],
+            value='ru',
+            command=lambda lang='ru': self.on_ocr_language_change(lang)
+        )
+        self._register_widget_text(rb_ocr_ru, 'ui.radio.ocr_language.ru')
+        rb_ocr_ru.grid(row=1, column=0, sticky='w')
 
         # buttons settings block
         blk_buttons = LabelFrame(blk_settings, text=self._t('ui.frame.buttons'))

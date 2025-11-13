@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 import cv2
 import numpy as np
@@ -19,14 +20,117 @@ Author: Stumpii
 """
 
 
+_OCR_RU_SIMILAR_CHARS = str.maketrans({
+    'a': 'а',
+    'b': 'в',
+    'c': 'с',
+    'e': 'е',
+    'h': 'н',
+    'k': 'к',
+    'm': 'м',
+    'o': 'о',
+    'p': 'р',
+    't': 'т',
+    'x': 'х',
+    'y': 'у',
+    '3': 'з',
+    '4': 'ч',
+    '6': 'б',
+    '0': 'о',
+})
+
+_OCR_STRIP_CHARS = str.maketrans('', '', '()[]{}"\'`´‘’“”<>=+*_.,:;!?/\\|')
+
+
+def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
+    """Normalize OCR output and comparison targets for reliable matching."""
+    if not text:
+        return ''
+
+    normalized = text.lower().strip()
+    normalized = normalized.replace('\n', ' ')
+    normalized = normalized.translate(_OCR_STRIP_CHARS)
+
+    if lang == 'ru':
+        normalized = normalized.translate(_OCR_RU_SIMILAR_CHARS)
+        # ----------------------------------------------------------
+        # Розширене нормалізування для російської мови.
+        # Мета — перетворити OCR-рядки зі змішаних кириличних/латинських
+        # символів у чисто кириличні (у грі шрифти дуже схожі).
+        # ----------------------------------------------------------
+        similar = {
+            "a": "а", "A": "а",
+            "b": "в", "B": "в",
+            "c": "с", "C": "с",
+            "e": "е", "E": "е",
+            "h": "н", "H": "н",
+            "k": "к", "K": "к",
+            "m": "м", "M": "м",
+            "o": "о", "O": "о",
+            "p": "р", "P": "р",
+            "t": "т", "T": "т",
+            "x": "х", "X": "х",
+            "y": "у", "Y": "у",
+            "w": "ш", "W": "ш",
+            "u": "и", "U": "и",
+
+            # цифри → літери
+            "0": "о",
+            "3": "з",
+            "4": "ч",
+            "6": "б",
+        }
+
+        # застосувати заміну
+        normalized = ''.join(similar.get(ch, ch) for ch in normalized)
+
+    normalized = re.sub(r'[^\w\s]+', ' ', normalized)
+    normalized = ''.join(ch for ch in normalized if ch.isalpha() or ch.isspace())
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    return normalized
+
+
+def ru_contains_disengage_keywords(text: str) -> bool:
+    """Повертає True, якщо нормалізований текст містить фрагменти команд для виходу з СК."""
+    # Перевіряємо мінімальні "стеми" ключових слів, щоб дозволити часткові збіги.
+    has_press = (
+        "нажм" in text or
+        "нажт" in text or
+        "нажми" in text or
+        "нажмите" in text
+    )
+
+    has_stop = (
+        "останов" in text or
+        "астанов" in text or
+        "астановт" in text or
+        "остановт" in text or
+        "остановить" in text
+    )
+
+    return has_press and has_stop
+
+
 class OCR:
     def __init__(self, screen, language: str = 'en'):
         self.screen = screen
-        self.paddleocr = PaddleOCR(use_angle_cls=True, lang=language, use_gpu=False, show_log=False, use_dilation=True,
-                                   use_space_char=True)
+        self.language = language
+        self.paddleocr = self._create_paddle(language)
         # Class for text similarity metrics
         self.jarowinkler = JaroWinkler()
         self.sorensendice = SorensenDice()
+
+    def _create_paddle(self, language: str):
+        return PaddleOCR(use_angle_cls=True, lang=language, use_gpu=False, show_log=False, use_dilation=True,
+                         use_space_char=True)
+
+    def set_language(self, language: str) -> None:
+        if not language or language == self.language:
+            return
+
+        logger.info(f"Reinitializing PaddleOCR for language '{language}'")
+        self.language = language
+        self.paddleocr = self._create_paddle(language)
 
     def string_similarity(self, s1, s2) -> float:
         """ Performs a string similarity check and returns the result.
@@ -192,7 +296,11 @@ class OCR:
         ocr_textlist = self.image_simple_ocr(img_selected)
         # print(str(ocr_textlist))
 
-        if text.upper() in str(ocr_textlist):
+        normalized_target = normalize_ocr_text(text, self.language)
+        normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
+        logger.debug(f"Selected item OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'")
+
+        if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True
         else:
@@ -213,7 +321,11 @@ class OCR:
         ocr_textlist = self.image_simple_ocr(img)
         # print(str(ocr_textlist))
 
-        if text.upper() in str(ocr_textlist):
+        normalized_target = normalize_ocr_text(text, self.language)
+        normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
+        logger.debug(f"Region OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'")
+
+        if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True, str(ocr_textlist)
         else:

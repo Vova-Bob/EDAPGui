@@ -58,6 +58,7 @@ class Overlay:
             self.parent = elite_dangerous_window
         
         self.hWindow = None
+        self._window_ready = threading.Event()
         self.overlay_thr = threading.Thread(target=self.overlay_win32_run)
         self.overlay_thr.setDaemon(False)
         self.overlay_thr.start()
@@ -105,6 +106,11 @@ class Overlay:
             None # lpParam
         )
 
+        if not self.hWindow:
+            return
+
+        self._window_ready.set()
+
         win32gui.SetLayeredWindowAttributes(self.hWindow, 0x00ffffff, 255, win32con.LWA_COLORKEY | win32con.LWA_ALPHA)
 
         win32gui.SetWindowPos(self.hWindow, win32con.HWND_TOPMOST, 0, 0, 0, 0,
@@ -148,6 +154,12 @@ class Overlay:
         floating_text[key] = [txt, x, y, color]
 
     def overlay_paint(self):
+        if not self._window_ready.is_set():
+            return
+
+        if not self.hWindow or not win32gui.IsWindow(self.hWindow):
+            return
+
         # if a parent was specified check to see if it moved, if so reposition our origin to new window location
         if self.tHwnd:
             if self.targetRect != self._GetTargetWindowRect():
@@ -155,7 +167,7 @@ class Overlay:
                 self.targetRect = Vector(rect[0], rect[1], rect[2] - rect[0], rect[3] - rect[1])
                 win32gui.MoveWindow(self.hWindow, self.targetRect.x, self.targetRect.y, self.targetRect.w, self.targetRect.h, True)
 
-        win32gui.RedrawWindow(self.hWindow, None, None, win32con.RDW_INVALIDATE | win32con.RDW_ERASE) 
+        win32gui.RedrawWindow(self.hWindow, None, None, win32con.RDW_INVALIDATE | win32con.RDW_ERASE)
 
     def overlay_clear(self):
         lines.clear()
