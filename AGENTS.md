@@ -110,7 +110,7 @@ ocr.trigger.disengage
 
 ## Language Switching Support
 Agents must maintain the ability to switch:
-- **UI Language** (EN/UA/RU)
+- **UI Language** (EN/UA)
 - **Voice Language**
 - **Game OCR Language**
 
