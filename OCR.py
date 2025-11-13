@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 import time
 import cv2
 import numpy as np
@@ -19,9 +20,50 @@ Author: Stumpii
 """
 
 
+_OCR_RU_SIMILAR_CHARS = str.maketrans({
+    'a': 'а',
+    'b': 'в',
+    'c': 'с',
+    'e': 'е',
+    'h': 'н',
+    'k': 'к',
+    'm': 'м',
+    'o': 'о',
+    'p': 'р',
+    't': 'т',
+    'x': 'х',
+    'y': 'у',
+    '3': 'з',
+    '4': 'ч',
+    '6': 'б',
+    '0': 'о',
+})
+
+_OCR_STRIP_CHARS = str.maketrans('', '', '()[]{}"\'`´‘’“”<>=+*_.,:;!?/\\|')
+
+
+def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
+    """Normalize OCR output and comparison targets for reliable matching."""
+    if not text:
+        return ''
+
+    normalized = text.lower().strip()
+    normalized = normalized.replace('\n', ' ')
+    normalized = normalized.translate(_OCR_STRIP_CHARS)
+
+    if lang == 'ru':
+        normalized = normalized.translate(_OCR_RU_SIMILAR_CHARS)
+
+    normalized = re.sub(r'[^\w\s]+', ' ', normalized)
+    normalized = ''.join(ch for ch in normalized if ch.isalpha() or ch.isspace())
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    return normalized
+
+
 class OCR:
     def __init__(self, screen, language: str = 'en'):
         self.screen = screen
+        self.language = language
         self.paddleocr = PaddleOCR(use_angle_cls=True, lang=language, use_gpu=False, show_log=False, use_dilation=True,
                                    use_space_char=True)
         # Class for text similarity metrics
@@ -192,7 +234,11 @@ class OCR:
         ocr_textlist = self.image_simple_ocr(img_selected)
         # print(str(ocr_textlist))
 
-        if text.upper() in str(ocr_textlist):
+        normalized_target = normalize_ocr_text(text, self.language)
+        normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
+        logger.debug(f"Selected item OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'")
+
+        if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True
         else:
@@ -213,7 +259,11 @@ class OCR:
         ocr_textlist = self.image_simple_ocr(img)
         # print(str(ocr_textlist))
 
-        if text.upper() in str(ocr_textlist):
+        normalized_target = normalize_ocr_text(text, self.language)
+        normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
+        logger.debug(f"Region OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'")
+
+        if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True, str(ocr_textlist)
         else:
