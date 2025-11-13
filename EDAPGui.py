@@ -65,6 +65,8 @@ FORM_TYPE_SPINBOX = 1
 FORM_TYPE_ENTRY = 2
 
 NUMERIC_FIELD_WIDTH = 8
+NUMERIC_LABEL_PADX = (8, 4)
+NUMERIC_ENTRY_PADX = (0, 8)
 
 
 def hyperlink_callback(url):
@@ -789,46 +791,76 @@ class APGui():
             else:
                 self.ed_ap.debug_overlay = False
 
-    def makeform(self, win, ftype, fields, r=0, inc=1, rfrom=0, rto=1000, entry_width=None):
+    def makeform(
+        self,
+        win,
+        ftype,
+        fields,
+        r=0,
+        inc=1,
+        rfrom=0,
+        rto=1000,
+        entry_width=None,
+        grid_columns=False,
+        label_padx=(0, 0),
+        entry_padx=(0, 0),
+        label_sticky='w',
+        entry_sticky=(N, S, E, W)
+    ):
         entries = {}
 
         for field in fields:
-            row = tk.Frame(win)
-            row.grid(row=r, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-            row.columnconfigure(0, weight=1)
-            row.columnconfigure(1, weight=1)
-            r += 1
+            if grid_columns:
+                row_container = win
+                current_row = r
+                r += 1
+            else:
+                row_container = tk.Frame(win)
+                row_container.grid(row=r, column=0, padx=2, pady=2, sticky=(N, S, E, W))
+                row_container.columnconfigure(0, weight=1)
+                row_container.columnconfigure(1, weight=1)
+                current_row = 0
+                r += 1
 
             display_text = self._get_field_label(field)
             if ftype == FORM_TYPE_CHECKBOX:
                 self.checkboxvar[field] = IntVar()
-                lab = Checkbutton(row, text=display_text, anchor='w', justify=LEFT, wraplength=260, variable=self.checkboxvar[field], command=(lambda field=field: self.check_cb(field)))
+                lab = Checkbutton(row_container, text=display_text, anchor='w', justify=LEFT, wraplength=260, variable=self.checkboxvar[field], command=(lambda field=field: self.check_cb(field)))
                 self.lab_ck[field] = lab
                 self._register_widget_text(lab, self.field_text_keys.get(field))
+                if grid_columns:
+                    lab.grid(row=current_row, column=0, columnspan=2, sticky='w', padx=label_padx, pady=2)
+                else:
+                    lab.grid(row=0, column=0, sticky='w')
             else:
-                lab = tk.Label(row, anchor='w', pady=3, text=display_text + ": ")
+                lab = tk.Label(row_container, anchor='w', pady=3, text=display_text + ": ")
                 self._register_widget_text(lab, self.field_text_keys.get(field), formatter=lambda txt: f"{txt}: ")
                 if ftype == FORM_TYPE_SPINBOX:
                     spinbox_kwargs = {}
                     if entry_width:
                         spinbox_kwargs['width'] = entry_width
-                    ent = tk.Spinbox(row, from_=rfrom, to=rto, increment=inc, **spinbox_kwargs)
+                    ent = tk.Spinbox(row_container, from_=rfrom, to=rto, increment=inc, **spinbox_kwargs)
                 else:
                     entry_kwargs = {}
                     if entry_width:
                         entry_kwargs['width'] = entry_width
-                    ent = tk.Entry(row, **entry_kwargs)
+                    ent = tk.Entry(row_container, **entry_kwargs)
                 ent.bind('<FocusOut>', self.entry_update)
                 ent.insert(0, "0")
+                if grid_columns:
+                    lab.grid(row=current_row, column=0, sticky=label_sticky, padx=label_padx, pady=2)
+                    ent.grid(row=current_row, column=1, sticky=entry_sticky, padx=entry_padx, pady=2)
+                else:
+                    lab.grid(row=0, column=0, sticky='w')
+                    ent.grid(row=0, column=1, sticky=(N, S, E, W))
 
-            lab.grid(row=0, column=0, sticky='w')
             tip_text = self._get_tooltip_text(field)
             if tip_text:
-                tip = Hovertip(row, tip_text, hover_delay=1000)
+                tip_target = lab if grid_columns else row_container
+                tip = Hovertip(tip_target, tip_text, hover_delay=1000)
                 self._register_tooltip(field, tip)
 
             if ftype != FORM_TYPE_CHECKBOX:
-                ent.grid(row=0, column=1, sticky=(N, S, E, W))
                 entries[field] = ent
 
         return entries
@@ -1035,15 +1067,27 @@ class APGui():
         blk_ship = LabelFrame(blk_main, text=self._t('ui.frame.ship'))
         self._register_widget_text(blk_ship, 'ui.frame.ship')
         blk_ship.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_ship.columnconfigure(0, weight=1)
-        blk_ship.columnconfigure(1, weight=1)
-        self.entries['ship'] = self.makeform(blk_ship, FORM_TYPE_SPINBOX, ship_entry_fields, 0, 0.5, entry_width=NUMERIC_FIELD_WIDTH)
+        blk_ship.columnconfigure(0, weight=1, uniform='ship_cols')
+        blk_ship.columnconfigure(1, weight=1, uniform='ship_cols')
+        self.entries['ship'] = self.makeform(
+            blk_ship,
+            FORM_TYPE_SPINBOX,
+            ship_entry_fields,
+            0,
+            0.5,
+            entry_width=NUMERIC_FIELD_WIDTH,
+            grid_columns=True,
+            label_padx=NUMERIC_LABEL_PADX,
+            entry_padx=NUMERIC_ENTRY_PADX,
+            label_sticky='e',
+            entry_sticky='w'
+        )
 
-        lbl_sun_pitch_up = tk.Label(blk_ship, text=self._t('ui.label.sun_pitch_time'), anchor='w')
+        lbl_sun_pitch_up = tk.Label(blk_ship, text=self._t('ui.label.sun_pitch_time'), anchor='e')
         self._register_widget_text(lbl_sun_pitch_up, 'ui.label.sun_pitch_time')
-        lbl_sun_pitch_up.grid(row=3, column=0, pady=3, sticky=(W, E))
+        lbl_sun_pitch_up.grid(row=3, column=0, padx=NUMERIC_LABEL_PADX, pady=2, sticky='e')
         spn_sun_pitch_up = tk.Spinbox(blk_ship, from_=-100, to=100, increment=0.5, width=NUMERIC_FIELD_WIDTH)
-        spn_sun_pitch_up.grid(row=3, column=1, padx=2, pady=2, sticky=(N, S, E, W))
+        spn_sun_pitch_up.grid(row=3, column=1, padx=NUMERIC_ENTRY_PADX, pady=2, sticky='w')
         spn_sun_pitch_up.bind('<FocusOut>', self.entry_update)
         self.entries['ship']['SunPitchUp+Time'] = spn_sun_pitch_up
         tip = Hovertip(lbl_sun_pitch_up, self._get_tooltip_text('SunPitchUp+Time'), hover_delay=1000)
@@ -1105,8 +1149,19 @@ class APGui():
         blk_ap = LabelFrame(blk_settings, text=self._t('ui.frame.autopilot'))
         self._register_widget_text(blk_ap, 'ui.frame.autopilot')
         blk_ap.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_ap.columnconfigure(0, weight=1)
-        self.entries['autopilot'] = self.makeform(blk_ap, FORM_TYPE_SPINBOX, autopilot_entry_fields, entry_width=NUMERIC_FIELD_WIDTH)
+        blk_ap.columnconfigure(0, weight=1, uniform='ap_cols')
+        blk_ap.columnconfigure(1, weight=1, uniform='ap_cols')
+        self.entries['autopilot'] = self.makeform(
+            blk_ap,
+            FORM_TYPE_SPINBOX,
+            autopilot_entry_fields,
+            entry_width=NUMERIC_FIELD_WIDTH,
+            grid_columns=True,
+            label_padx=NUMERIC_LABEL_PADX,
+            entry_padx=NUMERIC_ENTRY_PADX,
+            label_sticky='e',
+            entry_sticky='w'
+        )
         self.checkboxvar['Enable Randomness'] = BooleanVar()
         cb_random = Checkbutton(blk_ap, text=self._t('ui.checkbox.enable_randomness'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Enable Randomness'], command=(lambda field='Enable Randomness': self.check_cb(field)))
         self._register_widget_text(cb_random, 'ui.checkbox.enable_randomness')
@@ -1144,19 +1199,45 @@ class APGui():
         blk_fuel = LabelFrame(blk_settings, text=self._t('ui.frame.fuel'))
         self._register_widget_text(blk_fuel, 'ui.frame.fuel')
         blk_fuel.grid(row=1, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_fuel.columnconfigure(0, weight=1)
-        self.entries['refuel'] = self.makeform(blk_fuel, FORM_TYPE_SPINBOX, refuel_entry_fields, entry_width=NUMERIC_FIELD_WIDTH)
+        blk_fuel.columnconfigure(0, weight=1, uniform='fuel_cols')
+        blk_fuel.columnconfigure(1, weight=1, uniform='fuel_cols')
+        self.entries['refuel'] = self.makeform(
+            blk_fuel,
+            FORM_TYPE_SPINBOX,
+            refuel_entry_fields,
+            entry_width=NUMERIC_FIELD_WIDTH,
+            grid_columns=True,
+            label_padx=NUMERIC_LABEL_PADX,
+            entry_padx=NUMERIC_ENTRY_PADX,
+            label_sticky='e',
+            entry_sticky='w'
+        )
 
         # overlay settings block
         blk_overlay = LabelFrame(blk_settings, text=self._t('ui.frame.overlay'))
         self._register_widget_text(blk_overlay, 'ui.frame.overlay')
         blk_overlay.grid(row=1, column=1, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_overlay.columnconfigure(0, weight=1)
+        blk_overlay.columnconfigure(0, weight=1, uniform='overlay_cols')
+        blk_overlay.columnconfigure(1, weight=1, uniform='overlay_cols')
         self.checkboxvar['Enable Overlay'] = BooleanVar()
         cb_enable = Checkbutton(blk_overlay, text=self._t('ui.checkbox.enable_overlay_restart'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Enable Overlay'], command=(lambda field='Enable Overlay': self.check_cb(field)))
         self._register_widget_text(cb_enable, 'ui.checkbox.enable_overlay_restart')
         cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
-        self.entries['overlay'] = self.makeform(blk_overlay, FORM_TYPE_SPINBOX, overlay_entry_fields, 1, 1.0, 0.0, 3000.0, entry_width=NUMERIC_FIELD_WIDTH)
+        self.entries['overlay'] = self.makeform(
+            blk_overlay,
+            FORM_TYPE_SPINBOX,
+            overlay_entry_fields,
+            1,
+            1.0,
+            0.0,
+            3000.0,
+            entry_width=NUMERIC_FIELD_WIDTH,
+            grid_columns=True,
+            label_padx=NUMERIC_LABEL_PADX,
+            entry_padx=NUMERIC_ENTRY_PADX,
+            label_sticky='e',
+            entry_sticky='w'
+        )
 
         # tts / voice settings block
         blk_voice = LabelFrame(blk_settings, text=self._t('ui.frame.voice'))
