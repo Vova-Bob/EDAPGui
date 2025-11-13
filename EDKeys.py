@@ -8,6 +8,7 @@ from time import sleep
 from typing import Any, final
 from xml.etree.ElementTree import parse
 
+import ctypes
 import win32gui
 import xmltodict
 
@@ -27,6 +28,9 @@ for _digit in range(0, 10):
 ASCII_SCANCODE_MAP[' '] = SCANCODE.get('Key_Space', 0)
 ASCII_SCANCODE_MAP['-'] = SCANCODE.get('Key_Minus', 0)
 from EDlogger import logger
+
+WM_INPUTLANGCHANGEREQUEST = 0x0050
+US_ENGLISH_LAYOUT = "00000409"
 
 """
 Description:  Pulls the keybindings for specific controls from the ED Key Bindings file, this class also
@@ -90,6 +94,7 @@ class EDKeys:
         self.keys = self.get_bindings()
         self.bindings = self.get_bindings_dict()
         self.activate_window = False
+        self._english_layout_handle: int | None = None
 
         self.missing_keys = []
         # We want to log the keyboard name instead of just the key number so we build a reverse dictionary
@@ -344,6 +349,69 @@ class EDKeys:
                 collisions.append(k)
         return collisions
 
+    def _ensure_english_layout_handle(self) -> int | None:
+        """Load (once) the US English keyboard layout and return its HKL handle."""
+        if self._english_layout_handle:
+            return self._english_layout_handle
+
+        handle = ctypes.windll.user32.LoadKeyboardLayoutW(US_ENGLISH_LAYOUT, 0)
+        if handle == 0:
+            logger.warning('Route input: unable to load US English keyboard layout.')
+            return None
+
+        self._english_layout_handle = handle
+        return handle
+
+    @staticmethod
+    def _get_window_keyboard_layout(hwnd: int | None) -> int | None:
+        if not hwnd:
+            return None
+
+        process_id = ctypes.c_ulong()
+        thread_id = ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
+        if thread_id == 0:
+            return None
+
+        layout = ctypes.windll.user32.GetKeyboardLayout(thread_id)
+        return layout if layout != 0 else None
+
+    @staticmethod
+    def _post_layout_change(hwnd: int, layout: int) -> bool:
+        layout_param = ctypes.c_size_t(layout).value
+        result = ctypes.windll.user32.PostMessageW(hwnd, WM_INPUTLANGCHANGEREQUEST, 0, layout_param)
+        return result != 0
+
+    def _switch_keyboard_layout_to_en(self, hwnd: int | None) -> int | None:
+        """Switch the target window to EN layout, return previous layout for restoration."""
+        if not hwnd:
+            return None
+
+        english_layout = self._ensure_english_layout_handle()
+        if not english_layout:
+            return None
+
+        current_layout = self._get_window_keyboard_layout(hwnd)
+        if not current_layout or current_layout == english_layout:
+            return None
+
+        logger.debug('Route input: switching keyboard layout to EN for ASCII entry.')
+        if not self._post_layout_change(hwnd, english_layout):
+            logger.warning('Route input: failed to request EN keyboard layout switch.')
+            return None
+
+        sleep(0.05)
+        return current_layout
+
+    def _restore_keyboard_layout(self, hwnd: int | None, layout: int | None) -> None:
+        if not hwnd or not layout:
+            return
+
+        if self._post_layout_change(hwnd, layout):
+            sleep(0.05)
+            logger.debug('Route input: restored previous keyboard layout after ASCII entry.')
+        else:
+            logger.warning('Route input: failed to restore previous keyboard layout.')
+
     def type_ascii(self, text: str, interval: float = 0.25) -> None:
         """Вводить ASCII-текст незалежно від розкладки (латиниця + цифри)."""
         if not text:
@@ -357,13 +425,19 @@ class EDKeys:
             set_focus_elite_window()
             sleep(0.05)
 
-        for char in text_upper:
-            scancode = ASCII_SCANCODE_MAP.get(char)
-            if not scancode:
-                logger.warning(f"Route input: unsupported char '{char}', skipping.")
-                continue
+        target_hwnd = win32gui.GetForegroundWindow()
+        previous_layout = self._switch_keyboard_layout_to_en(target_hwnd)
 
-            PressKey(scancode)
-            sleep(self.key_mod_delay)
-            ReleaseKey(scancode)
-            sleep(interval)
+        try:
+            for char in text_upper:
+                scancode = ASCII_SCANCODE_MAP.get(char)
+                if not scancode:
+                    logger.warning(f"Route input: unsupported char '{char}', skipping.")
+                    continue
+
+                PressKey(scancode)
+                sleep(self.key_mod_delay)
+                ReleaseKey(scancode)
+                sleep(interval)
+        finally:
+            self._restore_keyboard_layout(target_hwnd, previous_layout)
