@@ -29,13 +29,13 @@ class EDNavigationPanel:
         self.screen = screen
         self.keys = keys
         self.ap_ckb = cb
-        self.locale = self.ap.locale
+        self.ocr_locale = self.ap.ocr_locale
         self.status_parser = StatusParser()
 
-        self.navigation_tab_text = self.locale["NAV_PNL_TAB_NAVIGATION"]
-        self.transactions_tab_text = self.locale["NAV_PNL_TAB_TRANSACTIONS"]
-        self.contacts_tab_text = self.locale["NAV_PNL_TAB_CONTACTS"]
-        self.target_tab_text = self.locale["NAV_PNL_TAB_TARGET"]
+        self.navigation_tab_text = self.ocr_locale["NAV_PNL_TAB_NAVIGATION"]
+        self.transactions_tab_text = self.ocr_locale["NAV_PNL_TAB_TRANSACTIONS"]
+        self.contacts_tab_text = self.ocr_locale["NAV_PNL_TAB_CONTACTS"]
+        self.target_tab_text = self.ocr_locale["NAV_PNL_TAB_TARGET"]
         self.nav_pnl_coords = None  # [top left, top right, bottom left, bottom right]
 
         # The rect is [L, T, R, B], top left x, y, and bottom right x, y in fraction of screen resolution
