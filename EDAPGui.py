@@ -1179,21 +1179,48 @@ class APGui():
         blk_buttons = LabelFrame(blk_settings, text=self._t('ui.frame.buttons'))
         self._register_widget_text(blk_buttons, 'ui.frame.buttons')
         blk_buttons.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_buttons.columnconfigure(0, weight=1)
-        blk_dss = Frame(blk_buttons)
-        blk_dss.grid(row=0, column=0, columnspan=2, padx=0, pady=0, sticky=(N, S, E, W))
-        blk_dss.columnconfigure(0, weight=1)
-        lb_dss = Label(blk_dss, anchor='w', pady=3, text=self._t('ui.label.dss_button'))
+        blk_buttons.columnconfigure(0, weight=0, uniform='buttons_cols')
+        blk_buttons.columnconfigure(1, weight=1, uniform='buttons_cols')
+
+        lb_dss = Label(blk_buttons, anchor='e', pady=3, text=self._t('ui.label.dss_button'))
         self._register_widget_text(lb_dss, 'ui.label.dss_button')
-        lb_dss.grid(row=0, column=0, sticky=(W))
+        lb_dss.grid(row=0, column=0, sticky='e', padx=NUMERIC_LABEL_PADX, pady=2)
+
+        blk_dss = Frame(blk_buttons)
+        blk_dss.grid(row=0, column=1, sticky='w', padx=NUMERIC_ENTRY_PADX, pady=2)
         self.radiobuttonvar['dss_button'] = StringVar()
-        rb_dss_primary = Radiobutton(blk_dss, pady=3, text=self._t('ui.radio.primary'), variable=self.radiobuttonvar['dss_button'], value="Primary", command=(lambda field='dss_button': self.check_cb(field)))
+        rb_dss_primary = Radiobutton(
+            blk_dss,
+            pady=3,
+            text=self._t('ui.radio.primary'),
+            variable=self.radiobuttonvar['dss_button'],
+            value="Primary",
+            command=(lambda field='dss_button': self.check_cb(field))
+        )
         self._register_widget_text(rb_dss_primary, 'ui.radio.primary')
-        rb_dss_primary.grid(row=0, column=1, sticky=(W))
-        rb_dss_secandary = Radiobutton(blk_dss, pady=3, text=self._t('ui.radio.secondary'), variable=self.radiobuttonvar['dss_button'], value="Secondary", command=(lambda field='dss_button': self.check_cb(field)))
+        rb_dss_primary.grid(row=0, column=0, sticky='w')
+        rb_dss_secandary = Radiobutton(
+            blk_dss,
+            pady=3,
+            text=self._t('ui.radio.secondary'),
+            variable=self.radiobuttonvar['dss_button'],
+            value="Secondary",
+            command=(lambda field='dss_button': self.check_cb(field))
+        )
         self._register_widget_text(rb_dss_secandary, 'ui.radio.secondary')
-        rb_dss_secandary.grid(row=1, column=1, sticky=(W))
-        self.entries['buttons'] = self.makeform(blk_buttons, FORM_TYPE_ENTRY, buttons_entry_fields, 2)
+        rb_dss_secandary.grid(row=1, column=0, sticky='w')
+
+        self.entries['buttons'] = self.makeform(
+            blk_buttons,
+            FORM_TYPE_ENTRY,
+            buttons_entry_fields,
+            r=1,
+            grid_columns=True,
+            label_padx=NUMERIC_LABEL_PADX,
+            entry_padx=NUMERIC_ENTRY_PADX,
+            label_sticky='e',
+            entry_sticky='w'
+        )
 
         # refuel settings block
         blk_fuel = LabelFrame(blk_settings, text=self._t('ui.frame.fuel'))
