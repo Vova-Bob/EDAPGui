@@ -76,7 +76,10 @@ class APGui():
         self.log_buffer = queue.Queue()
 
         root.protocol("WM_DELETE_WINDOW", self.close_window)
-        root.resizable(False, False)
+        root.resizable(True, True)
+        root.rowconfigure(0, weight=1)
+        root.rowconfigure(1, weight=0)
+        root.columnconfigure(0, weight=1)
 
         self.ed_ap = EDAutopilot(cb=self.callback)
         self.localization = LocalizationManager('locales', self.ed_ap.config.get('Language', 'en'))
@@ -765,29 +768,31 @@ class APGui():
         for field in fields:
             row = tk.Frame(win)
             row.grid(row=r, column=0, padx=2, pady=2, sticky=(N, S, E, W))
+            row.columnconfigure(0, weight=1)
+            row.columnconfigure(1, weight=1)
             r += 1
 
             display_text = self._get_field_label(field)
             if ftype == FORM_TYPE_CHECKBOX:
                 self.checkboxvar[field] = IntVar()
-                lab = Checkbutton(row, text=display_text, anchor='w', width=27, justify=LEFT, variable=self.checkboxvar[field], command=(lambda field=field: self.check_cb(field)))
+                lab = Checkbutton(row, text=display_text, anchor='w', justify=LEFT, wraplength=260, variable=self.checkboxvar[field], command=(lambda field=field: self.check_cb(field)))
                 self.lab_ck[field] = lab
             else:
-                lab = tk.Label(row, anchor='w', width=20, pady=3, text=display_text + ": ")
+                lab = tk.Label(row, anchor='w', pady=3, text=display_text + ": ")
                 if ftype == FORM_TYPE_SPINBOX:
-                    ent = tk.Spinbox(row, width=10, from_=rfrom, to=rto, increment=inc)
+                    ent = tk.Spinbox(row, from_=rfrom, to=rto, increment=inc)
                 else:
-                    ent = tk.Entry(row, width=10)
+                    ent = tk.Entry(row)
                 ent.bind('<FocusOut>', self.entry_update)
                 ent.insert(0, "0")
 
-            lab.grid(row=0, column=0)
+            lab.grid(row=0, column=0, sticky='w')
             tip_text = self._get_tooltip_text(field)
             if tip_text:
                 Hovertip(row, tip_text, hover_delay=1000)
 
             if ftype != FORM_TYPE_CHECKBOX:
-                ent.grid(row=0, column=1)
+                ent.grid(row=0, column=1, sticky=(N, S, E, W))
                 entries[field] = ent
 
         return entries
@@ -846,7 +851,7 @@ class APGui():
 
         # notebook pages
         nb = ttk.Notebook(win)
-        nb.grid()
+        nb.grid(row=0, column=0, sticky=(N, S, E, W))
         page0 = Frame(nb)
         page1 = Frame(nb)
         page2 = Frame(nb)
@@ -854,24 +859,40 @@ class APGui():
         nb.add(page1, text=self._t('ui.notebook.settings'))  # options page
         nb.add(page2, text=self._t('ui.notebook.debug'))  # debug/test page
 
+        page0.columnconfigure(0, weight=1)
+        page0.rowconfigure(0, weight=1)
+        page0.rowconfigure(1, weight=0)
+        page0.rowconfigure(2, weight=1)
+        page1.columnconfigure(0, weight=1)
+        page1.rowconfigure(0, weight=1)
+        page1.rowconfigure(1, weight=0)
+        page2.columnconfigure(0, weight=1)
+        page2.rowconfigure(0, weight=0)
+        page2.rowconfigure(1, weight=1)
+        page2.rowconfigure(2, weight=0)
+
         # main options block
         blk_main = tk.Frame(page0)
-        blk_main.grid(row=0, column=0, padx=10, pady=5, sticky=(E, W))
-        blk_main.columnconfigure([0, 1], weight=1, minsize=100, uniform="group1")
+        blk_main.grid(row=0, column=0, padx=10, pady=5, sticky=(N, S, E, W))
+        blk_main.columnconfigure([0, 1], weight=1, uniform="group1")
+        blk_main.rowconfigure(0, weight=1)
 
         # ap mode checkboxes block
         blk_modes = LabelFrame(blk_main, text=self._t('ui.frame.mode'))
         blk_modes.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_modes.columnconfigure(0, weight=1)
         self.makeform(blk_modes, FORM_TYPE_CHECKBOX, modes_check_fields)
 
         # ship values block
         blk_ship = LabelFrame(blk_main, text=self._t('ui.frame.ship'))
         blk_ship.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_ship.columnconfigure(0, weight=1)
+        blk_ship.columnconfigure(1, weight=1)
         self.entries['ship'] = self.makeform(blk_ship, FORM_TYPE_SPINBOX, ship_entry_fields, 0, 0.5)
 
-        lbl_sun_pitch_up = tk.Label(blk_ship, text=self._t('ui.label.sun_pitch_time'), anchor='w', width=20)
-        lbl_sun_pitch_up.grid(row=3, column=0, pady=3, sticky=(N, S, E, W))
-        spn_sun_pitch_up = tk.Spinbox(blk_ship, width=10, from_=-100, to=100, increment=0.5)
+        lbl_sun_pitch_up = tk.Label(blk_ship, text=self._t('ui.label.sun_pitch_time'), anchor='w')
+        lbl_sun_pitch_up.grid(row=3, column=0, pady=3, sticky=(W, E))
+        spn_sun_pitch_up = tk.Spinbox(blk_ship, from_=-100, to=100, increment=0.5)
         spn_sun_pitch_up.grid(row=3, column=1, padx=2, pady=2, sticky=(N, S, E, W))
         spn_sun_pitch_up.bind('<FocusOut>', self.entry_update)
         self.entries['ship']['SunPitchUp+Time'] = spn_sun_pitch_up
@@ -886,8 +907,8 @@ class APGui():
 
         # waypoints button block
         blk_wp_buttons = tk.LabelFrame(page0, text=self._t('ui.frame.waypoints'))
-        blk_wp_buttons.grid(row=1, column=0, padx=10, pady=5, columnspan=2, sticky=(N, S, E, W))
-        blk_wp_buttons.columnconfigure([0, 1], weight=1, minsize=100, uniform="group1")
+        blk_wp_buttons.grid(row=1, column=0, padx=10, pady=5, sticky=(N, S, E, W))
+        blk_wp_buttons.columnconfigure([0, 1], weight=1, uniform="group1")
 
         self.wp_filelabel = StringVar()
         self.wp_filelabel.set(self._t('ui.waypoint.no_list_loaded'))
@@ -905,38 +926,45 @@ class APGui():
 
         # log window
         log = LabelFrame(page0, text=self._t('ui.frame.log'))
-        log.grid(row=3, column=0, padx=12, pady=5, sticky=(N, S, E, W))
+        log.grid(row=2, column=0, padx=12, pady=5, sticky=(N, S, E, W))
+        log.columnconfigure(0, weight=1)
+        log.rowconfigure(0, weight=1)
         scrollbar = Scrollbar(log)
         scrollbar.grid(row=0, column=1, sticky=(N, S))
-        mylist = Listbox(log, width=72, height=10, yscrollcommand=scrollbar.set)
-        mylist.grid(row=0, column=0)
+        mylist = Listbox(log, height=10, yscrollcommand=scrollbar.set)
+        mylist.grid(row=0, column=0, sticky=(N, S, E, W))
         scrollbar.config(command=mylist.yview)
 
         # settings block
         blk_settings = tk.Frame(page1)
-        blk_settings.grid(row=0, column=0, padx=10, pady=5, sticky=(E, W))
-        blk_main.columnconfigure([0, 1], weight=1, minsize=100, uniform="group1")
+        blk_settings.grid(row=0, column=0, padx=10, pady=5, sticky=(N, S, E, W))
+        blk_settings.columnconfigure([0, 1], weight=1, uniform="group1")
+        for idx in range(3):
+            blk_settings.rowconfigure(idx, weight=1)
 
         # autopilot settings block
         blk_ap = LabelFrame(blk_settings, text=self._t('ui.frame.autopilot'))
         blk_ap.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_ap.columnconfigure(0, weight=1)
         self.entries['autopilot'] = self.makeform(blk_ap, FORM_TYPE_SPINBOX, autopilot_entry_fields)
         self.checkboxvar['Enable Randomness'] = BooleanVar()
-        cb_random = Checkbutton(blk_ap, text=self._t('ui.checkbox.enable_randomness'), anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Enable Randomness'], command=(lambda field='Enable Randomness': self.check_cb(field)))
-        cb_random.grid(row=5, column=0, columnspan=2, sticky=(W))
+        cb_random = Checkbutton(blk_ap, text=self._t('ui.checkbox.enable_randomness'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Enable Randomness'], command=(lambda field='Enable Randomness': self.check_cb(field)))
+        cb_random.grid(row=5, column=0, columnspan=2, sticky=(N, S, E, W))
         self.checkboxvar['Activate Elite for each key'] = BooleanVar()
-        cb_activate_elite = Checkbutton(blk_ap, text=self._t('ui.checkbox.activate_elite_each_key'), anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Activate Elite for each key'], command=(lambda field='Activate Elite for each key': self.check_cb(field)))
-        cb_activate_elite.grid(row=6, column=0, columnspan=2, sticky=(W))
+        cb_activate_elite = Checkbutton(blk_ap, text=self._t('ui.checkbox.activate_elite_each_key'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Activate Elite for each key'], command=(lambda field='Activate Elite for each key': self.check_cb(field)))
+        cb_activate_elite.grid(row=6, column=0, columnspan=2, sticky=(N, S, E, W))
         self.checkboxvar['Automatic logout'] = BooleanVar()
-        cb_logout = Checkbutton(blk_ap, text=self._t('ui.checkbox.automatic_logout'), anchor='w', pady=3, justify=LEFT, onvalue=1, offvalue=0, variable=self.checkboxvar['Automatic logout'], command=(lambda field='Automatic logout': self.check_cb(field)))
-        cb_logout.grid(row=7, column=0, columnspan=2, sticky=(W))
+        cb_logout = Checkbutton(blk_ap, text=self._t('ui.checkbox.automatic_logout'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Automatic logout'], command=(lambda field='Automatic logout': self.check_cb(field)))
+        cb_logout.grid(row=7, column=0, columnspan=2, sticky=(N, S, E, W))
 
         # buttons settings block
         blk_buttons = LabelFrame(blk_settings, text=self._t('ui.frame.buttons'))
         blk_buttons.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_buttons.columnconfigure(0, weight=1)
         blk_dss = Frame(blk_buttons)
         blk_dss.grid(row=0, column=0, columnspan=2, padx=0, pady=0, sticky=(N, S, E, W))
-        lb_dss = Label(blk_dss, width=18, anchor='w', pady=3, text=self._t('ui.label.dss_button'))
+        blk_dss.columnconfigure(0, weight=1)
+        lb_dss = Label(blk_dss, anchor='w', pady=3, text=self._t('ui.label.dss_button'))
         lb_dss.grid(row=0, column=0, sticky=(W))
         self.radiobuttonvar['dss_button'] = StringVar()
         rb_dss_primary = Radiobutton(blk_dss, pady=3, text=self._t('ui.radio.primary'), variable=self.radiobuttonvar['dss_button'], value="Primary", command=(lambda field='dss_button': self.check_cb(field)))
@@ -948,45 +976,50 @@ class APGui():
         # refuel settings block
         blk_fuel = LabelFrame(blk_settings, text=self._t('ui.frame.fuel'))
         blk_fuel.grid(row=1, column=0, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_fuel.columnconfigure(0, weight=1)
         self.entries['refuel'] = self.makeform(blk_fuel, FORM_TYPE_SPINBOX, refuel_entry_fields)
 
         # overlay settings block
         blk_overlay = LabelFrame(blk_settings, text=self._t('ui.frame.overlay'))
         blk_overlay.grid(row=1, column=1, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_overlay.columnconfigure(0, weight=1)
         self.checkboxvar['Enable Overlay'] = BooleanVar()
-        cb_enable = Checkbutton(blk_overlay, text=self._t('ui.checkbox.enable_overlay_restart'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Enable Overlay'], command=(lambda field='Enable Overlay': self.check_cb(field)))
-        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(W))
+        cb_enable = Checkbutton(blk_overlay, text=self._t('ui.checkbox.enable_overlay_restart'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Enable Overlay'], command=(lambda field='Enable Overlay': self.check_cb(field)))
+        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
         self.entries['overlay'] = self.makeform(blk_overlay, FORM_TYPE_SPINBOX, overlay_entry_fields, 1, 1.0, 0.0, 3000.0)
 
         # tts / voice settings block
         blk_voice = LabelFrame(blk_settings, text=self._t('ui.frame.voice'))
         blk_voice.grid(row=2, column=0, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_voice.columnconfigure(0, weight=1)
         self.checkboxvar['Enable Voice'] = BooleanVar()
-        cb_enable = Checkbutton(blk_voice, text=self._t('ui.checkbox.enable'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Enable Voice'], command=(lambda field='Enable Voice': self.check_cb(field)))
-        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(W))
+        cb_enable = Checkbutton(blk_voice, text=self._t('ui.checkbox.enable'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Enable Voice'], command=(lambda field='Enable Voice': self.check_cb(field)))
+        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
 
         # Scanner settings block
         blk_voice = LabelFrame(blk_settings, text=self._t('ui.frame.elw_scanner'))
         blk_voice.grid(row=2, column=1, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_voice.columnconfigure(0, weight=1)
         self.checkboxvar['ELW Scanner'] = BooleanVar()
-        cb_enable = Checkbutton(blk_voice, text=self._t('ui.checkbox.enable'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['ELW Scanner'], command=(lambda field='ELW Scanner': self.check_cb(field)))
-        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(W))
+        cb_enable = Checkbutton(blk_voice, text=self._t('ui.checkbox.enable'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['ELW Scanner'], command=(lambda field='ELW Scanner': self.check_cb(field)))
+        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
 
         # settings button block
         blk_settings_buttons = tk.Frame(page1)
-        blk_settings_buttons.grid(row=3, column=0, padx=10, pady=5, sticky=(N, S, E, W))
-        blk_settings_buttons.columnconfigure([0, 1], weight=1, minsize=100)
+        blk_settings_buttons.grid(row=1, column=0, padx=10, pady=5, sticky=(N, S, E, W))
+        blk_settings_buttons.columnconfigure([0, 1], weight=1)
         btn_save = Button(blk_settings_buttons, text=self._t('ui.button.save_all'), command=self.save_settings)
         btn_save.grid(row=0, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         # debug block
         blk_debug = tk.Frame(page2)
-        blk_debug.grid(row=0, column=0, padx=10, pady=5, sticky=(E, W))
-        blk_debug.columnconfigure([0, 1], weight=1, minsize=100, uniform="group2")
+        blk_debug.grid(row=0, column=0, padx=10, pady=5, sticky=(N, S, E, W))
+        blk_debug.columnconfigure([0, 1], weight=1, uniform="group2")
 
         # debug settings block
         blk_debug_settings = LabelFrame(blk_debug, text=self._t('ui.frame.debug'))
         blk_debug_settings.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
+        blk_debug_settings.columnconfigure(0, weight=1)
         self.radiobuttonvar['debug_mode'] = StringVar()
         rb_debug_debug = Radiobutton(blk_debug_settings, pady=3, text=self._t('ui.radio.debug_all'), variable=self.radiobuttonvar['debug_mode'], value="Debug", command=(lambda field='debug_mode': self.check_cb(field)))
         rb_debug_debug.grid(row=0, column=1, columnspan=2, sticky=(W))
@@ -999,7 +1032,7 @@ class APGui():
 
         # debug settings block
         blk_single_waypoint_asst = LabelFrame(page2, text=self._t('ui.frame.single_waypoint'))
-        blk_single_waypoint_asst.grid(row=1, column=0, padx=10, pady=5, columnspan=2, sticky=(N, S, E, W))
+        blk_single_waypoint_asst.grid(row=1, column=0, padx=10, pady=5, sticky=(N, S, E, W))
         blk_single_waypoint_asst.columnconfigure(0, weight=1, minsize=10, uniform="group1")
         blk_single_waypoint_asst.columnconfigure(1, weight=3, minsize=10, uniform="group1")
 
@@ -1012,7 +1045,7 @@ class APGui():
         txt_station = Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_station)
         txt_station.grid(row=1, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         self.checkboxvar['Single Waypoint Assist'] = BooleanVar()
-        cb_single_waypoint = Checkbutton(blk_single_waypoint_asst, text=self._t('ui.checkbox.single_waypoint'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Single Waypoint Assist'], command=(lambda field='Single Waypoint Assist': self.check_cb(field)))
+        cb_single_waypoint = Checkbutton(blk_single_waypoint_asst, text=self._t('ui.checkbox.single_waypoint'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Single Waypoint Assist'], command=(lambda field='Single Waypoint Assist': self.check_cb(field)))
         cb_single_waypoint.grid(row=2, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         lbl_tce = tk.Label(blk_single_waypoint_asst, text=self._t('ui.label.tce'), fg="blue", cursor="hand2")
@@ -1028,11 +1061,11 @@ class APGui():
         btn_load_tce.grid(row=5, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         blk_debug_buttons = tk.Frame(page2)
-        blk_debug_buttons.grid(row=3, column=0, padx=10, pady=5, columnspan=2, sticky=(N, S, E, W))
-        blk_debug_buttons.columnconfigure([0, 1], weight=1, minsize=100)
+        blk_debug_buttons.grid(row=2, column=0, padx=10, pady=5, sticky=(N, S, E, W))
+        blk_debug_buttons.columnconfigure([0, 1], weight=1)
 
         self.checkboxvar['Debug Overlay'] = BooleanVar()
-        cb_debug_overlay = Checkbutton(blk_debug_buttons, text=self._t('ui.checkbox.debug_overlay'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, variable=self.checkboxvar['Debug Overlay'], command=(lambda field='Debug Overlay': self.check_cb(field)))
+        cb_debug_overlay = Checkbutton(blk_debug_buttons, text=self._t('ui.checkbox.debug_overlay'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Debug Overlay'], command=(lambda field='Debug Overlay': self.check_cb(field)))
         cb_debug_overlay.grid(row=6, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
 
         btn_save = Button(blk_debug_buttons, text=self._t('ui.button.save_all'), command=self.save_settings)
@@ -1040,9 +1073,10 @@ class APGui():
 
         # Statusbar
         statusbar = Frame(win)
-        statusbar.grid(row=4, column=0)
-        self.status = tk.Label(win, text=self._t('ui.status.label', status=''), bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT, width=29)
-        self.jumpcount = tk.Label(statusbar, text=self._t('ui.status.jump_placeholder'), bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT, width=40)
+        statusbar.grid(row=1, column=0, sticky=(E, W))
+        statusbar.columnconfigure(0, weight=1)
+        self.status = tk.Label(statusbar, text=self._t('ui.status.label', status=''), bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT)
+        self.jumpcount = tk.Label(statusbar, text=self._t('ui.status.jump_placeholder'), bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT)
         self.status.pack(in_=statusbar, side=LEFT, fill=BOTH, expand=True)
         self.jumpcount.pack(in_=statusbar, side=RIGHT, fill=Y, expand=False)
 
