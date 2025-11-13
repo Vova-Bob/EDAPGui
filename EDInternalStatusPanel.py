@@ -5,7 +5,7 @@ from time import sleep
 import cv2
 from EDAP_data import *
 from EDKeys import EDKeys
-from OCR import OCR
+from OCR import OCR, normalize_ocr_text
 from Screen import Screen
 from Screen_Regions import size_scale_for_station
 from StatusParser import StatusParser
@@ -23,6 +23,7 @@ class EDInternalStatusPanel:
         self.ap_ckb = cb
         self.ocr_locale = self.ap.ocr_locale
         self.status_parser = StatusParser()
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
 
         self.modules_tab_text = self.ocr_locale["INT_PNL_TAB_MODULES"]
         self.fire_groups_tab_text = self.ocr_locale["INT_PNL_TAB_FIRE_GROUPS"]
@@ -30,6 +31,14 @@ class EDInternalStatusPanel:
         self.inventory_tab_text = self.ocr_locale["INT_PNL_TAB_INVENTORY"]
         self.storage_tab_text = self.ocr_locale["INT_PNL_TAB_STORAGE"]
         self.status_tab_text = self.ocr_locale["INT_PNL_TAB_STATUS"]
+        self._normalized_tabs = {
+            'modules': normalize_ocr_text(self.modules_tab_text, self.ocr_language),
+            'fire_groups': normalize_ocr_text(self.fire_groups_tab_text, self.ocr_language),
+            'ship': normalize_ocr_text(self.ship_tab_text, self.ocr_language),
+            'inventory': normalize_ocr_text(self.inventory_tab_text, self.ocr_language),
+            'storage': normalize_ocr_text(self.storage_tab_text, self.ocr_language),
+            'status': normalize_ocr_text(self.status_tab_text, self.ocr_language),
+        }
 
         # The rect is [L, T, R, B] top left x, y, and bottom right x, y in fraction of screen resolution
         self.reg = {'right_panel': {'rect': [0.2, 0.2, 1.0, 0.35]}}
@@ -145,23 +154,26 @@ class EDInternalStatusPanel:
                     self.ap.overlay.overlay_floating_text('right_panel_text', f'{ocr_textlist}', abs_rect[0], abs_rect[1] - 25, (0, 255, 0))
                     self.ap.overlay.overlay_paint()
 
+                normalized_tab_text = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.ocr_language)
+                logger.debug(f"Right panel tab normalized='{normalized_tab_text}'")
+
                 # Test OCR string
-                if self.modules_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['modules'] and self._normalized_tabs['modules'] in normalized_tab_text:
                     tab_text = self.modules_tab_text
                     break
-                if self.fire_groups_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['fire_groups'] and self._normalized_tabs['fire_groups'] in normalized_tab_text:
                     tab_text = self.fire_groups_tab_text
                     break
-                if self.ship_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['ship'] and self._normalized_tabs['ship'] in normalized_tab_text:
                     tab_text = self.ship_tab_text
                     break
-                if self.inventory_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['inventory'] and self._normalized_tabs['inventory'] in normalized_tab_text:
                     tab_text = self.inventory_tab_text
                     break
-                if self.storage_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['storage'] and self._normalized_tabs['storage'] in normalized_tab_text:
                     tab_text = self.storage_tab_text
                     break
-                if self.status_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['status'] and self._normalized_tabs['status'] in normalized_tab_text:
                     tab_text = self.status_tab_text
                     break
             else:

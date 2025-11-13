@@ -6,7 +6,7 @@ from time import sleep
 from EDAP_data import GuiFocusExternalPanel
 from EDKeys import EDKeys
 from EDlogger import logger
-from OCR import OCR
+from OCR import OCR, normalize_ocr_text
 from Screen import Screen
 from Screen_Regions import size_scale_for_station
 from StatusParser import StatusParser
@@ -31,11 +31,18 @@ class EDNavigationPanel:
         self.ap_ckb = cb
         self.ocr_locale = self.ap.ocr_locale
         self.status_parser = StatusParser()
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
 
         self.navigation_tab_text = self.ocr_locale["NAV_PNL_TAB_NAVIGATION"]
         self.transactions_tab_text = self.ocr_locale["NAV_PNL_TAB_TRANSACTIONS"]
         self.contacts_tab_text = self.ocr_locale["NAV_PNL_TAB_CONTACTS"]
         self.target_tab_text = self.ocr_locale["NAV_PNL_TAB_TARGET"]
+        self._normalized_tabs = {
+            'navigation': normalize_ocr_text(self.navigation_tab_text, self.ocr_language),
+            'transactions': normalize_ocr_text(self.transactions_tab_text, self.ocr_language),
+            'contacts': normalize_ocr_text(self.contacts_tab_text, self.ocr_language),
+            'target': normalize_ocr_text(self.target_tab_text, self.ocr_language),
+        }
         self.nav_pnl_coords = None  # [top left, top right, bottom left, bottom right]
 
         # The rect is [L, T, R, B], top left x, y, and bottom right x, y in fraction of screen resolution
@@ -106,14 +113,17 @@ class EDNavigationPanel:
                 self.ap.overlay.overlay_floating_text('nav_panel_text', f'{ocr_textlist}', abs_rect[0], abs_rect[1] - 25, (0, 255, 0))
                 self.ap.overlay.overlay_paint()
 
+            normalized_tab_text = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.ocr_language)
+            logger.debug(f"Nav panel tab normalized='{normalized_tab_text}'")
+
             # Test OCR string
-            if self.navigation_tab_text in str(ocr_textlist):
+            if self._normalized_tabs['navigation'] and self._normalized_tabs['navigation'] in normalized_tab_text:
                 tab_text = self.navigation_tab_text
-            if self.transactions_tab_text in str(ocr_textlist):
+            if self._normalized_tabs['transactions'] and self._normalized_tabs['transactions'] in normalized_tab_text:
                 tab_text = self.transactions_tab_text
-            if self.contacts_tab_text in str(ocr_textlist):
+            if self._normalized_tabs['contacts'] and self._normalized_tabs['contacts'] in normalized_tab_text:
                 tab_text = self.contacts_tab_text
-            if self.target_tab_text in str(ocr_textlist):
+            if self._normalized_tabs['target'] and self._normalized_tabs['target'] in normalized_tab_text:
                 tab_text = self.target_tab_text
         else:
             logger.debug("is_right_panel_active: no image selected")

@@ -25,7 +25,7 @@ from EDKeys import *
 from EDafk_combat import AFK_Combat
 from EDInternalStatusPanel import EDInternalStatusPanel
 from NavRouteParser import NavRouteParser
-from OCR import OCR
+from OCR import OCR, normalize_ocr_text
 from EDNavigationPanel import EDNavigationPanel
 from Overlay import *
 from StatusParser import StatusParser
@@ -1068,9 +1068,14 @@ class EDAutopilot:
         sim_match = 0.35  # Similarity match 0.0 - 1.0 for 0% - 100%)
         sim = 0.0
         ocr_textlist = self.ocr.image_simple_ocr(image)
-        if ocr_textlist is not None:
-            sim = self.ocr.string_similarity(self.ocr_locale["PRESS_TO_DISENGAGE_MSG"], str(ocr_textlist))
-            logger.info(f"Disengage similarity with {str(ocr_textlist)} is {sim}")
+        raw_text = ' '.join(ocr_textlist) if ocr_textlist else ''
+        normalized_target = normalize_ocr_text(self.ocr_locale["PRESS_TO_DISENGAGE_MSG"], self.config.get('OCRLanguage', 'en'))
+        normalized_ocr = normalize_ocr_text(raw_text, self.config.get('OCRLanguage', 'en'))
+        if normalized_ocr:
+            sim = self.ocr.string_similarity(normalized_target, normalized_ocr)
+            logger.info(f"Disengage similarity with {str(ocr_textlist)} is {sim} (normalized='{normalized_ocr}')")
+        else:
+            logger.debug("Disengage OCR returned empty string after normalization")
 
         # Draw box around region
         if self.debug_overlay:
@@ -1087,7 +1092,13 @@ class EDAutopilot:
             cv2.moveWindow('disengage2', self.cv_view_x - 460, self.cv_view_y + 650)
             cv2.waitKey(30)
 
-        if sim > sim_match:
+        keyword_hit = False
+        if self.config.get('OCRLanguage', 'en') == 'ru':
+            keyword_hit = all(word in normalized_ocr for word in ('нажмите', 'остановить'))
+        else:
+            keyword_hit = ('press' in normalized_ocr and 'disengage' in normalized_ocr) or ('press' in normalized_ocr and 'stop' in normalized_ocr)
+
+        if sim > sim_match or keyword_hit:
             logger.info("'PRESS [] TO DISENGAGE' detected. Disengaging Supercruise")
             #cv2.imwrite(f'test/disengage.png', image)
             return True
