@@ -32,17 +32,7 @@ class EDNavigationPanel:
         self.ocr_locale = self.ap.ocr_locale
         self.status_parser = StatusParser()
         self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
-
-        self.navigation_tab_text = self.ocr_locale["NAV_PNL_TAB_NAVIGATION"]
-        self.transactions_tab_text = self.ocr_locale["NAV_PNL_TAB_TRANSACTIONS"]
-        self.contacts_tab_text = self.ocr_locale["NAV_PNL_TAB_CONTACTS"]
-        self.target_tab_text = self.ocr_locale["NAV_PNL_TAB_TARGET"]
-        self._normalized_tabs = {
-            'navigation': normalize_ocr_text(self.navigation_tab_text, self.ocr_language),
-            'transactions': normalize_ocr_text(self.transactions_tab_text, self.ocr_language),
-            'contacts': normalize_ocr_text(self.contacts_tab_text, self.ocr_language),
-            'target': normalize_ocr_text(self.target_tab_text, self.ocr_language),
-        }
+        self._load_tab_texts()
         self.nav_pnl_coords = None  # [top left, top right, bottom left, bottom right]
 
         # The rect is [L, T, R, B], top left x, y, and bottom right x, y in fraction of screen resolution
@@ -56,6 +46,23 @@ class EDNavigationPanel:
         self.nav_pnl_tab_height = 35  # Nav panel tab height in pixels at 1920x1080
         self.nav_pnl_location_width = 500  # Nav panel location width in pixels at 1920x1080
         self.nav_pnl_location_height = 35  # Nav panel location height in pixels at 1920x1080
+
+    def _load_tab_texts(self):
+        self.navigation_tab_text = self.ocr_locale["NAV_PNL_TAB_NAVIGATION"]
+        self.transactions_tab_text = self.ocr_locale["NAV_PNL_TAB_TRANSACTIONS"]
+        self.contacts_tab_text = self.ocr_locale["NAV_PNL_TAB_CONTACTS"]
+        self.target_tab_text = self.ocr_locale["NAV_PNL_TAB_TARGET"]
+        self._normalized_tabs = {
+            'navigation': normalize_ocr_text(self.navigation_tab_text, self.ocr_language),
+            'transactions': normalize_ocr_text(self.transactions_tab_text, self.ocr_language),
+            'contacts': normalize_ocr_text(self.contacts_tab_text, self.ocr_language),
+            'target': normalize_ocr_text(self.target_tab_text, self.ocr_language),
+        }
+
+    def update_ocr_language(self):
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self.ocr_locale = self.ap.ocr_locale
+        self._load_tab_texts()
 
     def request_docking_ocr(self) -> bool:
         """ Try to request docking with OCR.

@@ -53,6 +53,36 @@ def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
 
     if lang == 'ru':
         normalized = normalized.translate(_OCR_RU_SIMILAR_CHARS)
+        # ----------------------------------------------------------
+        # Розширене нормалізування для російської мови.
+        # Мета — перетворити OCR-рядки зі змішаних кириличних/латинських
+        # символів у чисто кириличні (у грі шрифти дуже схожі).
+        # ----------------------------------------------------------
+        similar = {
+            "a": "а", "A": "а",
+            "b": "в", "B": "в",
+            "c": "с", "C": "с",
+            "e": "е", "E": "е",
+            "h": "н", "H": "н",
+            "k": "к", "K": "к",
+            "m": "м", "M": "м",
+            "o": "о", "O": "о",
+            "p": "р", "P": "р",
+            "t": "т", "T": "т",
+            "x": "х", "X": "х",
+            "y": "у", "Y": "у",
+            "w": "ш", "W": "ш",
+            "u": "и", "U": "и",
+
+            # цифри → літери
+            "0": "о",
+            "3": "з",
+            "4": "ч",
+            "6": "б",
+        }
+
+        # застосувати заміну
+        normalized = ''.join(similar.get(ch, ch) for ch in normalized)
 
     normalized = re.sub(r'[^\w\s]+', ' ', normalized)
     normalized = ''.join(ch for ch in normalized if ch.isalpha() or ch.isspace())
@@ -60,15 +90,47 @@ def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
     return normalized
 
 
+def ru_contains_disengage_keywords(text: str) -> bool:
+    """Повертає True, якщо нормалізований текст містить фрагменти команд для виходу з СК."""
+    # Перевіряємо мінімальні "стеми" ключових слів, щоб дозволити часткові збіги.
+    has_press = (
+        "нажм" in text or
+        "нажт" in text or
+        "нажми" in text or
+        "нажмите" in text
+    )
+
+    has_stop = (
+        "останов" in text or
+        "астанов" in text or
+        "астановт" in text or
+        "остановт" in text or
+        "остановить" in text
+    )
+
+    return has_press and has_stop
+
+
 class OCR:
     def __init__(self, screen, language: str = 'en'):
         self.screen = screen
         self.language = language
-        self.paddleocr = PaddleOCR(use_angle_cls=True, lang=language, use_gpu=False, show_log=False, use_dilation=True,
-                                   use_space_char=True)
+        self.paddleocr = self._create_paddle(language)
         # Class for text similarity metrics
         self.jarowinkler = JaroWinkler()
         self.sorensendice = SorensenDice()
+
+    def _create_paddle(self, language: str):
+        return PaddleOCR(use_angle_cls=True, lang=language, use_gpu=False, show_log=False, use_dilation=True,
+                         use_space_char=True)
+
+    def set_language(self, language: str) -> None:
+        if not language or language == self.language:
+            return
+
+        logger.info(f"Reinitializing PaddleOCR for language '{language}'")
+        self.language = language
+        self.paddleocr = self._create_paddle(language)
 
     def string_similarity(self, s1, s2) -> float:
         """ Performs a string similarity check and returns the result.

@@ -24,7 +24,15 @@ class EDInternalStatusPanel:
         self.ocr_locale = self.ap.ocr_locale
         self.status_parser = StatusParser()
         self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self._load_tab_texts()
 
+        # The rect is [L, T, R, B] top left x, y, and bottom right x, y in fraction of screen resolution
+        self.reg = {'right_panel': {'rect': [0.2, 0.2, 1.0, 0.35]}}
+
+        self.nav_pnl_tab_width = 140  # Nav panel tab width in pixels at 1920x1080
+        self.nav_pnl_tab_height = 35  # Nav panel tab height in pixels at 1920x1080
+
+    def _load_tab_texts(self):
         self.modules_tab_text = self.ocr_locale["INT_PNL_TAB_MODULES"]
         self.fire_groups_tab_text = self.ocr_locale["INT_PNL_TAB_FIRE_GROUPS"]
         self.ship_tab_text = self.ocr_locale["INT_PNL_TAB_SHIP"]
@@ -40,11 +48,10 @@ class EDInternalStatusPanel:
             'status': normalize_ocr_text(self.status_tab_text, self.ocr_language),
         }
 
-        # The rect is [L, T, R, B] top left x, y, and bottom right x, y in fraction of screen resolution
-        self.reg = {'right_panel': {'rect': [0.2, 0.2, 1.0, 0.35]}}
-
-        self.nav_pnl_tab_width = 140  # Nav panel tab width in pixels at 1920x1080
-        self.nav_pnl_tab_height = 35  # Nav panel tab height in pixels at 1920x1080
+    def update_ocr_language(self):
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self.ocr_locale = self.ap.ocr_locale
+        self._load_tab_texts()
 
     def show_right_panel(self):
         """ Shows the Internal (Right) Panel.
