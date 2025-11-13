@@ -21,15 +21,15 @@ class EDInternalStatusPanel:
         self.screen = screen
         self.keys = keys
         self.ap_ckb = cb
-        self.locale = self.ap.locale
+        self.ocr_locale = self.ap.ocr_locale
         self.status_parser = StatusParser()
 
-        self.modules_tab_text = self.locale["INT_PNL_TAB_MODULES"]
-        self.fire_groups_tab_text = self.locale["INT_PNL_TAB_FIRE_GROUPS"]
-        self.ship_tab_text = self.locale["INT_PNL_TAB_SHIP"]
-        self.inventory_tab_text = self.locale["INT_PNL_TAB_INVENTORY"]
-        self.storage_tab_text = self.locale["INT_PNL_TAB_STORAGE"]
-        self.status_tab_text = self.locale["INT_PNL_TAB_STATUS"]
+        self.modules_tab_text = self.ocr_locale["INT_PNL_TAB_MODULES"]
+        self.fire_groups_tab_text = self.ocr_locale["INT_PNL_TAB_FIRE_GROUPS"]
+        self.ship_tab_text = self.ocr_locale["INT_PNL_TAB_SHIP"]
+        self.inventory_tab_text = self.ocr_locale["INT_PNL_TAB_INVENTORY"]
+        self.storage_tab_text = self.ocr_locale["INT_PNL_TAB_STORAGE"]
+        self.status_tab_text = self.ocr_locale["INT_PNL_TAB_STATUS"]
 
         # The rect is [L, T, R, B] top left x, y, and bottom right x, y in fraction of screen resolution
         self.reg = {'right_panel': {'rect': [0.2, 0.2, 1.0, 0.35]}}

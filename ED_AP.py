@@ -159,8 +159,16 @@ class EDAutopilot:
         else:
             self.write_config(self.config)
 
-        # Load selected language
-        self.locale = LocalizationManager('locales', self.config['Language'])
+        # Determine which OCR language to use (UI language is controlled by the GUI separately)
+        supported_ocr_languages = ('en', 'ru')
+        ocr_language = self.config.get('OCRLanguage', 'en')
+        if ocr_language not in supported_ocr_languages:
+            logger.warning(f"Unsupported OCR language '{ocr_language}', falling back to English.")
+            ocr_language = 'en'
+            self.config['OCRLanguage'] = ocr_language
+
+        # Load localized OCR strings for the selected in-game language
+        self.ocr_locale = LocalizationManager('locales', ocr_language)
 
         shp_cnf = self.read_ship_configs()
         # if we read it then point to it, otherwise use the default table above
@@ -208,7 +216,7 @@ class EDAutopilot:
         self.scr.scaleX = self.config['TargetScale']
         self.scr.scaleY = self.config['TargetScale']
 
-        self.ocr = OCR(self.scr, self.config['OCRLanguage'])
+        self.ocr = OCR(self.scr, ocr_language)
         self.templ = Image_Templates.Image_Templates(self.scr.scaleX, self.scr.scaleY, self.scr.scaleX)
         self.scrReg = Screen_Regions.Screen_Regions(self.scr, self.templ)
         self.jn = EDJournal(cb)
@@ -1061,7 +1069,7 @@ class EDAutopilot:
         sim = 0.0
         ocr_textlist = self.ocr.image_simple_ocr(image)
         if ocr_textlist is not None:
-            sim = self.ocr.string_similarity(self.locale["PRESS_TO_DISENGAGE_MSG"], str(ocr_textlist))
+            sim = self.ocr.string_similarity(self.ocr_locale["PRESS_TO_DISENGAGE_MSG"], str(ocr_textlist))
             logger.info(f"Disengage similarity with {str(ocr_textlist)} is {sim}")
 
         # Draw box around region
