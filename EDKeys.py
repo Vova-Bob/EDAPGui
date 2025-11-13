@@ -23,14 +23,19 @@ WPARAM = ULONG_PTR
 LPARAM = LONG_PTR
 
 user32 = ctypes.windll.user32
+kernel32 = ctypes.windll.kernel32
 user32.LoadKeyboardLayoutW.restype = wintypes.HKL
 user32.LoadKeyboardLayoutW.argtypes = [wintypes.LPCWSTR, wintypes.UINT]
 user32.GetWindowThreadProcessId.restype = wintypes.DWORD
 user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
 user32.GetKeyboardLayout.restype = wintypes.HKL
 user32.GetKeyboardLayout.argtypes = [wintypes.DWORD]
-user32.PostMessageW.restype = wintypes.BOOL
-user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, WPARAM, LPARAM]
+user32.ActivateKeyboardLayout.restype = wintypes.HKL
+user32.ActivateKeyboardLayout.argtypes = [HKL, wintypes.UINT]
+user32.AttachThreadInput.restype = wintypes.BOOL
+user32.AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.BOOL]
+kernel32.GetCurrentThreadId.restype = wintypes.DWORD
+kernel32.GetCurrentThreadId.argtypes = []
 
 ASCII_SCANCODE_MAP: dict[str, int] = {}
 
@@ -46,7 +51,6 @@ ASCII_SCANCODE_MAP[' '] = SCANCODE.get('Key_Space', 0)
 ASCII_SCANCODE_MAP['-'] = SCANCODE.get('Key_Minus', 0)
 from EDlogger import logger
 
-WM_INPUTLANGCHANGEREQUEST = 0x0050
 US_ENGLISH_LAYOUT = "00000409"
 
 """
@@ -393,15 +397,31 @@ class EDKeys:
         return layout if layout != 0 else None
 
     @staticmethod
-    def _post_layout_change(hwnd: int, layout: int) -> bool:
-        result = user32.PostMessageW(
-            wintypes.HWND(hwnd),
-            WM_INPUTLANGCHANGEREQUEST,
-            WPARAM(0),
-            LPARAM(layout)
-        )
-        sleep(0.05)
-        return bool(result)
+    def _activate_layout_for_window(hwnd: int, layout: int) -> bool:
+        if not hwnd or not layout:
+            return False
+
+        process_id = ctypes.c_ulong()
+        thread_id = user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
+        if thread_id == 0:
+            return False
+
+        current_thread_id = kernel32.GetCurrentThreadId()
+        attached = False
+
+        if thread_id != current_thread_id:
+            if not user32.AttachThreadInput(current_thread_id, thread_id, True):
+                logger.warning('Route input: unable to attach to Elite thread for layout switch.')
+                return False
+            attached = True
+
+        try:
+            result = user32.ActivateKeyboardLayout(HKL(layout), 0)
+            sleep(0.02)
+            return result != 0
+        finally:
+            if attached:
+                user32.AttachThreadInput(current_thread_id, thread_id, False)
 
     def _switch_keyboard_layout_to_en(self, hwnd: int | None) -> int | None:
         """Switch the target window to EN layout, return previous layout for restoration."""
@@ -417,11 +437,10 @@ class EDKeys:
             return None
 
         logger.debug('Route input: switching keyboard layout to EN for ASCII entry.')
-        if not self._post_layout_change(hwnd, english_layout):
-            logger.warning('Route input: failed to request EN keyboard layout switch.')
+        if not self._activate_layout_for_window(hwnd, english_layout):
+            logger.warning('Route input: failed to activate EN keyboard layout.')
             return None
 
-        sleep(0.05)
         return current_layout
 
     def _restore_keyboard_layout(self, hwnd: int | None, layout: int | None) -> None:
@@ -429,8 +448,7 @@ class EDKeys:
             return
 
         layout_value = LONG_PTR(layout)
-        if self._post_layout_change(hwnd, int(layout_value.value)):
-            sleep(0.05)
+        if self._activate_layout_for_window(hwnd, int(layout_value.value)):
             logger.debug('Route input: restored previous keyboard layout after ASCII entry.')
         else:
             logger.warning('Route input: failed to restore previous keyboard layout.')

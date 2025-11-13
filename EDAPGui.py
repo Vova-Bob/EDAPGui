@@ -273,10 +273,7 @@ class APGui():
         # global trap for these keys, the 'end' key will stop any current AP action
         # the 'home' key will start the FSD Assist.  May want another to start SC Assist
 
-        keyboard.add_hotkey(self.ed_ap.config['HotKey_StopAllAssists'], self.stop_all_assists)
-        keyboard.add_hotkey(self.ed_ap.config['HotKey_StartFSD'], self.callback, args=('fsd_start', None))
-        keyboard.add_hotkey(self.ed_ap.config['HotKey_StartSC'],  self.callback, args=('sc_start',  None))
-        keyboard.add_hotkey(self.ed_ap.config['HotKey_StartRobigo'],  self.callback, args=('robigo_start',  None))
+        self._register_global_hotkeys()
 
         # check for updates
         self.check_updates()
@@ -285,6 +282,20 @@ class APGui():
         self.gui_loaded = True
         # Send a log entry which will flush out the buffer.
         self.callback('log', self._t('ui.log.loaded'))
+
+    def _register_global_hotkeys(self) -> None:
+        """Реєструє глобальні гарячі клавіші та гарантує виконання у потоці Tk."""
+
+        def bind(combo: str, target, *args) -> None:
+            def handler() -> None:
+                self.root.after(0, lambda: target(*args))
+
+            keyboard.add_hotkey(combo, handler)
+
+        bind(self.ed_ap.config['HotKey_StopAllAssists'], self.stop_all_assists)
+        bind(self.ed_ap.config['HotKey_StartFSD'], self.callback, 'fsd_start', None)
+        bind(self.ed_ap.config['HotKey_StartSC'], self.callback, 'sc_start', None)
+        bind(self.ed_ap.config['HotKey_StartRobigo'], self.callback, 'robigo_start', None)
 
     # callback from the EDAP, to configure GUI items
     def callback(self, msg, body=None):
