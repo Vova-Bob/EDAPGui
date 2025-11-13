@@ -9,11 +9,28 @@ from typing import Any, final
 from xml.etree.ElementTree import parse
 
 import ctypes
+from ctypes import wintypes
 import win32gui
 import xmltodict
 
 from Screen import set_focus_elite_window
 from directinput import *
+
+ULONG_PTR = ctypes.c_ulonglong
+LONG_PTR = ctypes.c_longlong
+HKL = ULONG_PTR
+WPARAM = ULONG_PTR
+LPARAM = LONG_PTR
+
+user32 = ctypes.windll.user32
+user32.LoadKeyboardLayoutW.restype = wintypes.HKL
+user32.LoadKeyboardLayoutW.argtypes = [wintypes.LPCWSTR, wintypes.UINT]
+user32.GetWindowThreadProcessId.restype = wintypes.DWORD
+user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
+user32.GetKeyboardLayout.restype = wintypes.HKL
+user32.GetKeyboardLayout.argtypes = [wintypes.DWORD]
+user32.PostMessageW.restype = wintypes.BOOL
+user32.PostMessageW.argtypes = [wintypes.HWND, wintypes.UINT, WPARAM, LPARAM]
 
 ASCII_SCANCODE_MAP: dict[str, int] = {}
 
@@ -354,7 +371,7 @@ class EDKeys:
         if self._english_layout_handle:
             return self._english_layout_handle
 
-        handle = ctypes.windll.user32.LoadKeyboardLayoutW(US_ENGLISH_LAYOUT, 0)
+        handle = user32.LoadKeyboardLayoutW(US_ENGLISH_LAYOUT, 0)
         if handle == 0:
             logger.warning('Route input: unable to load US English keyboard layout.')
             return None
@@ -368,18 +385,23 @@ class EDKeys:
             return None
 
         process_id = ctypes.c_ulong()
-        thread_id = ctypes.windll.user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
+        thread_id = user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
         if thread_id == 0:
             return None
 
-        layout = ctypes.windll.user32.GetKeyboardLayout(thread_id)
+        layout = user32.GetKeyboardLayout(thread_id)
         return layout if layout != 0 else None
 
     @staticmethod
     def _post_layout_change(hwnd: int, layout: int) -> bool:
-        layout_param = ctypes.c_size_t(layout).value
-        result = ctypes.windll.user32.PostMessageW(hwnd, WM_INPUTLANGCHANGEREQUEST, 0, layout_param)
-        return result != 0
+        result = user32.PostMessageW(
+            wintypes.HWND(hwnd),
+            WM_INPUTLANGCHANGEREQUEST,
+            WPARAM(0),
+            LPARAM(layout)
+        )
+        sleep(0.05)
+        return bool(result)
 
     def _switch_keyboard_layout_to_en(self, hwnd: int | None) -> int | None:
         """Switch the target window to EN layout, return previous layout for restoration."""
@@ -406,7 +428,8 @@ class EDKeys:
         if not hwnd or not layout:
             return
 
-        if self._post_layout_change(hwnd, layout):
+        layout_value = LONG_PTR(layout)
+        if self._post_layout_change(hwnd, int(layout_value.value)):
             sleep(0.05)
             logger.debug('Route input: restored previous keyboard layout after ASCII entry.')
         else:
