@@ -64,6 +64,8 @@ FORM_TYPE_CHECKBOX = 0
 FORM_TYPE_SPINBOX = 1
 FORM_TYPE_ENTRY = 2
 
+NUMERIC_FIELD_WIDTH = 8
+
 
 def hyperlink_callback(url):
     webbrowser.open_new(url)
@@ -76,7 +78,8 @@ class APGui():
         self.log_buffer = queue.Queue()
 
         root.protocol("WM_DELETE_WINDOW", self.close_window)
-        root.resizable(True, True)
+        root.geometry("1000x820")
+        root.resizable(False, False)
         root.rowconfigure(0, weight=1)
         root.rowconfigure(1, weight=0)
         root.columnconfigure(0, weight=1)
@@ -91,14 +94,17 @@ class APGui():
         self.current_wp_filename = None
         self.jumpcount_placeholder = True
 
-        preferred_languages = ['en', 'uk', 'ru']
-        self.language_options = []
-        for lang in preferred_languages:
-            if lang in self.localization.available_languages and lang not in self.language_options:
-                self.language_options.append(lang)
-        for lang in self.localization.available_languages:
-            if lang not in self.language_options:
-                self.language_options.append(lang)
+        allowed_ui_languages = ('en', 'uk')
+        available_allowed = [lang for lang in allowed_ui_languages if lang in self.localization.available_languages]
+        self.language_options = available_allowed if available_allowed else [allowed_ui_languages[0]]
+        if self.localization.language not in self.language_options:
+            fallback = self.language_options[0]
+            try:
+                self.localization.change_language(fallback)
+            except Exception:
+                pass
+            else:
+                self.ed_ap.config['Language'] = fallback
 
         self.language_var = tk.StringVar(master=self.root, value=self.localization.language)
 
@@ -783,7 +789,7 @@ class APGui():
             else:
                 self.ed_ap.debug_overlay = False
 
-    def makeform(self, win, ftype, fields, r=0, inc=1, rfrom=0, rto=1000):
+    def makeform(self, win, ftype, fields, r=0, inc=1, rfrom=0, rto=1000, entry_width=None):
         entries = {}
 
         for field in fields:
@@ -803,9 +809,15 @@ class APGui():
                 lab = tk.Label(row, anchor='w', pady=3, text=display_text + ": ")
                 self._register_widget_text(lab, self.field_text_keys.get(field), formatter=lambda txt: f"{txt}: ")
                 if ftype == FORM_TYPE_SPINBOX:
-                    ent = tk.Spinbox(row, from_=rfrom, to=rto, increment=inc)
+                    spinbox_kwargs = {}
+                    if entry_width:
+                        spinbox_kwargs['width'] = entry_width
+                    ent = tk.Spinbox(row, from_=rfrom, to=rto, increment=inc, **spinbox_kwargs)
                 else:
-                    ent = tk.Entry(row)
+                    entry_kwargs = {}
+                    if entry_width:
+                        entry_kwargs['width'] = entry_width
+                    ent = tk.Entry(row, **entry_kwargs)
                 ent.bind('<FocusOut>', self.entry_update)
                 ent.insert(0, "0")
 
@@ -1025,12 +1037,12 @@ class APGui():
         blk_ship.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
         blk_ship.columnconfigure(0, weight=1)
         blk_ship.columnconfigure(1, weight=1)
-        self.entries['ship'] = self.makeform(blk_ship, FORM_TYPE_SPINBOX, ship_entry_fields, 0, 0.5)
+        self.entries['ship'] = self.makeform(blk_ship, FORM_TYPE_SPINBOX, ship_entry_fields, 0, 0.5, entry_width=NUMERIC_FIELD_WIDTH)
 
         lbl_sun_pitch_up = tk.Label(blk_ship, text=self._t('ui.label.sun_pitch_time'), anchor='w')
         self._register_widget_text(lbl_sun_pitch_up, 'ui.label.sun_pitch_time')
         lbl_sun_pitch_up.grid(row=3, column=0, pady=3, sticky=(W, E))
-        spn_sun_pitch_up = tk.Spinbox(blk_ship, from_=-100, to=100, increment=0.5)
+        spn_sun_pitch_up = tk.Spinbox(blk_ship, from_=-100, to=100, increment=0.5, width=NUMERIC_FIELD_WIDTH)
         spn_sun_pitch_up.grid(row=3, column=1, padx=2, pady=2, sticky=(N, S, E, W))
         spn_sun_pitch_up.bind('<FocusOut>', self.entry_update)
         self.entries['ship']['SunPitchUp+Time'] = spn_sun_pitch_up
@@ -1094,7 +1106,7 @@ class APGui():
         self._register_widget_text(blk_ap, 'ui.frame.autopilot')
         blk_ap.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
         blk_ap.columnconfigure(0, weight=1)
-        self.entries['autopilot'] = self.makeform(blk_ap, FORM_TYPE_SPINBOX, autopilot_entry_fields)
+        self.entries['autopilot'] = self.makeform(blk_ap, FORM_TYPE_SPINBOX, autopilot_entry_fields, entry_width=NUMERIC_FIELD_WIDTH)
         self.checkboxvar['Enable Randomness'] = BooleanVar()
         cb_random = Checkbutton(blk_ap, text=self._t('ui.checkbox.enable_randomness'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Enable Randomness'], command=(lambda field='Enable Randomness': self.check_cb(field)))
         self._register_widget_text(cb_random, 'ui.checkbox.enable_randomness')
@@ -1133,7 +1145,7 @@ class APGui():
         self._register_widget_text(blk_fuel, 'ui.frame.fuel')
         blk_fuel.grid(row=1, column=0, padx=2, pady=2, sticky=(N, S, E, W))
         blk_fuel.columnconfigure(0, weight=1)
-        self.entries['refuel'] = self.makeform(blk_fuel, FORM_TYPE_SPINBOX, refuel_entry_fields)
+        self.entries['refuel'] = self.makeform(blk_fuel, FORM_TYPE_SPINBOX, refuel_entry_fields, entry_width=NUMERIC_FIELD_WIDTH)
 
         # overlay settings block
         blk_overlay = LabelFrame(blk_settings, text=self._t('ui.frame.overlay'))
@@ -1144,7 +1156,7 @@ class APGui():
         cb_enable = Checkbutton(blk_overlay, text=self._t('ui.checkbox.enable_overlay_restart'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Enable Overlay'], command=(lambda field='Enable Overlay': self.check_cb(field)))
         self._register_widget_text(cb_enable, 'ui.checkbox.enable_overlay_restart')
         cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
-        self.entries['overlay'] = self.makeform(blk_overlay, FORM_TYPE_SPINBOX, overlay_entry_fields, 1, 1.0, 0.0, 3000.0)
+        self.entries['overlay'] = self.makeform(blk_overlay, FORM_TYPE_SPINBOX, overlay_entry_fields, 1, 1.0, 0.0, 3000.0, entry_width=NUMERIC_FIELD_WIDTH)
 
         # tts / voice settings block
         blk_voice = LabelFrame(blk_settings, text=self._t('ui.frame.voice'))
