@@ -171,6 +171,10 @@ class EDAutopilot:
         self.ocr_language = ocr_language
         self.ocr_locale = LocalizationManager('locales', self.ocr_language)
 
+        # Load UI localization for overlay and status strings
+        self.ui_language = self.config.get('Language', 'en')
+        self.ui_locale = LocalizationManager('locales', self.ui_language)
+
         shp_cnf = self.read_ship_configs()
         # if we read it then point to it, otherwise use the default table above
         if shp_cnf is not None:
@@ -309,6 +313,65 @@ class EDAutopilot:
     def update_config(self):
         self.write_config(self.config)
 
+    def _t(self, key: str, **kwargs) -> str:
+        """Helper for localized UI strings with graceful fallback."""
+        if not hasattr(self, 'ui_locale') or self.ui_locale is None:
+            return key
+        try:
+            value = self.ui_locale[key]
+        except KeyError:
+            return key
+        if kwargs:
+            try:
+                return value.format(**kwargs)
+            except KeyError:
+                return value
+        return value
+
+    def _get_overlay_mode_key(self) -> str:
+        if self.fsd_assist_enabled:
+            return 'overlay.mode.fsd_route'
+        if self.robigo_assist_enabled:
+            return 'overlay.mode.robigo'
+        if self.sc_assist_enabled:
+            return 'overlay.mode.sc'
+        if self.waypoint_assist_enabled:
+            return 'overlay.mode.waypoint'
+        if self.afk_combat_assist_enabled:
+            return 'overlay.mode.afk_combat'
+        if self.dss_assist_enabled:
+            return 'overlay.mode.dss'
+        return 'overlay.mode.offline'
+
+    def set_ui_language(self, language: str) -> bool:
+        """Update localization used for overlay and UI-driven texts."""
+        if not language:
+            return False
+        if not hasattr(self, 'ui_locale') or self.ui_locale is None:
+            try:
+                self.ui_locale = LocalizationManager('locales', language)
+            except Exception as exc:
+                logger.warning(f"Failed to initialize UI localization '{language}': {exc}")
+                return False
+            self.ui_language = language
+            self.config['Language'] = language
+            self.update_overlay()
+            return True
+
+        if language == self.ui_language:
+            return True
+
+        try:
+            self.ui_locale.change_language(language)
+        except Exception as exc:
+            logger.warning(f"Failed to switch UI localization to '{language}': {exc}")
+            return False
+
+        self.ui_language = language
+        self.config['Language'] = language
+        self.update_overlay()
+        return True
+
     def set_ocr_language(self, language: str) -> bool:
         if not language or language not in self.supported_ocr_languages:
             logger.warning(f"Attempted to set unsupported OCR language '{language}'.")
@@ -431,38 +494,64 @@ class EDAutopilot:
     #
     def update_overlay(self):
         if self.config['OverlayTextEnable']:
-            ap_mode = "Offline"
-            if self.fsd_assist_enabled == True:
-                ap_mode = "FSD Route Assist"
-            elif self.robigo_assist_enabled == True:
-                ap_mode = "Robigo Assist"
-            elif self.sc_assist_enabled == True:
-                ap_mode = "SC Assist"
-            elif self.waypoint_assist_enabled == True:
-                ap_mode = "Waypoint Assist"
-            elif self.afk_combat_assist_enabled == True:
-                ap_mode = "AFK Combat Assist"
-            elif self.dss_assist_enabled == True:
-                ap_mode = "DSS Assist"
+            ap_mode_key = self._get_overlay_mode_key()
+            ap_mode_text = self._t(ap_mode_key)
 
             ship_state = self.jn.ship_state()['status']
-            if ship_state == None:
+            if ship_state is None:
                 ship_state = '<init>'
 
             sclass = self.jn.ship_state()['star_class']
-            if sclass == None:
+            if sclass is None:
                 sclass = "<init>"
 
             location = self.jn.ship_state()['location']
-            if location == None:
+            if location is None:
                 location = "<init>"
-            self.overlay.overlay_text('1', "AP MODE: "+ap_mode, 1, 1, (136, 53, 0))
-            self.overlay.overlay_text('2', "AP STATUS: "+self.ap_state, 2, 1, (136, 53, 0))
-            self.overlay.overlay_text('3', "SHIP STATUS: "+ship_state, 3, 1, (136, 53, 0))
-            self.overlay.overlay_text('4', "CURRENT SYSTEM: "+location+", "+sclass, 4, 1, (136, 53, 0))
-            self.overlay.overlay_text('5', "JUMPS: {} of {}".format(self.jump_cnt, self.total_jumps), 5, 1, (136, 53, 0))
+
+            self.overlay.overlay_text(
+                '1',
+                self._t('overlay.line.ap_mode', mode=ap_mode_text),
+                1,
+                1,
+                (136, 53, 0)
+            )
+            self.overlay.overlay_text(
+                '2',
+                self._t('overlay.line.ap_status', status=self.ap_state),
+                2,
+                1,
+                (136, 53, 0)
+            )
+            self.overlay.overlay_text(
+                '3',
+                self._t('overlay.line.ship_status', status=ship_state),
+                3,
+                1,
+                (136, 53, 0)
+            )
+            self.overlay.overlay_text(
+                '4',
+                self._t('overlay.line.current_system', system=location, star_class=sclass),
+                4,
+                1,
+                (136, 53, 0)
+            )
+            self.overlay.overlay_text(
+                '5',
+                self._t('overlay.line.jumps', current=self.jump_cnt, total=self.total_jumps),
+                5,
+                1,
+                (136, 53, 0)
+            )
             if self.config["ElwScannerEnable"] == True:
-                self.overlay.overlay_text('6', "ELW SCANNER: "+self.fss_detected, 6, 1, (136, 53, 0))
+                self.overlay.overlay_text(
+                    '6',
+                    self._t('overlay.line.elw_scanner', status=self.fss_detected),
+                    6,
+                    1,
+                    (136, 53, 0)
+                )
             self.overlay.overlay_paint()
 
     def update_ap_status(self, txt):
