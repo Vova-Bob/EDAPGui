@@ -19,8 +19,9 @@ class EDSystemMap:
         self.status_parser = StatusParser()
         self.ap_ckb = cb
         # The rect is top left x, y, and bottom right x, y in fraction of screen resolution
-        self.reg = {'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
-                    }
+        self.reg = {
+            'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
+        }
 
     def set_sys_map_dest_bookmark(self, ap, bookmark_type: str, bookmark_position: int) -> bool:
         """ Set the System Map destination using a bookmark.
@@ -33,39 +34,55 @@ class EDSystemMap:
         """
         if self.is_odyssey and bookmark_position != -1:
             # Check if this is a nav-panel bookmark
-            if not bookmark_type.lower().startswith("nav"):
+            bt_lower = bookmark_type.lower()
+            if not bt_lower.startswith("nav"):
+                # ---------- System map bookmarks (Bodies / Stations / Settlements) ----------
                 self.goto_system_map()
 
-                ap.keys.send('UI_Left')  # Go to BOOKMARKS
-                sleep(.5)
+                # Go to BOOKMARKS
+                ap.keys.send('UI_Left')
+                sleep(0.5)
                 ap.keys.send('UI_Select')  # Select BOOKMARKS
-                sleep(.25)
-                ap.keys.send('UI_Right')  # Go to FAVORITES
-                sleep(.25)
+                sleep(0.25)
+                ap.keys.send('UI_Right')  # Go to FAVORITES / LOCAL BOOKMARKS
+                sleep(0.25)
 
                 # If bookmark type is Fav, do nothing as this is the first item
-                if bookmark_type.lower().startswith("bod"):
+                if bt_lower.startswith("bod"):
                     ap.keys.send('UI_Down', repeat=1)  # Go to BODIES
-                elif bookmark_type.lower().startswith("sta"):
+                elif bt_lower.startswith("sta"):
                     ap.keys.send('UI_Down', repeat=2)  # Go to STATIONS
-                elif bookmark_type.lower().startswith("set"):
+                elif bt_lower.startswith("set"):
                     ap.keys.send('UI_Down', repeat=3)  # Go to SETTLEMENTS
 
-                sleep(.25)
-                ap.keys.send('UI_Select')  # Select bookmark type, moves you to bookmark list
-                ap.keys.send('UI_Left')  # Sometimes the first bookmark is not selected, so we try to force it.
-                ap.keys.send('UI_Right')
-                sleep(.25)
-                ap.keys.send('UI_Down', repeat=bookmark_position - 1)
-                sleep(.25)
+                sleep(0.25)
+
+                # Enter the bookmark list (focus moves to the first entry)
+                ap.keys.send('UI_Select')
+                sleep(0.25)
+
+                # Move to the requested bookmark entry (first item already selected)
+                if bookmark_position > 1:
+                    ap.keys.send('UI_Down', repeat=bookmark_position - 1)
+                    sleep(0.25)
+
+                # Manual plotting sequence:
+                # 1) Move left to ensure the card is focused
+                ap.keys.send('UI_Left')
+                sleep(0.25)
+                # 2) Short select to focus the card / open the right panel
+                ap.keys.send('UI_Select')
+                sleep(0.25)
+                # 3) Hold select to trigger "HOLD TO PLOT ROUTE"
                 ap.keys.send('UI_Select', hold=3.0)
+                sleep(1.0)
 
                 # Close System Map
                 ap.keys.send('SystemMapOpen')
                 sleep(0.5)
                 return True
 
-            elif bookmark_type.lower().startswith("nav"):
+            elif bt_lower.startswith("nav"):
                 # TODO - Move to, or call Nav Panel code instead?
                 # This is a nav-panel bookmark
                 # Goto cockpit view
