@@ -15,7 +15,7 @@ from EDGraphicsSettings import EDGraphicsSettings
 from EDShipControl import EDShipControl
 from EDStationServicesInShip import EDStationServicesInShip
 from EDSystemMap import EDSystemMap
-from EDlogger import logging
+from EDlogger import logger, logging
 import Image_Templates
 import Screen
 import Screen_Regions
@@ -196,7 +196,7 @@ class EDAutopilot:
         self.vce = Voice()
         self.vce.v_enabled = self.config['VoiceEnable']
         self.vce.set_voice_id(self.config['VoiceID'])
-        self.vce.say("Welcome to Autopilot")
+        self.speak_ui('voice.autopilot.welcome')
 
         # set log level based on config input, defaulting to warning
         logger.setLevel(logging.WARNING)
@@ -324,9 +324,33 @@ class EDAutopilot:
         if kwargs:
             try:
                 return value.format(**kwargs)
-            except KeyError:
+            except (KeyError, ValueError):
                 return value
         return value
+
+    def _log_python(self, level: str, message: str) -> None:
+        log_method = getattr(logger, level.lower(), logger.info)
+        log_method(message)
+
+    def log_ui(self, key: str, *, level: str = 'info', voice: bool = False,
+               channel: str = 'log', **kwargs) -> str:
+        text = self._t(key, **kwargs)
+        self._log_python(level, text)
+        if hasattr(self, 'ap_ckb') and self.ap_ckb is not None:
+            msg_type = 'log+vce' if voice else channel
+            self.ap_ckb(msg_type, text)
+        return text
+
+    def speak_ui(self, key: str, **kwargs) -> str:
+        text = self._t(key, **kwargs)
+        if hasattr(self, 'vce') and self.vce is not None:
+            self.vce.say(text)
+        return text
+
+    def log_and_speak_ui(self, key: str, *, level: str = 'info', **kwargs) -> str:
+        text = self.log_ui(key, level=level, voice=False, **kwargs)
+        self.speak_ui(key, **kwargs)
+        return text
 
     def _get_overlay_mode_key(self) -> str:
         if self.fsd_assist_enabled:
@@ -665,13 +689,13 @@ class EDAutopilot:
 
     def calibrate_target(self):
         """ Routine to find the optimal scaling values for the template images. """
-        msg = 'Select OK to begin Calibration. You must be in space and have a star system targeted in center screen.'
-        self.vce.say(msg)
-        ans = messagebox.askokcancel('Calibration', msg)
+        msg = self._t('ui.calibration.target_prompt')
+        self.speak_ui('ui.calibration.target_prompt')
+        ans = messagebox.askokcancel(self._t('ui.calibration.title'), msg)
         if not ans:
             return
 
-        self.ap_ckb('log+vce', 'Calibration starting.')
+        self.log_ui('log.autopilot.calibration.start', voice=True)
 
         set_focus_elite_window()
 
@@ -689,17 +713,17 @@ class EDAutopilot:
         self.overlay.overlay_clear()
         self.overlay.overlay_paint()
 
-        self.ap_ckb('log+vce', 'Calibration complete.')
+        self.log_ui('log.autopilot.calibration.complete', voice=True)
 
     def calibrate_compass(self):
         """ Routine to find the optimal scaling values for the template images. """
-        msg = 'Select OK to begin Calibration. You must be in space and have the compass visible.'
-        self.vce.say(msg)
-        ans = messagebox.askokcancel('Calibration', msg)
+        msg = self._t('ui.calibration.compass_prompt')
+        self.speak_ui('ui.calibration.compass_prompt')
+        ans = messagebox.askokcancel(self._t('ui.calibration.title'), msg)
         if not ans:
             return
 
-        self.ap_ckb('log+vce', 'Calibration starting.')
+        self.log_ui('log.autopilot.calibration.start', voice=True)
 
         set_focus_elite_window()
 
@@ -717,7 +741,7 @@ class EDAutopilot:
         self.overlay.overlay_clear()
         self.overlay.overlay_paint()
 
-        self.ap_ckb('log+vce', 'Calibration complete.')
+        self.log_ui('log.autopilot.calibration.complete', voice=True)
 
     def calibrate_target_worker(self):
         """ Calibrate target """
@@ -746,14 +770,15 @@ class EDAutopilot:
         if max_val != 0:
             self.scr.scaleX = float(scale_max / 100)
             self.scr.scaleY = self.scr.scaleX
-            self.ap_ckb('log', f'Target Cal: Best match: {max_val * 100:5.2f}% at scale: {self.scr.scaleX:5.4f}')
+            self.log_ui('log.autopilot.calibration.target_best_match',
+                        match=max_val * 100, scale=self.scr.scaleX)
             self.config['TargetScale'] = round(self.scr.scaleX, 4)
             # self.scr.scales['Calibrated'] = [self.scr.scaleX, self.scr.scaleY]
             self.scr.write_config(
                 data=None)  # None means the writer will use its own scales variable which we modified
         else:
-            self.ap_ckb('log',
-                        f'Target Cal: Insufficient matching to meet reliability, max % match: {max_val * 100:5.2f}%')
+            self.log_ui('log.autopilot.calibration.target_insufficient', match=max_val * 100,
+                        level='warning')
 
         # reload the templates with the new (or previous value)
         self.templ.reload_templates(self.scr.scaleX, self.scr.scaleY, self.compass_scale)
@@ -784,14 +809,14 @@ class EDAutopilot:
         # if we found a scaling factor that meets our criteria, then save it to the resolution.json file
         if max_val != 0:
             c_scaleX = float(scale_max / 100)
-            self.ap_ckb('log',
-                        f'Compass Cal: Max best match: {max_val * 100:5.2f}% with scale: {c_scaleX:5.4f}')
+            self.log_ui('log.autopilot.calibration.compass_best_match',
+                        match=max_val * 100, scale=c_scaleX)
             # Keep new value
             self.compass_scale = c_scaleX
 
         else:
-            self.ap_ckb('log',
-                        f'Compass Cal: Insufficient matching to meet reliability, max % match: {max_val * 100:5.2f}%')
+            self.log_ui('log.autopilot.calibration.compass_insufficient', match=max_val * 100,
+                        level='warning')
 
         # reload the templates with the new (or previous value)
         self.templ.reload_templates(self.scr.scaleX, self.scr.scaleY, self.compass_scale)
