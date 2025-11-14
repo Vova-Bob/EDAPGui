@@ -191,6 +191,8 @@ class APGui():
         self.single_waypoint_system = StringVar()
         self.single_waypoint_station = StringVar()
         self.TCE_Destination_Filepath = StringVar()
+        self._route_entry_allowed_chars = {char for char in ASCII_SCANCODE_MAP if char}
+        self._ascii_entry_vcmd = None
 
         self.radiobuttonvar['ocr_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('OCRLanguage', 'en'))
 
@@ -927,6 +929,32 @@ class APGui():
             return
         self.tooltip_instances.setdefault(field, []).append(tooltip)
 
+    def _limit_entry_to_route_charset(self, entry, variable):
+        """Prevent non-Latin input for route-related text fields."""
+        if self._ascii_entry_vcmd is None:
+            self._ascii_entry_vcmd = self.root.register(self._validate_route_text)
+        entry.configure(validate='key', validatecommand=(self._ascii_entry_vcmd, '%P'))
+        variable.trace_add('write', lambda *args, var=variable: self._enforce_route_var(var))
+
+    def _validate_route_text(self, proposed_value):
+        return self._sanitize_route_text(proposed_value) == proposed_value
+
+    def _enforce_route_var(self, variable):
+        value = variable.get()
+        sanitized = self._sanitize_route_text(value)
+        if value != sanitized:
+            variable.set(sanitized)
+
+    def _sanitize_route_text(self, value):
+        if not value:
+            return ''
+        return ''.join(char for char in value if self._is_valid_route_char(char))
+
+    def _is_valid_route_char(self, char):
+        if not char:
+            return False
+        return char.upper() in self._route_entry_allowed_chars
+
     def _language_display_name(self, code):
         key = f'ui.language.name.{code}'
         try:
@@ -1390,11 +1418,13 @@ class APGui():
         self._register_widget_text(lbl_system, 'ui.label.system')
         lbl_system.grid(row=0, column=0, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         txt_system = Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_system)
+        self._limit_entry_to_route_charset(txt_system, self.single_waypoint_system)
         txt_system.grid(row=0, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         lbl_station = tk.Label(blk_single_waypoint_asst, text=self._t('ui.label.station'))
         self._register_widget_text(lbl_station, 'ui.label.station')
         lbl_station.grid(row=1, column=0, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         txt_station = Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_station)
+        self._limit_entry_to_route_charset(txt_station, self.single_waypoint_station)
         txt_station.grid(row=1, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
         self.checkboxvar['Single Waypoint Assist'] = BooleanVar()
         cb_single_waypoint = Checkbutton(blk_single_waypoint_asst, text=self._t('ui.checkbox.single_waypoint'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Single Waypoint Assist'], command=(lambda field='Single Waypoint Assist': self.check_cb(field)))

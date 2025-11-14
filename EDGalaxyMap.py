@@ -80,13 +80,14 @@ class EDGalaxyMap:
         sleep(2)
 
         target_name_uc = target_name.upper()
-        self.keys.type_ascii(target_name_uc, interval=0.25)
-        sleep(1)
+        with self.keys.temporary_english_layout():
+            self.keys.type_ascii(target_name_uc, interval=0.25, manage_layout=False)
+            sleep(1)
 
-        # send enter key
-        ap.keys.send_key('Down', 28)
-        sleep(0.05)
-        ap.keys.send_key('Up', 28)
+            # send enter key
+            ap.keys.send_key('Down', 28)
+            sleep(0.05)
+            ap.keys.send_key('Up', 28)
 
         sleep(7)
         ap.keys.send('UI_Right')
@@ -124,23 +125,24 @@ class EDGalaxyMap:
         ap.keys.send('UI_Select')
         sleep(0.05)
 
-        # type in the System name
-        self.keys.type_ascii(target_name_uc, interval=0.25)
-        logger.debug(f"Entered system name: {target_name_uc}.")
-        sleep(0.05)
+        with self.keys.temporary_english_layout():
+            # type in the System name
+            self.keys.type_ascii(target_name_uc, interval=0.25, manage_layout=False)
+            logger.debug(f"Entered system name: {target_name_uc}.")
+            sleep(0.05)
 
-        # send enter key (removes focus out of input field)
-        ap.keys.send_key('Down', 28)  # 28=ENTER
-        sleep(0.05)
-        ap.keys.send_key('Up', 28)  # 28=ENTER
-        sleep(0.05)
+            # send enter key (removes focus out of input field)
+            ap.keys.send_key('Down', 28)  # 28=ENTER
+            sleep(0.05)
+            ap.keys.send_key('Up', 28)  # 28=ENTER
+            sleep(0.05)
 
-        # According to some reports, the ENTER key does not always reselect the text
-        # box, so this down and up will reselect the text box.
-        ap.keys.send('UI_Down')
-        sleep(0.05)
-        ap.keys.send('UI_Up')
-        sleep(0.05)
+            # According to some reports, the ENTER key does not always reselect the text
+            # box, so this down and up will reselect the text box.
+            ap.keys.send('UI_Down')
+            sleep(0.05)
+            ap.keys.send('UI_Up')
+            sleep(0.05)
 
         # navigate to and select: search button
         ap.keys.send('UI_Right')  # to >| button

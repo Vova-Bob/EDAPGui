@@ -7,6 +7,7 @@ from os.path import getmtime, isfile, join
 from time import sleep
 from typing import Any, final
 from xml.etree.ElementTree import parse
+from contextlib import contextmanager, nullcontext
 
 import ctypes
 from ctypes import wintypes
@@ -453,7 +454,17 @@ class EDKeys:
         else:
             logger.warning('Route input: failed to restore previous keyboard layout.')
 
-    def type_ascii(self, text: str, interval: float = 0.25) -> None:
+    @contextmanager
+    def temporary_english_layout(self, hwnd: int | None = None):
+        """Temporarily switch the provided window to the EN layout."""
+        target_hwnd = hwnd or win32gui.GetForegroundWindow()
+        previous_layout = self._switch_keyboard_layout_to_en(target_hwnd)
+        try:
+            yield target_hwnd
+        finally:
+            self._restore_keyboard_layout(target_hwnd, previous_layout)
+
+    def type_ascii(self, text: str, interval: float = 0.25, manage_layout: bool = True) -> None:
         """Вводить ASCII-текст незалежно від розкладки (латиниця + цифри)."""
         if not text:
             return
@@ -467,9 +478,10 @@ class EDKeys:
             sleep(0.05)
 
         target_hwnd = win32gui.GetForegroundWindow()
-        previous_layout = self._switch_keyboard_layout_to_en(target_hwnd)
 
-        try:
+        layout_context = self.temporary_english_layout(target_hwnd) if manage_layout else nullcontext()
+
+        with layout_context:
             for char in text_upper:
                 scancode = ASCII_SCANCODE_MAP.get(char)
                 if not scancode:
@@ -480,5 +492,3 @@ class EDKeys:
                 sleep(self.key_mod_delay)
                 ReleaseKey(scancode)
                 sleep(interval)
-        finally:
-            self._restore_keyboard_layout(target_hwnd, previous_layout)
