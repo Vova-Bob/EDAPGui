@@ -609,10 +609,10 @@ class EDWayPoint:
         if not _abort:
             self.ap.ap_ckb('log+vce',
                            "Waypoint Route Complete, total distance jumped: " + str(self.ap.total_dist_jumped) + "LY")
-            self.ap.update_ap_status("Idle")
+            self.ap.update_ap_status(self.ap.STATUS_KEYS['IDLE'])
         else:
             self.ap.ap_ckb('log+vce', "Waypoint Route was aborted.")
-            self.ap.update_ap_status("Idle")
+            self.ap.update_ap_status(self.ap.STATUS_KEYS['IDLE'])
 
     def reset_stats(self):
         # Clear stats
