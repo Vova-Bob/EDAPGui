@@ -633,8 +633,11 @@ class APGui():
             self.ed_ap.config['VoiceEnable'] = self.checkboxvar['Enable Voice'].get()
             self.ed_ap.config['TCEDestinationFilepath'] = str(self.TCE_Destination_Filepath.get())
             self.ed_ap.config['DebugOverlay'] = self.checkboxvar['Debug Overlay'].get()
-        except:
-            messagebox.showinfo("Exception", "Invalid float entered")
+        except Exception:
+            messagebox.showinfo(
+                self._t('ui.message.invalid_float_title'),
+                self._t('ui.message.invalid_float_body')
+            )
 
     # ckbox.state:(ACTIVE | DISABLED)
 

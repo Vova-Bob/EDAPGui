@@ -28,13 +28,14 @@ Author: sumzer0@yahoo.com
 
 class Voice:
 
-    def __init__(self): 
+    def __init__(self, log_func=None):
         self.q = queue.Queue(5)
         self.v_enabled = False
         self.v_quit = False
         self.t = kthread.KThread(target=self.voice_exec, name="Voice", daemon=True)
         self.t.start()
         self.v_id = 1
+        self.log_func = log_func
 
     def say(self, vSay):
         if self.v_enabled:
@@ -56,20 +57,29 @@ class Voice:
     def quit(self):
         self.v_quit = True
         
+    def _log_voice_error(self, voice_id, total):
+        if callable(self.log_func):
+            self.log_func('log.voice.id_out_of_range', level='warning',
+                          voice_id=voice_id, total=total)
+        else:
+            print("Voice ID out of range")
+
     def voice_exec(self):
         engine = pyttsx3.init()
         voices = engine.getProperty('voices')
         v_id_current = 0   # David
-        engine.setProperty('voice', voices[v_id_current].id)   
+        engine.setProperty('voice', voices[v_id_current].id)
         engine.setProperty('rate', 160)
         while not self.v_quit:
             # check if the voice ID changed
             if self.v_id != v_id_current:
                 v_id_current = self.v_id
                 try:
-                    engine.setProperty('voice', voices[v_id_current].id) 
-                except:
-                    print("Voice ID out of range")
+                    engine.setProperty('voice', voices[v_id_current].id)
+                except Exception:
+                    self._log_voice_error(v_id_current, len(voices))
+                    v_id_current = 0
+                    engine.setProperty('voice', voices[v_id_current].id)
                            
             try:
                 words = self.q.get(timeout=1)

@@ -30,12 +30,28 @@ class EDStationServicesInShip:
         self.keys = keys
         self.ap_ckb = cb
         self.status_parser = StatusParser()
-        self.market_parser = MarketParser()
+        self.market_parser = MarketParser(log_func=self.ap.log_ui)
+        self.log_keys = getattr(self.ap, 'LOG_KEYS', {})
+        self.voice_keys = getattr(self.ap, 'VOICE_KEYS', {})
         # The rect is top left x, y, and bottom right x, y in fraction of screen resolution
         self.reg = {'connected_to': {'rect': [0.0, 0.0, 0.25, 0.25]},
                     'stn_svc_layout': {'rect': [0.05, 0.40, 0.60, 0.76]},
                     'commodities_market': {'rect': [0.0, 0.0, 0.25, 0.25]},
                     }
+
+    def _log(self, key_name: str, **kwargs):
+        key = self.log_keys.get(key_name)
+        if not key:
+            logger.warning(f"Missing station services log key: {key_name}")
+            return ''
+        return self.ap.log_ui(key, **kwargs)
+
+    def _log_and_speak(self, key_name: str, **kwargs):
+        text = self._log(key_name, **kwargs)
+        voice_key = self.voice_keys.get(key_name)
+        if voice_key:
+            self.ap.speak_ui(voice_key, **kwargs)
+        return text
 
     def goto_station_services(self) -> bool:
         """ Goto Station Services. """
@@ -111,7 +127,8 @@ class EDStationServicesInShip:
         # Determine if station sells the commodity!
         self.market_parser.get_market_data()
         if not self.market_parser.can_buy_item(name):
-            self.ap_ckb('log+vce', f"'{name}' is not sold or has no stock at {self.market_parser.get_market_name()}.")
+            self._log_and_speak('TRADE_MARKET_NOT_SELLING', commodity=name,
+                                market=self.market_parser.get_market_name())
             logger.debug(f"Item '{name}' is not sold or has no stock at {self.market_parser.get_market_name()}.")
             return False, 0
 
@@ -149,7 +166,7 @@ class EDStationServicesInShip:
             sleep(0.5)  # give time to popup
             keys.send('UI_Up', repeat=2)  # go up to quantity to buy (may not default to this)
             # Log the planned quantity
-            self.ap_ckb('log+vce', f"Buying {act_qty} units of {name}.")
+            self._log_and_speak('TRADE_BUYING_QUANTITY', quantity=act_qty, commodity=name)
             logger.info(f"Attempting to buy {act_qty} units of {name}")
             # Increment count
             if qty >= 9999 or qty >= stock or qty >= free_cargo:
@@ -180,7 +197,8 @@ class EDStationServicesInShip:
         # Determine if station buys the commodity!
         self.market_parser.get_market_data()
         if not self.market_parser.can_sell_item(name):
-            self.ap_ckb('log+vce', f"'{name}' is not bought at {self.market_parser.get_market_name()}.")
+            self._log_and_speak('TRADE_MARKET_NOT_BUYING', commodity=name,
+                                market=self.market_parser.get_market_name())
             logger.debug(f"Item '{name}' is not bought at {self.market_parser.get_market_name()}.")
             return False, 0
 
@@ -211,11 +229,11 @@ class EDStationServicesInShip:
 
             # Log the planned quantity
             if qty >= 9999:
-                self.ap_ckb('log+vce', f"Selling all our units of {name}.")
+                self._log_and_speak('TRADE_SELLING_ALL', commodity=name)
                 logger.info(f"Attempting to sell all our units of {name}")
                 keys.send("UI_Right", hold=4)
             else:
-                self.ap_ckb('log+vce', f"Selling {act_qty} units of {name}.")
+                self._log_and_speak('TRADE_SELLING_QUANTITY', quantity=act_qty, commodity=name)
                 logger.info(f"Attempting to sell {act_qty} units of {name}")
                 keys.send('UI_Left', hold=4.0)  # Clear quantity to 0
                 keys.send("UI_Right", hold=0.04, repeat=act_qty)
