@@ -110,6 +110,9 @@ class APGui():
 
         self.language_var = tk.StringVar(master=self.root, value=self.localization.language)
 
+        # Ensure the overlay uses the same language as the GUI at startup
+        self.ed_ap.set_ui_language(self.localization.language)
+
         root.title(self._t('ui.window.title', version=EDAP_VERSION))
         # root.overrideredirect(True)
         # root.geometry("400x550")
@@ -985,7 +988,8 @@ class APGui():
             )
             return
         self.language_var.set(lang)
-        self.ed_ap.config['Language'] = lang
+        if not self.ed_ap.set_ui_language(lang):
+            logger.warning(f"Failed to propagate language '{lang}' to overlay localization.")
         self.refresh_ui_texts()
         self.log_msg(self._t('ui.log.language_switched', language=self._language_display_name(lang)))
 
