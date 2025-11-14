@@ -2216,6 +2216,7 @@ class EDAutopilot:
 
         # if no error, we must have gotten disengage
         if not align_failed and do_docking:
+            self._post_sc_drop_alignment(scr_reg)
             sleep(4)  # wait for the journal to catch up
 
             # Check if this is a target we cannot dock at
@@ -2250,6 +2251,25 @@ class EDAutopilot:
             self.ap_ckb('log', "Supercruise dropped, terminating SC Assist")
 
         self.ap_ckb('log+vce', "Supercruise Assist complete")
+
+    def _post_sc_drop_alignment(self, scr_reg):
+        """Align on the compass target and boost once after supercruise drop."""
+        if not self.have_destination(scr_reg):
+            return
+
+        ship_status = self.jn.ship_state()['status']
+        if ship_status not in ('in_space', 'in_supercruise'):
+            return
+
+        self.ap_ckb('log', 'Post-drop Compass Align')
+        try:
+            self.nav_align(scr_reg)
+        except Exception:
+            logger.debug('Unable to execute post-drop align', exc_info=True)
+            return
+
+        self.ap_ckb('log', 'Post-drop Boost')
+        self.keys.send('UseBoostJuice')
 
     def robigo_assist(self):
         self.robigo.loop(self)
