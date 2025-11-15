@@ -38,18 +38,27 @@ class LocalizationManager:
 
         All json files should have the same keys. If not, an exception is raised.
         """
-        keys = []
+        keys = {}
 
-        # Add a list of all keys to a list
+        # Capture each language's key set.
         for language in self.available_languages:
             with open(f"{self.folder_path}/{language}.json", "r", encoding='utf-8') as file:
                 data = json.load(file)
-                keys.append(list(data.keys()))
+                keys[language] = set(data.keys())
 
-        # Compare the keys of the first language with the others
-        for i in range(1, len(keys)):
-            if keys[i] != keys[i - 1]:
-                raise Exception("The localization files have different keys. Make sure they are all the same.")
+        if not keys:
+            return
+
+        iterator = iter(keys.items())
+        reference_language, reference_keys = next(iterator)
+        for language, language_keys in iterator:
+            if language_keys != reference_keys:
+                missing = sorted(reference_keys - language_keys)
+                extra = sorted(language_keys - reference_keys)
+                raise Exception(
+                    "The localization files have different keys. "
+                    f"Language '{language}' missing: {missing}; extra: {extra}."
+                )
 
     def __getitem__(self, key: str) -> str:
         """Get the localized string for the specified key.
