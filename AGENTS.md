@@ -433,6 +433,70 @@ The GUI log panel receives text exclusively via log_ui.
 8.3 No Direct print() Allowed Anywhere
 Every output must go through:
 
+### UI/Logging Language vs Game Language (for OCR) – DO NOT MIX
+
+The project has two independent language controls in the GUI:
+
+1. **UI / Logging language**
+   - Selected from the top menu: `Help → Language → English / Українська` (and others in the future).
+   - Drives `LocalizationManager`:
+     - Tkinter UI labels, menus, dialogs
+     - GUI log panel text
+     - voice/TTS messages
+   - This is the *interface* language only.
+
+2. **Game language (for OCR)**
+   - Selected in the main settings panel: radio buttons
+     - `Game language (for OCR): English / Русский`
+   - Drives ONLY OCR behavior:
+     - which HUD text PaddleOCR is expected to see
+     - which OCR tokens (e.g. `ocr.system_map.cartographics`) are used.
+   - Current valid values: `"en"` and `"ru"` only.
+
+**Hard rules:**
+
+- Changing UI/Logging language MUST NOT change OCR targets.
+- OCR targets depend ONLY on the "Game language (for OCR)" setting.
+- Locale JSON files may contain technical OCR keys like:
+  - `ocr.system_map.cartographics`
+  - `ocr.galaxy_map.cartographics`
+  but their values are **not translated** per UI language.
+- For Cartographics, the value MUST remain the HUD token used by the game, currently:
+  ```json
+  "ocr.system_map.cartographics": "CARTOGRAPHICS",
+  "ocr.galaxy_map.cartographics": "CARTOGRAPHICS"
+
+### Planned feature: UI voice selection (DO NOT IMPLEMENT YET)
+
+In the future, the GUI will expose a **voice selection control** so the user can choose
+between different TTS voices/variants to read localized log messages from the locale
+JSON files.
+
+Current state (must be preserved):
+
+- There is **no UI control** for voice selection yet.
+- Voice choice is handled internally by `Voice.py` based on:
+  - configuration (e.g. language / voice id),
+  - and available pyttsx3 / optional ukrainian-tts voices.
+- The GUI only controls:
+  - UI/Logging language (LocalizationManager),
+  - Game language (for OCR).
+
+Agent rules:
+
+- DO NOT add new UI elements (comboboxes, menus, radio buttons) for voice selection
+  unless explicitly requested by the user.
+- DO NOT change existing config files or schemas to add new voice-selection fields
+  unless explicitly requested.
+- You MAY:
+  - keep internal code structured so that a future voice selector can call into
+    `Voice.py` (e.g. via `VoiceLanguage` / `VoiceID`), 
+  - but you MUST NOT design or wire a new UI/UX flow for this feature now.
+
+This feature is planned but **out of scope** for current tasks; any implementation
+must be triggered by an explicit user request.
+
+
 _log()
 
 log_ui()
