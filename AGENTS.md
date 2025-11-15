@@ -28,6 +28,7 @@ The system integrates UI, OCR, TTS, logs, and automation layers that must be uni
 
 ### 3.1 Do Not Break Logic
 All agents must preserve original project behavior:
+
 - flight automation logic  
 - keybind interaction  
 - event timing  
@@ -66,11 +67,11 @@ Agents must not introduce new arbitrary external dependencies. Only these packag
 
 A single **explicit exception** is allowed for high-quality Ukrainian TTS:
 
-- `ukrainian-tts` — GitHub: `https://github.com/robinhad/ukrainian-tts`  :contentReference[oaicite:0]{index=0}  
+- `ukrainian-tts` — GitHub: `https://github.com/robinhad/ukrainian-tts`
 
 Rules for using this dependency:
 
-1. It may be used **only** inside the voice subsystem (Voice.py or a dedicated TTS adapter module used by Voice.py).  
+1. It may be used **only** inside the voice subsystem (`Voice.py` or a dedicated TTS adapter module used by `Voice.py`).  
 2. It is part of **TASK 3 — Ukrainian Voice System** (see below).  
 3. Integration must be strictly optional:
    - If `ukrainian_tts` cannot be imported, the system must fall back to **pyttsx3** without breaking.  
@@ -96,15 +97,15 @@ with open("test.wav", mode="wb") as f:
 Any other new dependency (not listed above) remains forbidden.
 
 3.4 DRY + KISS Across All Contributions
-Avoid repetition of UI/log/TTS strings
+Avoid repetition of UI/log/TTS strings.
 
-Replace duplicated logic with helper functions
+Replace duplicated logic with helper functions.
 
-Prefer small composable functions
+Prefer small composable functions.
 
-Avoid complex abstractions, inheritance, or dynamic magic
+Avoid complex abstractions, inheritance, or dynamic magic.
 
-Keep code readable and predictable
+Keep code readable and predictable.
 
 4. Task System (Mandatory Workflow)
 Agents may only work within one task at a time.
@@ -115,75 +116,74 @@ Goal: Achieve 100% localized UI, error dialogs, button labels, tooltips, and win
 
 Required actions:
 
-Extract all UI text from EDAPGui.py into JSON locale files
+Extract all UI text from EDAPGui.py into JSON locale files.
 
-Integrate LocalizationManager everywhere in the GUI
+Integrate LocalizationManager everywhere in the GUI.
 
-Implement EN/UA/RU language switch
+Implement EN/UA/RU language switch.
 
-Patch layout for long strings
+Patch layout for long strings.
 
-Remove hardcoded English fallback behavior
+Remove hardcoded English fallback behavior.
 
-Validate every _t() key exists in all locale files
+Validate every _t() key exists in all locale files.
 
 Non-goals:
 
-No UI redesign
+No UI redesign.
 
-No functional changes
+No functional changes.
 
 TASK 2 — Full OCR Localization & Russian OCR Support
 Required actions:
 
-Move OCR trigger phrases into locale files
+Move OCR trigger phrases into locale files.
 
-Ensure OCRLanguage flows correctly into PaddleOCR
+Ensure OCRLanguage flows correctly into PaddleOCR.
 
-Rebuild OCR dictionaries for UA/RU accuracy
+Rebuild OCR dictionaries for UA/RU accuracy.
 
-Replace English fallback parsing text
+Replace English fallback parsing text.
 
-Synchronize all OCR-related JSON keys
+Synchronize all OCR-related JSON keys.
 
 Non-goals:
 
-No adding alternative OCR engines
+No adding alternative OCR engines.
 
-No changing OCR scanning timings
+No changing OCR scanning timings.
 
 TASK 3 — Ukrainian Voice System
-This task has two layers:
+This task has two layers.
 
 3.1 Baseline pyttsx3 Voice System
 Required actions:
 
-Add full uk.json coverage for all TTS messages
+Add full uk.json coverage for all TTS messages.
 
-Move all voice templates (phrases sent to TTS) into locale JSON
+Move all voice templates (phrases sent to TTS) into locale JSON.
 
-Add VoiceLanguage and VoiceID selection logic
+Add VoiceLanguage and VoiceID selection logic.
 
-Auto-select appropriate pyttsx3 voice for each language
+Auto-select appropriate pyttsx3 voice for each language.
 
-Ensure all voice-related errors, warnings and test phrases are localized
+Ensure all voice-related errors, warnings and test phrases are localized.
 
 Non-goals:
 
-No replacement of pyttsx3 backend
+No replacement of pyttsx3 backend.
 
-No new audio engines other than the explicit exception below
+No new audio engines other than the explicit exception below.
 
 3.2 Optional Neural Ukrainian TTS (ukrainian-tts)
 Goal: Provide a high-quality neural Ukrainian TTS while keeping pyttsx3 as a safe fallback.
 
 Library:
 
-ukrainian-tts (GitHub: https://github.com/robinhad/ukrainian-tts) 
-GitHub
+ukrainian-tts (GitHub: https://github.com/robinhad/ukrainian-tts)
 
 3.2.1 Integration Constraints
-Do not break existing Voice API
+Do not break existing Voice API.
 
 The public interface (e.g. Voice.say(text_key, **params)) must stay the same.
 
@@ -203,7 +203,7 @@ Lazy Initialization
 
 The ukrainian-tts engine must be initialized lazily to avoid slow startup:
 
-create a small internal adapter (e.g. _UkrainianNeuralEngine)
+create a small internal adapter (e.g. _UkrainianNeuralEngine),
 
 instantiate TTS only on first Ukrainian utterance when the feature is enabled.
 
@@ -233,8 +233,7 @@ Stress mode (Stress.Dictionary, etc.) must be chosen in one function and must no
 
 Licensing & Attribution
 
-The library is MIT-licensed. The code must not embed large parts of the library itself. 
-GitHub
+The library is MIT-licensed. The code must not embed large parts of the library itself.
 
 A short note may be added in README to credit ukrainian-tts and its author.
 
@@ -248,24 +247,24 @@ Do not hardcode paths to models; rely on how ukrainian-tts manages its own asset
 TASK 4 — Final Cleanup & Architecture Consistency
 Required actions:
 
-Remove unused imports
+Remove unused imports.
 
-Add new explanatory comments (author comments unchanged)
+Add new explanatory comments (author comments unchanged).
 
-Validate locale structure
+Validate locale structure.
 
-Ensure no English text bypasses LocalizationManager
+Ensure no English text bypasses LocalizationManager.
 
-Generate a final technical summary of localization/TTS/OCR state
+Generate a final technical summary of localization/TTS/OCR state.
 
 Non-goals:
 
-No large-scale file restructuring
+No large-scale file restructuring.
 
-No rewriting features
+No rewriting features.
 
 5. Localization Compliance Rules (Mandatory)
-5.1 All messages must use locale keys
+5.1 All Messages Must Use Locale Keys
 This includes:
 
 GUI buttons
@@ -327,7 +326,7 @@ concise
 stable
 
 5.3 Parameterized Strings
-Use placeholders for all dynamic strings:
+Use placeholders for all dynamic strings, for example:
 
 json
 Копіювати код
@@ -356,7 +355,7 @@ logger.debug("raw English text")
 direct English strings
 
 6. Diagnostics, Debugging & Fallback Behavior
-6.1 Debug logs must be localized too
+6.1 Debug Logs Must Be Localized Too
 All debug-level messages must go through localization.
 
 Forbidden:
@@ -369,7 +368,7 @@ Correct:
 python
 Копіювати код
 log_ui("log.trade.debug_plan_buy", qty=5, item="Water")
-6.2 Voice fallback messages
+6.2 Voice Fallback Messages
 Absolutely all fallback text in Voice.py must be in JSON:
 
 missing voice
@@ -382,7 +381,7 @@ demo phrases
 
 neural TTS import/init/synthesis errors
 
-6.3 Parser fallback error messages
+6.3 Parser Fallback Error Messages
 All parsers (MarketParser, CargoParser, NavRouteParser, StatusParser) must move fallback text into locale files.
 
 Forbidden:
@@ -404,13 +403,13 @@ EDWayPoint.py	JSON validation messages, fallback warnings	🔴 High
 EDStationServicesInShip.py	trading debug & diagnostic logs	🔴 High
 Parsers (Market, Cargo, NavRoute, Status)	I/O errors, retry text, fallback templates	🟠 Medium
 Screen.py	window detection/focus errors	🟠 Medium
-Voice.py	fallback text, pronunciation rules, Ukrainian neural TTS integration	🟠 Medium
+Voice.py	fallback text, pronunciation rules, UA neural TTS	🟠 Medium
 Robigo.py	scenario text, status prints	🟡 Low
 
 Agents must resolve high-priority modules first.
 
 8. TTS / OCR / GUI Interaction Rules
-8.1 TTS always receives translated strings
+8.1 TTS Always Receives Translated Strings
 No English parameters may be passed into TTS:
 
 planet types
@@ -421,17 +420,17 @@ warnings
 
 autopilot states
 
-Instead of raw text (“Earth”, “Water”), agents must pass localization keys:
+Instead of raw text ("Earth", "Water"), agents must pass localization keys:
 
 text
 Копіювати код
 world.earth
 world.water
 world.ammonia
-8.2 No English output allowed in GUI log panel
+8.2 No English Output in GUI Log Panel
 The GUI log panel receives text exclusively via log_ui.
 
-8.3 No direct print() allowed anywhere
+8.3 No Direct print() Allowed Anywhere
 Every output must go through:
 
 _log()
@@ -460,19 +459,41 @@ configs/AP.json — ensure config linkage
 README.md — document new keys/features and optional ukrainian-tts support
 
 10. Output Requirements for All Agent Work
-Agents must always produce:
+Agents must always:
 
-Clear and minimal explanations
+Be clear and minimal in explanations.
 
-Focused context: only related code
+Focus on the relevant code and context only.
 
-Strict diffs in fenced ```diff blocks
+Use professional formatting.
 
-Full functions if modified
+Avoid unnecessary verbosity.
 
-Professional formatting
+10.1 Environments With Direct Repository Write Access
+If your runtime environment provides tools to edit files directly (for example, apply_edit, write_file, or similar):
 
-No unnecessary words
+You MUST apply safe, small, task-aligned changes directly to the project files.
+
+You should treat diffs as a reporting tool, not as your primary output.
+
+After editing, respond with:
+
+a short summary of what changed,
+
+the list of edited files and functions,
+
+optionally a small, focused diff snippet for human review.
+
+10.2 Environments Without Direct Write Access
+If your environment is effectively read-only and cannot modify files:
+
+Produce strict unified diffs in fenced ```diff code blocks.
+
+Include full functions if they were modified.
+
+Keep the diff minimal and tightly scoped to the described task.
+
+This document regulates what may be changed; whether you apply edits directly or output diffs depends on the capabilities of your environment.
 
 11. Safety & Logic Integrity Rules
 The following must NEVER be modified:
@@ -497,7 +518,7 @@ string keys
 
 debug/log behavior
 
-TTS output (including adding optional neural Ukrainian TTS)
+TTS output (including adding optional Ukrainian neural TTS)
 
 comments
 
@@ -508,15 +529,21 @@ But cannot interfere with core automation.
 12. When Agents Are Unsure
 Agents must:
 
-Ask for clarification
+Ask for clarification.
 
-Request the specific file
+Request the specific file.
 
-Avoid guessing behavior
+Avoid guessing core behavior.
 
-Never generate incomplete assumptions
+Never generate incomplete or speculative changes to core logic.
 
-13. End of Extended AGENTS.md
-makefile
-Копіювати код
-::contentReference[oaicite:3]{index=3}
+13. Repository Write Access Clarification
+If you are a tool-enabled agent (e.g. Codex or similar) with full read/write access to this repository:
+
+You are explicitly allowed to modify project files in-place, as long as you fully respect all rules in this AGENTS.md.
+
+You should prefer applying changes directly over merely suggesting them, unless the higher-level system explicitly restricts you to suggestions.
+
+All edits must remain small, localized, and aligned with the currently active TASK (1–4).
+
+14. End of Extended AGENTS.md
