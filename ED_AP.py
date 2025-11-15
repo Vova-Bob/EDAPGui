@@ -108,6 +108,30 @@ VOICE_MESSAGE_KEYS = {
     'SHIELDS_DOWN': 'voice.warning.shields_down',
     'FIGHTER_DESTROYED': 'voice.warning.fighter_destroyed',
     'AFK_COMBAT_TERMINATE': 'voice.afk_combat.terminate',
+    'WAYPOINT_NO_FILE_LOADED': 'voice.waypoint.no_file_loaded',
+    'WAYPOINT_LIST_COMPLETED': 'voice.waypoint.list_completed',
+    'WAYPOINT_NEXT': 'voice.waypoint.next',
+    'WAYPOINT_ALREADY_IN_SYSTEM': 'voice.waypoint.already_in_system',
+    'WAYPOINT_SYSTEM_ALREADY_TARGETED': 'voice.waypoint.system_already_targeted',
+    'WAYPOINT_TARGETING_SYSTEM': 'voice.waypoint.targeting_system',
+    'WAYPOINT_TARGET_FAILED': 'voice.waypoint.target_failed',
+    'WAYPOINT_JUMPING': 'voice.waypoint.jumping',
+    'WAYPOINT_ALREADY_AT_STATION': 'voice.waypoint.already_at_station',
+    'WAYPOINT_TARGETING_STATION': 'voice.waypoint.targeting_station',
+    'WAYPOINT_GALAXY_BOOKMARK_FAILED': 'voice.waypoint.galaxy_bookmark_failed',
+    'WAYPOINT_SYSTEM_BOOKMARK_FAILED': 'voice.waypoint.system_bookmark_failed',
+    'WAYPOINT_NO_BOOKMARK_SUPPORT': 'voice.waypoint.no_bookmark_support',
+    'WAYPOINT_SYSTEM_ARRIVED': 'voice.waypoint.system_arrived',
+    'WAYPOINT_EXECUTE_TRADE': 'voice.waypoint.execute_trade',
+    'WAYPOINT_CURRENT_COMPLETE': 'voice.waypoint.current_complete',
+    'WAYPOINT_ROUTE_COMPLETE': 'voice.waypoint.route_complete',
+    'WAYPOINT_ROUTE_ABORTED': 'voice.waypoint.route_aborted',
+    'TRADE_DOWNLOAD_MARKET_DATA': 'voice.trade.download_market_data',
+    'TRADE_MARKET_NOT_SELLING': 'voice.trade.market_not_selling',
+    'TRADE_BUYING_QUANTITY': 'voice.trade.buying_quantity',
+    'TRADE_MARKET_NOT_BUYING': 'voice.trade.market_not_buying',
+    'TRADE_SELLING_ALL': 'voice.trade.selling_all',
+    'TRADE_SELLING_QUANTITY': 'voice.trade.selling_quantity',
 }
 
 LOG_MESSAGE_KEYS = {
@@ -165,6 +189,49 @@ LOG_MESSAGE_KEYS = {
     'SHIP_WARNING_STANDARD_DC': 'log.ship.warning_standard_dc',
     'AUTOPILOT_MANEUVERING': 'log.autopilot.maneuvering',
     'WARNING_INTERDICTION': 'log.warning.interdiction',
+    'WAYPOINT_FILE_LOADED': 'log.waypoint.file_loaded',
+    'WAYPOINT_FILE_INVALID': 'log.waypoint.file_invalid',
+    'WAYPOINT_NO_FILE_LOADED': 'log.waypoint.no_file_loaded',
+    'WAYPOINT_FILE_SELECTED': 'log.waypoint.file_selected',
+    'WAYPOINT_LIST_COMPLETED': 'log.waypoint.list_completed',
+    'WAYPOINT_NEXT': 'log.waypoint.next',
+    'WAYPOINT_ALREADY_IN_SYSTEM': 'log.waypoint.already_in_system',
+    'WAYPOINT_SYSTEM_ALREADY_TARGETED': 'log.waypoint.system_already_targeted',
+    'WAYPOINT_TARGETING_SYSTEM': 'log.waypoint.targeting_system',
+    'WAYPOINT_SYSTEM_TARGETED': 'log.waypoint.system_targeted',
+    'WAYPOINT_TARGET_FAILED': 'log.waypoint.target_failed',
+    'WAYPOINT_JUMPING': 'log.waypoint.jumping',
+    'WAYPOINT_JUMP_FAILED': 'log.waypoint.jump_failed',
+    'WAYPOINT_ALREADY_AT_STATION': 'log.waypoint.already_at_station',
+    'WAYPOINT_TARGETING_STATION': 'log.waypoint.targeting_station',
+    'WAYPOINT_GALAXY_BOOKMARK_FAILED': 'log.waypoint.galaxy_bookmark_failed',
+    'WAYPOINT_SYSTEM_BOOKMARK_FAILED': 'log.waypoint.system_bookmark_failed',
+    'WAYPOINT_NO_BOOKMARK_SUPPORT': 'log.waypoint.no_bookmark_support',
+    'WAYPOINT_SYSTEM_ARRIVED': 'log.waypoint.system_arrived',
+    'WAYPOINT_EXECUTE_TRADE': 'log.waypoint.execute_trade',
+    'WAYPOINT_CURRENT_COMPLETE': 'log.waypoint.current_complete',
+    'WAYPOINT_ROUTE_COMPLETE': 'log.waypoint.route_complete',
+    'WAYPOINT_ROUTE_ABORTED': 'log.waypoint.route_aborted',
+    'ROBIGO_NO_MISSIONS': 'log.robigo.no_missions',
+    'ROBIGO_RETRY_SUPERCRUISE': 'log.robigo.retry_supercruise',
+    'ROBIGO_LOOP_STATS': 'log.robigo.loop_stats',
+    'WAYPOINT_NO_COMMODITIES_MARKET': 'log.trade.no_commodities_market',
+    'WAYPOINT_NO_STATION_SERVICES': 'log.trade.no_station_services',
+    'WAYPOINT_TRADE_COLONISATION': 'log.trade.colonisation',
+    'WAYPOINT_TRADE_CONSTRUCTION': 'log.trade.construction',
+    'WAYPOINT_TRADE_GENERIC': 'log.trade.generic',
+    'TRADE_DOWNLOAD_MARKET_DATA': 'log.trade.download_market_data',
+    'TRADE_MARKET_NOT_SELLING': 'log.trade.market_not_selling',
+    'TRADE_BUYING_QUANTITY': 'log.trade.buying_quantity',
+    'TRADE_MARKET_NOT_BUYING': 'log.trade.market_not_buying',
+    'TRADE_SELLING_ALL': 'log.trade.selling_all',
+    'TRADE_SELLING_QUANTITY': 'log.trade.selling_quantity',
+    'MARKET_READ_ERROR': 'log.market.read_error',
+    'CARGO_READ_ERROR': 'log.cargo.read_error',
+    'NAVROUTE_READ_ERROR': 'log.navroute.read_error',
+    'STATUS_RETRY_ATTEMPT': 'log.status.retry_attempt',
+    'SCREEN_WINDOW_NOT_FOUND': 'log.screen.window_not_found',
+    'VOICE_ID_OUT_OF_RANGE': 'log.voice.id_out_of_range',
 }
 
 class EDAutopilot:
@@ -223,6 +290,7 @@ class EDAutopilot:
             "DebugOverlay": False,
         }
         self.supported_ocr_languages = ('en', 'ru')
+        self.ap_ckb = cb
         # NOTE!!! When adding a new config value above, add the same after read_config() to set
         # a default value or an error will occur reading the new value!
 
@@ -308,7 +376,7 @@ class EDAutopilot:
             self.write_ship_configs(self.ship_configs)
 
         # config the voice interface
-        self.vce = Voice()
+        self.vce = Voice(log_func=self.log_ui)
         self.vce.v_enabled = self.config['VoiceEnable']
         self.vce.set_voice_id(self.config['VoiceID'])
         self.speak_ui('voice.autopilot.welcome')
@@ -332,7 +400,7 @@ class EDAutopilot:
         # Create instance of each of the needed Classes
         self.gfx_settings = EDGraphicsSettings()
 
-        self.scr = Screen.Screen(cb)
+        self.scr = Screen.Screen(cb, log_func=self.log_ui)
         self.scr.scaleX = self.config['TargetScale']
         self.scr.scaleY = self.config['TargetScale']
 
@@ -346,7 +414,7 @@ class EDAutopilot:
         self.waypoint = EDWayPoint(self, self.jn.ship_state()['odyssey'])
         self.robigo = Robigo(self)
         self.status = StatusParser()
-        self.nav_route = NavRouteParser()
+        self.nav_route = NavRouteParser(log_func=self.log_ui)
         self.ship_control = EDShipControl(self, self.scr, self.keys, cb)
         self.internal_panel = EDInternalStatusPanel(self, self.scr, self.keys, cb)
         self.galaxy_map = EDGalaxyMap(self, self.scr, self.keys, cb, self.jn.ship_state()['odyssey'])
@@ -379,8 +447,6 @@ class EDAutopilot:
         self.refuel_cnt = 0
         self.current_ship_type = None
         self.gui_loaded = False
-
-        self.ap_ckb = cb
 
         # Overlay vars
         self.ap_state = "Idle"

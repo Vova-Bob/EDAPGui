@@ -48,8 +48,9 @@ def set_focus_elite_window():
 
 
 class Screen:
-    def __init__(self, cb):
+    def __init__(self, cb, log_func=None):
         self.ap_ckb = cb
+        self.log_func = log_func
         self.mss = mss.mss()
         self.using_screen = True  # True to use screen, false to use an image. Set screen_image to the image
         self._screen_image = None  # Screen image captured from screen, or loaded by user for testing.
@@ -57,7 +58,11 @@ class Screen:
         # Find ED window position to determine which monitor it is on
         ed_rect = self.get_elite_window_rect()
         if ed_rect is None:
-            self.ap_ckb('log', f"ERROR: Could not find window {elite_dangerous_window}.")
+            if callable(self.log_func):
+                self.log_func('log.screen.window_not_found', level='error',
+                               window=elite_dangerous_window)
+            elif self.ap_ckb is not None:
+                self.ap_ckb('log', f"ERROR: Could not find window {elite_dangerous_window}.")
             logger.error(f'Could not find window {elite_dangerous_window}.')
         else:
             logger.debug(f'Found Elite Dangerous window position: {ed_rect}')

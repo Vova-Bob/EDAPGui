@@ -110,7 +110,7 @@ class Robigo:
 
         # we don't have any missions to complete as the screen did not change
         if found:
-            print("no missions to complete")
+            ap.log_ui(ap.LOG_KEYS['ROBIGO_NO_MISSIONS'])
             ap.keys.send("UI_Left")
             return
 
@@ -255,7 +255,7 @@ class Robigo:
             # takes about 10-22 sec to acknowledge missions
             sleep(15)
             if ap.jn.ship_state()['mission_redirected'] == 0:
-                print("Didnt make it to sirius atmos, should SC again")     
+                ap.log_ui(ap.LOG_KEYS['ROBIGO_RETRY_SUPERCRUISE'], level='warning')
 
             self.mission_redirected = ap.jn.ship_state()['mission_redirected']
              
@@ -410,7 +410,11 @@ class Robigo:
                 starttime = time.time()
                 loop_cnt += 1
                 if loop_cnt != 0:
-                    ap.ap_ckb('log',"Loop: "+str(loop_cnt)+" Time: "+  time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
+                    ap.log_ui(
+                        ap.LOG_KEYS['ROBIGO_LOOP_STATS'],
+                        loop=loop_cnt,
+                        duration=time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
+                    )
                 
                 self.state = STATE_MISSIONS
                 if self.do_single_loop == True:  # we did one loop, return
