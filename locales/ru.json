@@ -393,5 +393,7 @@
     "voice.trade.buying_quantity": "Покупаю {quantity} ед. {commodity}.",
     "voice.trade.market_not_buying": "{commodity} не покупают на {market}.",
     "voice.trade.selling_all": "Продаю все единицы {commodity}.",
-    "voice.trade.selling_quantity": "Продаю {quantity} ед. {commodity}."
+    "voice.trade.selling_quantity": "Продаю {quantity} ед. {commodity}.",
+    "ocr.system_map.cartographics": "КАРТОГРАФИЯ",
+    "ocr.galaxy_map.cartographics": "КАРТОГРАФИЯ"
 }

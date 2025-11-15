@@ -393,5 +393,7 @@
     "voice.trade.buying_quantity": "Купую {quantity} од. {commodity}.",
     "voice.trade.market_not_buying": "{commodity} не купують на {market}.",
     "voice.trade.selling_all": "Продаю всі одиниці {commodity}.",
-    "voice.trade.selling_quantity": "Продаю {quantity} од. {commodity}."
+    "voice.trade.selling_quantity": "Продаю {quantity} од. {commodity}.",
+    "ocr.system_map.cartographics": "КАРТОГРАФІЯ",
+    "ocr.galaxy_map.cartographics": "КАРТОГРАФІЯ"
 }
