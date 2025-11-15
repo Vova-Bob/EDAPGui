@@ -1,0 +1,16 @@
+{
+    "ocr.supercruise.press_to_disengage": "Нажмите чтобы остановить",
+    "ocr.internal_panel.tab.modules": "Модули",
+    "ocr.internal_panel.tab.fire_groups": "Огневые группы",
+    "ocr.internal_panel.tab.ship": "Корабль",
+    "ocr.internal_panel.tab.inventory": "Снаряжение",
+    "ocr.internal_panel.tab.storage": "Хранилище",
+    "ocr.internal_panel.tab.status": "Статус",
+    "ocr.nav_panel.tab.navigation": "Навигация",
+    "ocr.nav_panel.tab.transactions": "Транзакции",
+    "ocr.nav_panel.tab.contacts": "Контакты",
+    "ocr.nav_panel.tab.target": "Цель",
+    "ocr.station_services.connected_to": "Пристыкован к",
+    "ocr.system_map.cartographics": "CARTOGRAPHICS",
+    "ocr.galaxy_map.cartographics": "CARTOGRAPHICS"
+}

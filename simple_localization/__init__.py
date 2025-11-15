@@ -1,1 +1,1 @@
-from .localization import LocalizationManager
+from .localization import LocalizationManager, OCRTokenManager

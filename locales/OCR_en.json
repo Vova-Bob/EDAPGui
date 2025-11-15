@@ -1,0 +1,16 @@
+{
+    "ocr.supercruise.press_to_disengage": "PRESS TO DISENGAGE",
+    "ocr.internal_panel.tab.modules": "MODULES",
+    "ocr.internal_panel.tab.fire_groups": "FIRE GROUPS",
+    "ocr.internal_panel.tab.ship": "SHIP",
+    "ocr.internal_panel.tab.inventory": "INVENTORY",
+    "ocr.internal_panel.tab.storage": "STORAGE",
+    "ocr.internal_panel.tab.status": "STATUS",
+    "ocr.nav_panel.tab.navigation": "NAVIGATION",
+    "ocr.nav_panel.tab.transactions": "TRANSACTIONS",
+    "ocr.nav_panel.tab.contacts": "CONTACTS",
+    "ocr.nav_panel.tab.target": "TARGET",
+    "ocr.station_services.connected_to": "CONNECTED TO",
+    "ocr.system_map.cartographics": "CARTOGRAPHICS",
+    "ocr.galaxy_map.cartographics": "CARTOGRAPHICS"
+}
