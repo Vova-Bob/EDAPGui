@@ -17,9 +17,28 @@ class EDGalaxyMap:
         self.keys = keys
         self.status_parser = StatusParser()
         self.ap_ckb = cb
+        self.log_keys = getattr(self.ap, 'LOG_KEYS', {})
+        self.ocr_tokens = getattr(self.ap, 'ocr_tokens', None)
         # The rect is top left x, y, and bottom right x, y in fraction of screen resolution
         self.reg = {'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
                     }
+
+    def _log(self, key_name: str, *, level: str = 'debug', **kwargs) -> str:
+        key = self.log_keys.get(key_name)
+        if not key:
+            logger.warning(f"Missing galaxy map log key: {key_name}")
+            return ''
+        text = self.ap._t(key, **kwargs)
+        self.ap._log_python(level, text)
+        return text
+
+    def _get_ocr_targets(self, key: str) -> list[str]:
+        value = ''
+        if self.ocr_tokens:
+            value = self.ocr_tokens.get(key, '') or ''
+        if not value:
+            return ["CARTOGRAPHICS"]
+        return [item.strip() for item in value.split('|') if item.strip()]
 
     def set_gal_map_dest_bookmark(self, ap, bookmark_type: str, bookmark_position: int) -> bool:
         """ Set the gal map destination using a bookmark.
@@ -126,7 +145,7 @@ class EDGalaxyMap:
 
         # type in the System name
         self.keys.type_ascii(target_name_uc, interval=0.25)
-        logger.debug(f"Entered system name: {target_name_uc}.")
+        self._log('GALAXY_MAP_ENTER_NAME', target=target_name_uc)
         sleep(0.05)
 
         # send enter key (removes focus out of input field)
@@ -151,7 +170,7 @@ class EDGalaxyMap:
             # Store the current nav route system
             last_nav_route_sys = ap.nav_route.get_last_system()
             last_nav_route_sys_uc = last_nav_route_sys.upper()
-            logger.debug(f"Previous Nav Route dest: {last_nav_route_sys_uc}.")
+            self._log('GALAXY_MAP_PREVIOUS_ROUTE', previous=last_nav_route_sys_uc)
 
             # Select first (or next) system
             ap.keys.send('UI_Select')  # Select >| button
@@ -171,27 +190,28 @@ class EDGalaxyMap:
             # if got passed through the ship() object, lets call it to see if a target has been
             # selected yet... otherwise we wait.  If long route, it may take a few seconds
             if ap.nav_route is not None:
-                logger.debug(f"Waiting for Nav Route to update.")
+                self._log('GALAXY_MAP_WAITING_UPDATE')
                 while 1:
                     curr_nav_route_sys = ap.nav_route.get_last_system()
                     curr_nav_route_sys_uc = curr_nav_route_sys.upper()
                     # Check if the nav route has been changed (right or wrong)
                     if curr_nav_route_sys_uc != last_nav_route_sys_uc:
-                        logger.debug(f"Nav Route dest changed from: {last_nav_route_sys_uc} to: {curr_nav_route_sys_uc}.")
+                        self._log('GALAXY_MAP_ROUTE_CHANGED', previous=last_nav_route_sys_uc,
+                                  current=curr_nav_route_sys_uc)
                         # Check if this nav route is correct
                         if curr_nav_route_sys_uc == target_name_uc:
-                            logger.debug(f"Nav Route correctly updated to {target_name_uc}.")
+                            self._log('GALAXY_MAP_ROUTE_CORRECT', target=target_name_uc)
                             # Break loop and exit
                             correct_route = True
                             break
                         else:
                             # Try the next system, go back to the search bar
-                            logger.debug(f"Nav Route updated with wrong target: {curr_nav_route_sys_uc}. Select next target.")
+                            self._log('GALAXY_MAP_ROUTE_WRONG', current=curr_nav_route_sys_uc)
                             ap.keys.send('UI_Up')
                             break
             else:
                 # Cannot check route, so assume right
-                logger.debug(f"Unable to check Nav Route, so assuming it is correct.")
+                self._log('GALAXY_MAP_ASSUME_CORRECT')
                 correct_route = True
 
         # Close Galaxy map
@@ -209,14 +229,14 @@ class EDGalaxyMap:
             return True
         else:
             # Error setting target
-            logger.warning("Error setting waypoint, breaking")
+            self._log('GALAXY_MAP_WAYPOINT_ERROR', level='warning')
             return False
 
     def goto_galaxy_map(self):
         """Open Galaxy Map if we are not there. Waits for map to load. Selects the search bar.
         """
         if self.status_parser.get_gui_focus() != GuiFocusGalaxyMap:
-            logger.debug("Opening Galaxy Map")
+            self._log('GALAXY_MAP_OPENING')
             # Goto cockpit view
             self.ap.ship_control.goto_cockpit_view()
             # Goto Galaxy Map
@@ -232,11 +252,11 @@ class EDGalaxyMap:
             scl_reg = reg_scale_for_station(self.reg['cartographics'], self.screen.screen_width,
                                             self.screen.screen_height)
 
-            # Wait for screen to appear. The text is the same, regardless of language.
-            res = self.ocr.wait_for_text(self.ap, ["CARTOGRAPHICS"], scl_reg)
+            carto_targets = self._get_ocr_targets('ocr.galaxy_map.cartographics')
+            res = self.ocr.wait_for_text(self.ap, carto_targets, scl_reg)
 
             self.keys.send('UI_Up')  # Go up to search bar
         else:
-            logger.debug("Galaxy Map is already open")
+            self._log('GALAXY_MAP_ALREADY_OPEN')
             self.keys.send('UI_Left', repeat=2)
             self.keys.send('UI_Up', hold=2)  # Go up to search bar. Allows 1 left to bookmarks.

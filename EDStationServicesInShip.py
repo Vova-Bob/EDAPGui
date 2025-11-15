@@ -25,7 +25,7 @@ class EDStationServicesInShip:
     def __init__(self, ed_ap, screen, keys, cb):
         self.ap = ed_ap
         self.ocr = ed_ap.ocr
-        self.ocr_locale = self.ap.ocr_locale
+        self.ocr_tokens = self.ap.ocr_tokens
         self.screen = screen
         self.keys = keys
         self.ap_ckb = cb
@@ -39,15 +39,15 @@ class EDStationServicesInShip:
                     'commodities_market': {'rect': [0.0, 0.0, 0.25, 0.25]},
                     }
 
-    def _log(self, key_name: str, **kwargs):
+    def _log(self, key_name: str, *, level: str = 'info', **kwargs):
         key = self.log_keys.get(key_name)
         if not key:
             logger.warning(f"Missing station services log key: {key_name}")
             return ''
-        return self.ap.log_ui(key, **kwargs)
+        return self.ap.log_ui(key, level=level, **kwargs)
 
-    def _log_and_speak(self, key_name: str, **kwargs):
-        text = self._log(key_name, **kwargs)
+    def _log_and_speak(self, key_name: str, *, level: str = 'info', **kwargs):
+        text = self._log(key_name, level=level, **kwargs)
         voice_key = self.voice_keys.get(key_name)
         if voice_key:
             self.ap.speak_ui(voice_key, **kwargs)
@@ -66,7 +66,7 @@ class EDStationServicesInShip:
         scl_reg = reg_scale_for_station(self.reg['connected_to'], self.screen.screen_width, self.screen.screen_height)
 
         # Wait for screen to appear
-        res = self.ocr.wait_for_text(self.ap, [self.ocr_locale["STN_SVCS_CONNECTED_TO"]], scl_reg)
+        res = self.ocr.wait_for_text(self.ap, [self.ocr_tokens["ocr.station_services.connected_to"]], scl_reg)
 
         # Store image
         # image = self.screen.get_screen_rect_pct(scl_reg['rect'])
@@ -129,7 +129,8 @@ class EDStationServicesInShip:
         if not self.market_parser.can_buy_item(name):
             self._log_and_speak('TRADE_MARKET_NOT_SELLING', commodity=name,
                                 market=self.market_parser.get_market_name())
-            logger.debug(f"Item '{name}' is not sold or has no stock at {self.market_parser.get_market_name()}.")
+            self._log('TRADE_MARKET_NOT_SELLING_DETAIL', commodity=name,
+                      market=self.market_parser.get_market_name(), level='debug')
             return False, 0
 
         # Find commodity in mar
@@ -142,7 +143,8 @@ class EDStationServicesInShip:
                 if value['Name_Localised'].upper() == name.upper():
                     index = i
                     stock = value['Stock']
-                    logger.debug(f"Execute trade: Buy {name} (want {qty} of {stock} avail.) at position {index + 1}.")
+                    self._log('TRADE_BUY_EXECUTE_DETAIL', commodity=name, target_qty=qty,
+                              available_qty=stock, position=index + 1, level='debug')
                     break
 
         # Actual qty we can sell
@@ -167,7 +169,7 @@ class EDStationServicesInShip:
             keys.send('UI_Up', repeat=2)  # go up to quantity to buy (may not default to this)
             # Log the planned quantity
             self._log_and_speak('TRADE_BUYING_QUANTITY', quantity=act_qty, commodity=name)
-            logger.info(f"Attempting to buy {act_qty} units of {name}")
+            self._log('TRADE_BUY_ATTEMPT', quantity=act_qty, commodity=name)
             # Increment count
             if qty >= 9999 or qty >= stock or qty >= free_cargo:
                 keys.send("UI_Right", hold=4)
@@ -199,7 +201,8 @@ class EDStationServicesInShip:
         if not self.market_parser.can_sell_item(name):
             self._log_and_speak('TRADE_MARKET_NOT_BUYING', commodity=name,
                                 market=self.market_parser.get_market_name())
-            logger.debug(f"Item '{name}' is not bought at {self.market_parser.get_market_name()}.")
+            self._log('TRADE_MARKET_NOT_BUYING_DETAIL', commodity=name,
+                      market=self.market_parser.get_market_name(), level='debug')
             return False, 0
 
         # Find commodity in market and return the index
@@ -211,7 +214,8 @@ class EDStationServicesInShip:
                 if value['Name_Localised'].upper() == name.upper():
                     index = i
                     demand = value['Demand']
-                    logger.debug(f"Execute trade: Sell {name} ({qty} of {demand} demanded) at position {index + 1}.")
+                    self._log('TRADE_SELL_EXECUTE_DETAIL', commodity=name, target_qty=qty,
+                              demand_qty=demand, position=index + 1, level='debug')
                     break
 
         # Qty we can sell. Unlike buying, we can sell more than the demand
@@ -230,11 +234,11 @@ class EDStationServicesInShip:
             # Log the planned quantity
             if qty >= 9999:
                 self._log_and_speak('TRADE_SELLING_ALL', commodity=name)
-                logger.info(f"Attempting to sell all our units of {name}")
+                self._log('TRADE_SELL_ALL_ATTEMPT', commodity=name)
                 keys.send("UI_Right", hold=4)
             else:
                 self._log_and_speak('TRADE_SELLING_QUANTITY', quantity=act_qty, commodity=name)
-                logger.info(f"Attempting to sell {act_qty} units of {name}")
+                self._log('TRADE_SELL_ATTEMPT', quantity=act_qty, commodity=name)
                 keys.send('UI_Left', hold=4.0)  # Clear quantity to 0
                 keys.send("UI_Right", hold=0.04, repeat=act_qty)
 
