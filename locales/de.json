@@ -293,6 +293,18 @@
     "log.navigation.target_occluded": "Target occluded, repositioning.",
     "log.navigation.targeting_system": "Targeting system {system}.",
     "log.navigation.target_system_failed": "Unable to target {system} in Galaxy Map.",
+    "log.system_map.opening": "Systemkarte wird geöffnet.",
+    "log.system_map.already_open": "Systemkarte ist bereits geöffnet.",
+    "log.galaxy_map.opening": "Galaxiekarte wird geöffnet.",
+    "log.galaxy_map.already_open": "Galaxiekarte ist bereits geöffnet.",
+    "log.galaxy_map.enter_name": "Systemname eingegeben: {target}.",
+    "log.galaxy_map.previous_route": "Vorheriges Routen-Ziel: {previous}.",
+    "log.galaxy_map.waiting_update": "Warte auf Aktualisierung der Route.",
+    "log.galaxy_map.route_changed": "Route wurde von {previous} auf {current} geändert.",
+    "log.galaxy_map.route_correct": "Route erfolgreich auf {target} aktualisiert.",
+    "log.galaxy_map.route_wrong": "Route auf falsches Ziel {current} aktualisiert. Wähle das nächste.",
+    "log.galaxy_map.assume_correct": "Route konnte nicht geprüft werden, nehme Korrektheit an.",
+    "log.galaxy_map.waypoint_error": "Fehler beim Setzen des Wegpunkts. Vorgang wird abgebrochen.",
     "log.warning.interdiction": "Interdiction detected.",
     "log.ship.switch": "Switched ship from your {previous} to your {new}.",
     "log.ship.welcome": "Welcome aboard your {ship}.",
@@ -393,5 +405,7 @@
     "log.waypoint.read_error": "Wegpunktdatei {filename} konnte nicht gelesen werden: {error}",
     "world.type.ammonia": "Ammoniak",
     "world.type.earth": "Erde",
-    "world.type.water": "Wasser"
+    "world.type.water": "Wasser",
+    "ocr.system_map.cartographics": "KARTOGRAPHIE",
+    "ocr.galaxy_map.cartographics": "KARTOGRAPHIE"
 }

@@ -293,6 +293,18 @@
     "log.navigation.target_occluded": "Target occluded, repositioning.",
     "log.navigation.targeting_system": "Targeting system {system}.",
     "log.navigation.target_system_failed": "Unable to target {system} in Galaxy Map.",
+    "log.system_map.opening": "Ouverture de la carte système.",
+    "log.system_map.already_open": "La carte système est déjà ouverte.",
+    "log.galaxy_map.opening": "Ouverture de la carte galactique.",
+    "log.galaxy_map.already_open": "La carte galactique est déjà ouverte.",
+    "log.galaxy_map.enter_name": "Nom du système saisi : {target}.",
+    "log.galaxy_map.previous_route": "Destination précédente de la route : {previous}.",
+    "log.galaxy_map.waiting_update": "En attente de la mise à jour de la route.",
+    "log.galaxy_map.route_changed": "Route modifiée de {previous} vers {current}.",
+    "log.galaxy_map.route_correct": "Route mise à jour sur {target}.",
+    "log.galaxy_map.route_wrong": "Route mise à jour vers la mauvaise cible {current}. Sélection de la suivante.",
+    "log.galaxy_map.assume_correct": "Impossible de vérifier la route, on suppose qu'elle est correcte.",
+    "log.galaxy_map.waypoint_error": "Erreur lors de la définition du point de route. Interruption.",
     "log.warning.interdiction": "Interdiction detected.",
     "log.ship.switch": "Switched ship from your {previous} to your {new}.",
     "log.ship.welcome": "Welcome aboard your {ship}.",
@@ -393,5 +405,7 @@
     "log.waypoint.read_error": "Impossible de lire le fichier de waypoints {filename} : {error}",
     "world.type.ammonia": "Ammoniaque",
     "world.type.earth": "Tellurique",
-    "world.type.water": "Aquatique"
+    "world.type.water": "Aquatique",
+    "ocr.system_map.cartographics": "CARTOGRAPHIE",
+    "ocr.galaxy_map.cartographics": "CARTOGRAPHIE"
 }

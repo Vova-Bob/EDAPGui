@@ -297,6 +297,18 @@
     "log.navigation.target_occluded": "Target occluded, repositioning.",
     "log.navigation.targeting_system": "Targeting system {system}.",
     "log.navigation.target_system_failed": "Unable to target {system} in Galaxy Map.",
+    "log.system_map.opening": "Відкриваю карту системи.",
+    "log.system_map.already_open": "Карта системи вже відкрита.",
+    "log.galaxy_map.opening": "Відкриваю карту галактики.",
+    "log.galaxy_map.already_open": "Карта галактики вже відкрита.",
+    "log.galaxy_map.enter_name": "Введено назву системи: {target}.",
+    "log.galaxy_map.previous_route": "Попередня ціль маршруту: {previous}.",
+    "log.galaxy_map.waiting_update": "Очікування оновлення маршруту.",
+    "log.galaxy_map.route_changed": "Маршрут змінено з {previous} на {current}.",
+    "log.galaxy_map.route_correct": "Маршрут успішно оновлено на {target}.",
+    "log.galaxy_map.route_wrong": "Маршрут оновлено на хибну ціль {current}. Обираю наступну.",
+    "log.galaxy_map.assume_correct": "Не вдалося перевірити маршрут, припускаю що все правильно.",
+    "log.galaxy_map.waypoint_error": "Помилка вибору точки маршруту. Перериваю дію.",
     "log.warning.interdiction": "Interdiction detected.",
     "log.ship.switch": "Switched ship from your {previous} to your {new}.",
     "log.ship.welcome": "Welcome aboard your {ship}.",
@@ -393,5 +405,7 @@
     "voice.trade.buying_quantity": "Купую {quantity} од. {commodity}.",
     "voice.trade.market_not_buying": "{commodity} не купують на {market}.",
     "voice.trade.selling_all": "Продаю всі одиниці {commodity}.",
-    "voice.trade.selling_quantity": "Продаю {quantity} од. {commodity}."
+    "voice.trade.selling_quantity": "Продаю {quantity} од. {commodity}.",
+    "ocr.system_map.cartographics": "КАРТОГРАФІЯ",
+    "ocr.galaxy_map.cartographics": "КАРТОГРАФІЯ"
 }

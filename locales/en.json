@@ -297,6 +297,18 @@
     "log.navigation.target_occluded": "Target occluded, repositioning.",
     "log.navigation.targeting_system": "Targeting system {system}.",
     "log.navigation.target_system_failed": "Unable to target {system} in Galaxy Map.",
+    "log.system_map.opening": "Opening System Map.",
+    "log.system_map.already_open": "System Map is already open.",
+    "log.galaxy_map.opening": "Opening Galaxy Map.",
+    "log.galaxy_map.already_open": "Galaxy Map is already open.",
+    "log.galaxy_map.enter_name": "Entered system name: {target}.",
+    "log.galaxy_map.previous_route": "Previous Nav Route destination: {previous}.",
+    "log.galaxy_map.waiting_update": "Waiting for Nav Route to update.",
+    "log.galaxy_map.route_changed": "Nav Route destination changed from {previous} to {current}.",
+    "log.galaxy_map.route_correct": "Nav Route correctly updated to {target}.",
+    "log.galaxy_map.route_wrong": "Nav Route updated with wrong target {current}. Selecting next target.",
+    "log.galaxy_map.assume_correct": "Unable to verify Nav Route, assuming it is correct.",
+    "log.galaxy_map.waypoint_error": "Error setting waypoint. Aborting selection.",
     "log.warning.interdiction": "Interdiction detected.",
     "log.ship.switch": "Switched ship from your {previous} to your {new}.",
     "log.ship.welcome": "Welcome aboard your {ship}.",
@@ -393,5 +405,7 @@
     "voice.trade.buying_quantity": "Buying {quantity} units of {commodity}.",
     "voice.trade.market_not_buying": "{commodity} is not bought at {market}.",
     "voice.trade.selling_all": "Selling all units of {commodity}.",
-    "voice.trade.selling_quantity": "Selling {quantity} units of {commodity}."
+    "voice.trade.selling_quantity": "Selling {quantity} units of {commodity}.",
+    "ocr.system_map.cartographics": "CARTOGRAPHICS",
+    "ocr.galaxy_map.cartographics": "CARTOGRAPHICS"
 }
