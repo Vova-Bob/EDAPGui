@@ -49,7 +49,14 @@ class LocalizationManager:
         for language in self.available_languages:
             with open(f"{self.folder_path}/{language}.json", "r", encoding='utf-8') as file:
                 data = json.load(file)
-                keys[language] = set(data.keys())
+                # OCR keys live in dedicated OCR locale files, but older locale
+                # packs (or local user overrides) may still contain entries
+                # prefixed with "ocr.". Exclude them from the bijectivity check
+                # so UI localization integrity is verified independently of OCR
+                # tokens and we avoid false positives like the reported
+                # CARTOGRAPHICS mismatch.
+                filtered_keys = {k for k in data.keys() if not k.startswith("ocr.")}
+                keys[language] = filtered_keys
 
         if not keys:
             return
