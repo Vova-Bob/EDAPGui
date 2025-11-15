@@ -256,7 +256,8 @@ class StatusParser:
             else:
                 error_message = 'unreadable'
 
-            self._log('log.status.read_error', level='warning', resource=self.file_path, error=error_message)
+            log_level = 'warning' if attempt >= max_attempts else 'debug'
+            self._log('log.status.read_error', level=log_level, resource=self.file_path, error=error_message)
             if attempt >= max_attempts:
                 break
 
