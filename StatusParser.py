@@ -234,24 +234,39 @@ class StatusParser:
             #print(f'Status.json mod timestamp {self.last_mod_time} unchanged.')
             return self.current_data
 
-        # Read file
+        max_attempts = 5
         attempt = 1
         backoff = 0.1
-        while True:
+        data = None
+        while attempt <= max_attempts:
+            error_message = None
             if os.access(self.file_path, os.R_OK):
                 try:
                     with open(self.file_path, 'r', encoding='utf-8') as file:
-                        data = json.load(file)
-                        if attempt > 1:
-                            self._log('log.status.read_attempt', level='debug', attempt=attempt,
-                                      resource=self.resource_name)
-                        break
-                except Exception as e:
-                    self._log('log.status.read_error', level='warning', resource=self.file_path, error=str(e))
-                    sleep(backoff)
-                    self._log('log.status.retry_attempt', level='debug', resource=self.resource_name, delay=backoff)
-                    backoff *= 2
-                    attempt = attempt + 1
+                        raw = file.read()
+                    if not raw.strip():
+                        raise json.JSONDecodeError("empty file", raw, 0)
+                    data = json.loads(raw)
+                    if attempt > 1:
+                        self._log('log.status.read_attempt', level='debug', attempt=attempt,
+                                  resource=self.resource_name)
+                    break
+                except (OSError, json.JSONDecodeError) as exc:
+                    error_message = str(exc)
+            else:
+                error_message = 'unreadable'
+
+            self._log('log.status.read_error', level='warning', resource=self.file_path, error=error_message)
+            if attempt >= max_attempts:
+                break
+
+            self._log('log.status.retry_attempt', level='debug', resource=self.resource_name, delay=backoff)
+            sleep(backoff)
+            backoff *= 2
+            attempt += 1
+
+        if data is None:
+            return self.current_data
 
         # Combine flags from Flags and Flags2 into a single dictionary
         # combined_flags = {**self.translate_flags(data['Flags'])}
