@@ -18,10 +18,26 @@ class EDSystemMap:
         self.keys = keys
         self.status_parser = StatusParser()
         self.ap_ckb = cb
+        self.log_keys = getattr(self.ap, 'LOG_KEYS', {})
         # The rect is top left x, y, and bottom right x, y in fraction of screen resolution
         self.reg = {
             'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
         }
+
+    def _log(self, key_name: str, *, level: str = 'debug', **kwargs) -> str:
+        key = self.log_keys.get(key_name)
+        if not key:
+            logger.warning(f"Missing system map log key: {key_name}")
+            return ''
+        text = self.ap._t(key, **kwargs)
+        self.ap._log_python(level, text)
+        return text
+
+    def _get_ocr_targets(self, key: str) -> list[str]:
+        value = self.ap._t(key)
+        if not value or value == key:
+            return ["CARTOGRAPHICS"]
+        return [item.strip() for item in value.split('|') if item.strip()]
 
     def set_sys_map_dest_bookmark(self, ap, bookmark_type: str, bookmark_position: int) -> bool:
         """ Set the System Map destination using a bookmark.
@@ -110,7 +126,7 @@ class EDSystemMap:
         """ Open System Map if we are not there.
         """
         if self.status_parser.get_gui_focus() != GuiFocusSystemMap:
-            logger.debug("Opening System Map")
+            self._log('SYSTEM_MAP_OPENING')
             # Goto cockpit view
             self.ap.ship_control.goto_cockpit_view()
             # Goto System Map
@@ -125,12 +141,12 @@ class EDSystemMap:
             scl_reg = reg_scale_for_station(self.reg['cartographics'], self.screen.screen_width,
                                             self.screen.screen_height)
 
-            # Wait for screen to appear. The text is the same, regardless of language.
-            res = self.ocr.wait_for_text(self.ap, ["CARTOGRAPHICS"], scl_reg)
+            carto_targets = self._get_ocr_targets('ocr.system_map.cartographics')
+            res = self.ocr.wait_for_text(self.ap, carto_targets, scl_reg)
 
             # sleep(3.5)
         else:
-            logger.debug("System Map is already open")
+            self._log('SYSTEM_MAP_ALREADY_OPEN')
             self.keys.send('UI_Left')
             self.keys.send('UI_Up', hold=2)
             self.keys.send('UI_Left')
