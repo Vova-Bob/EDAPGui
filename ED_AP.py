@@ -56,7 +56,189 @@ class ScTargetAlignReturn(Enum):
     Disengage = 3
 
 
+STATUS_MESSAGE_KEYS = {
+    'IDLE': 'ui.status.idle',
+    'LOGOUT': 'status.logout',
+    'AVOIDING_STAR': 'status.avoiding_star',
+    'REFUELING': 'status.refueling',
+    'UNDOCKING': 'status.undocking',
+    'UNDOCK_COMPLETE': 'status.undock_complete',
+    'TAKEOFF_COMPLETE': 'status.takeoff_complete',
+    'TARGETING_STATION': 'status.targeting_station',
+    'SC_TO_STATION': 'status.sc_to_station',
+    'SC_TO_TARGET': 'status.sc_to_target',
+    'ALIGN': 'status.align',
+    'JUMP': 'status.jump',
+    'MANEUVERING': 'status.maneuvering',
+    'DOCKING_COMPLETE': 'status.docking_complete',
+    'DSS_SCAN': 'status.dss_scan',
+    'ELW_DETECTED': 'status.elw_detected',
+    'ROBIGO_COMPLETING_MISSIONS': 'status.robigo.completing_missions',
+    'ROBIGO_GET_MISSIONS': 'status.robigo.get_missions',
+    'ROBIGO_ROUTE_SOTHIS': 'status.robigo.route_sothis',
+    'ROBIGO_SOTHIS_NOT_SET': 'status.robigo.sothis_not_set',
+    'ROBIGO_FSD_TO_SOTHIS': 'status.robigo.fsd_to_sothis',
+    'ROBIGO_TARGET_SIRIUS': 'status.robigo.target_sirius',
+    'ROBIGO_NO_SIRIUS': 'status.robigo.no_sirius',
+    'ROBIGO_SC_TO_MARKER': 'status.robigo.sc_to_marker',
+    'ROBIGO_MISSIONS_COUNT': 'status.robigo.missions_count',
+    'ROBIGO_ROUTE_ROBIGO': 'status.robigo.route_robigo',
+    'ROBIGO_ROBIGO_NOT_SET': 'status.robigo.robigo_not_set',
+    'ROBIGO_FSD_TO_ROBIGO': 'status.robigo.fsd_to_robigo',
+    'ROBIGO_TARGET_MINES': 'status.robigo.target_mines',
+    'ROBIGO_NO_MINES_LOCK': 'status.robigo.no_mines_lock',
+    'ROBIGO_SC_TO_MINES': 'status.robigo.sc_to_mines',
+    'ROBIGO_SINGLE_LOOP_COMPLETE': 'status.robigo.single_loop_complete',
+}
+
+VOICE_MESSAGE_KEYS = {
+    'ELW_DETECTED': 'voice.elw.detected',
+    'INTERDICTION': 'voice.warning.interdiction',
+    'DISENGAGING_SUPERCRUISE': 'voice.fs.disengaging',
+    'TARGET_ALIGN': 'voice.target.align',
+    'MANEUVERING': 'voice.maneuvering',
+    'FRAMESHIFT_JUMP': 'voice.fsd.jump',
+    'AVOIDING_STAR': 'voice.fsd.avoiding_star',
+    'REFUELING': 'voice.fuel.refueling',
+    'REFUEL_ABORT': 'voice.fuel.refuel_abort',
+    'LOW_FUEL_ABORT': 'voice.warning.low_fuel_abort',
+    'DESTINATION_REACHED': 'voice.fsd.destination_reached',
+    'SYSTEM_REACHED': 'voice.fsd.system_reached',
+    'EXITING_SUPERCRUISE': 'voice.fsd.exiting_supercruise',
+    'SHIELDS_DOWN': 'voice.warning.shields_down',
+    'FIGHTER_DESTROYED': 'voice.warning.fighter_destroyed',
+    'AFK_COMBAT_TERMINATE': 'voice.afk_combat.terminate',
+    'WAYPOINT_NO_FILE_LOADED': 'voice.waypoint.no_file_loaded',
+    'WAYPOINT_LIST_COMPLETED': 'voice.waypoint.list_completed',
+    'WAYPOINT_NEXT': 'voice.waypoint.next',
+    'WAYPOINT_ALREADY_IN_SYSTEM': 'voice.waypoint.already_in_system',
+    'WAYPOINT_SYSTEM_ALREADY_TARGETED': 'voice.waypoint.system_already_targeted',
+    'WAYPOINT_TARGETING_SYSTEM': 'voice.waypoint.targeting_system',
+    'WAYPOINT_TARGET_FAILED': 'voice.waypoint.target_failed',
+    'WAYPOINT_JUMPING': 'voice.waypoint.jumping',
+    'WAYPOINT_ALREADY_AT_STATION': 'voice.waypoint.already_at_station',
+    'WAYPOINT_TARGETING_STATION': 'voice.waypoint.targeting_station',
+    'WAYPOINT_GALAXY_BOOKMARK_FAILED': 'voice.waypoint.galaxy_bookmark_failed',
+    'WAYPOINT_SYSTEM_BOOKMARK_FAILED': 'voice.waypoint.system_bookmark_failed',
+    'WAYPOINT_NO_BOOKMARK_SUPPORT': 'voice.waypoint.no_bookmark_support',
+    'WAYPOINT_SYSTEM_ARRIVED': 'voice.waypoint.system_arrived',
+    'WAYPOINT_EXECUTE_TRADE': 'voice.waypoint.execute_trade',
+    'WAYPOINT_CURRENT_COMPLETE': 'voice.waypoint.current_complete',
+    'WAYPOINT_ROUTE_COMPLETE': 'voice.waypoint.route_complete',
+    'WAYPOINT_ROUTE_ABORTED': 'voice.waypoint.route_aborted',
+    'TRADE_DOWNLOAD_MARKET_DATA': 'voice.trade.download_market_data',
+    'TRADE_MARKET_NOT_SELLING': 'voice.trade.market_not_selling',
+    'TRADE_BUYING_QUANTITY': 'voice.trade.buying_quantity',
+    'TRADE_MARKET_NOT_BUYING': 'voice.trade.market_not_buying',
+    'TRADE_SELLING_ALL': 'voice.trade.selling_all',
+    'TRADE_SELLING_QUANTITY': 'voice.trade.selling_quantity',
+}
+
+LOG_MESSAGE_KEYS = {
+    'SHIP_CONFIG_CUSTOM': 'log.ship_config.custom_loaded',
+    'SHIP_CONFIG_DEFAULT': 'log.ship_config.default_loaded',
+    'SHIP_CONFIG_HARDCODED': 'log.ship_config.hardcoded_loaded',
+    'ELW_SIGNAL': 'log.elw.signal_strength',
+    'ELW_WORLD_FOUND': 'log.elw.world_detected',
+    'SC_DISENGAGE_DETECTED': 'log.sc.disengage_detected',
+    'SC_DISENGAGE_SIMILARITY': 'log.sc.disengage_similarity',
+    'SCO_OVERCHARGE_ON': 'log.sco.overcharge_activated',
+    'SCO_OVERCHARGE_OFF': 'log.sco.overcharge_deactivated',
+    'SCO_ABORT_OVERHEAT': 'log.sco.abort_overheat',
+    'SCO_ABORT_LOW_FUEL': 'log.sco.abort_low_fuel_quarter',
+    'SCO_ABORT_USER_FUEL': 'log.sco.abort_user_threshold',
+    'ANALYSIS_MODE_REQUIRED': 'log.autopilot.analysis_mode_required',
+    'AVOIDING_STAR': 'log.autopilot.avoiding_star',
+    'REFUELING': 'log.autopilot.refueling',
+    'SKIP_REFUEL_NOT_STAR': 'log.autopilot.skip_refuel_not_star',
+    'SKIP_REFUEL_OKAY': 'log.autopilot.skip_refuel_full',
+    'SKIP_REFUEL_NO_SCOOP': 'log.autopilot.skip_refuel_no_scoop',
+    'UNDOCK_MISSING_COMPUTER': 'log.autopilot.undock_missing_computer',
+    'FC_DEPARTURE': 'log.autopilot.fc_departure',
+    'DESTINATION_MISSING': 'log.autopilot.destination_missing',
+    'STATION_SELECTED': 'log.autopilot.station_selected',
+    'STATION_TARGET_FAILED': 'log.autopilot.station_target_failed',
+    'LOW_FUEL_ABORT': 'log.autopilot.low_fuel_abort',
+    'DOCKING_DENIED': 'log.docking.denied',
+    'AUTODOCK_TIMEOUT': 'log.docking.autodock_timeout',
+    'SKIP_DOCK_NO_COMPUTER': 'log.docking.skip_no_computer',
+    'SKIP_DOCK_NO_PRIVILEGE': 'log.docking.skip_no_privilege',
+    'DOCKING_INITIATE': 'log.docking.initiate',
+    'DOCKING_REQUEST_GRANTED': 'log.docking.request_granted',
+    'DOCKING_COMPLETE_REFIT': 'log.docking.complete_refit',
+    'SC_TARGET_NOT_FOUND': 'log.sc_assist.target_not_found',
+    'SC_TARGET_LOST': 'log.sc_assist.target_lost',
+    'SC_COMPASS_MISSING': 'log.sc_assist.compass_missing',
+    'SC_TERMINATED': 'log.sc_assist.terminated',
+    'SC_ASSIST_COMPLETE': 'log.sc_assist.complete',
+    'SC_DISENGAGE_COMMAND': 'log.sc.disengage_command',
+    'POST_DROP_ALIGN': 'log.post_drop.align',
+    'POST_DROP_BOOST': 'log.post_drop.boost',
+    'DSS_SCAN': 'log.dss.scan',
+    'NAV_SYSTEM_TARGETED': 'log.navigation.system_targeted',
+    'NAV_ENTER_SUPERCRUISE': 'log.navigation.enter_supercruise',
+    'NAV_SELECT_TARGET': 'log.navigation.select_target',
+    'NAV_COMPASS_ALIGN': 'log.navigation.compass_align',
+    'NAV_TARGET_OCCLUDED': 'log.navigation.target_occluded',
+    'NAV_TARGETING_SYSTEM': 'log.navigation.targeting_system',
+    'NAV_TARGET_SYSTEM_FAILED': 'log.navigation.target_system_failed',
+    'SHIP_SWITCHED': 'log.ship.switch',
+    'SHIP_WELCOME': 'log.ship.welcome',
+    'SHIP_WARNING_NO_SCOOP': 'log.ship.warning_no_scoop',
+    'SHIP_WARNING_NO_ADC': 'log.ship.warning_no_adc',
+    'SHIP_WARNING_STANDARD_DC': 'log.ship.warning_standard_dc',
+    'AUTOPILOT_MANEUVERING': 'log.autopilot.maneuvering',
+    'WARNING_INTERDICTION': 'log.warning.interdiction',
+    'WAYPOINT_FILE_LOADED': 'log.waypoint.file_loaded',
+    'WAYPOINT_FILE_INVALID': 'log.waypoint.file_invalid',
+    'WAYPOINT_NO_FILE_LOADED': 'log.waypoint.no_file_loaded',
+    'WAYPOINT_FILE_SELECTED': 'log.waypoint.file_selected',
+    'WAYPOINT_LIST_COMPLETED': 'log.waypoint.list_completed',
+    'WAYPOINT_NEXT': 'log.waypoint.next',
+    'WAYPOINT_ALREADY_IN_SYSTEM': 'log.waypoint.already_in_system',
+    'WAYPOINT_SYSTEM_ALREADY_TARGETED': 'log.waypoint.system_already_targeted',
+    'WAYPOINT_TARGETING_SYSTEM': 'log.waypoint.targeting_system',
+    'WAYPOINT_SYSTEM_TARGETED': 'log.waypoint.system_targeted',
+    'WAYPOINT_TARGET_FAILED': 'log.waypoint.target_failed',
+    'WAYPOINT_JUMPING': 'log.waypoint.jumping',
+    'WAYPOINT_JUMP_FAILED': 'log.waypoint.jump_failed',
+    'WAYPOINT_ALREADY_AT_STATION': 'log.waypoint.already_at_station',
+    'WAYPOINT_TARGETING_STATION': 'log.waypoint.targeting_station',
+    'WAYPOINT_GALAXY_BOOKMARK_FAILED': 'log.waypoint.galaxy_bookmark_failed',
+    'WAYPOINT_SYSTEM_BOOKMARK_FAILED': 'log.waypoint.system_bookmark_failed',
+    'WAYPOINT_NO_BOOKMARK_SUPPORT': 'log.waypoint.no_bookmark_support',
+    'WAYPOINT_SYSTEM_ARRIVED': 'log.waypoint.system_arrived',
+    'WAYPOINT_EXECUTE_TRADE': 'log.waypoint.execute_trade',
+    'WAYPOINT_CURRENT_COMPLETE': 'log.waypoint.current_complete',
+    'WAYPOINT_ROUTE_COMPLETE': 'log.waypoint.route_complete',
+    'WAYPOINT_ROUTE_ABORTED': 'log.waypoint.route_aborted',
+    'ROBIGO_NO_MISSIONS': 'log.robigo.no_missions',
+    'ROBIGO_RETRY_SUPERCRUISE': 'log.robigo.retry_supercruise',
+    'ROBIGO_LOOP_STATS': 'log.robigo.loop_stats',
+    'WAYPOINT_NO_COMMODITIES_MARKET': 'log.trade.no_commodities_market',
+    'WAYPOINT_NO_STATION_SERVICES': 'log.trade.no_station_services',
+    'WAYPOINT_TRADE_COLONISATION': 'log.trade.colonisation',
+    'WAYPOINT_TRADE_CONSTRUCTION': 'log.trade.construction',
+    'WAYPOINT_TRADE_GENERIC': 'log.trade.generic',
+    'TRADE_DOWNLOAD_MARKET_DATA': 'log.trade.download_market_data',
+    'TRADE_MARKET_NOT_SELLING': 'log.trade.market_not_selling',
+    'TRADE_BUYING_QUANTITY': 'log.trade.buying_quantity',
+    'TRADE_MARKET_NOT_BUYING': 'log.trade.market_not_buying',
+    'TRADE_SELLING_ALL': 'log.trade.selling_all',
+    'TRADE_SELLING_QUANTITY': 'log.trade.selling_quantity',
+    'MARKET_READ_ERROR': 'log.market.read_error',
+    'CARGO_READ_ERROR': 'log.cargo.read_error',
+    'NAVROUTE_READ_ERROR': 'log.navroute.read_error',
+    'STATUS_RETRY_ATTEMPT': 'log.status.retry_attempt',
+    'SCREEN_WINDOW_NOT_FOUND': 'log.screen.window_not_found',
+    'VOICE_ID_OUT_OF_RANGE': 'log.voice.id_out_of_range',
+}
+
 class EDAutopilot:
+
+    STATUS_KEYS = STATUS_MESSAGE_KEYS
+    VOICE_KEYS = VOICE_MESSAGE_KEYS
+    LOG_KEYS = LOG_MESSAGE_KEYS
 
     def __init__(self, cb, doThread=True):
 
@@ -108,6 +290,7 @@ class EDAutopilot:
             "DebugOverlay": False,
         }
         self.supported_ocr_languages = ('en', 'ru')
+        self.ap_ckb = cb
         # NOTE!!! When adding a new config value above, add the same after read_config() to set
         # a default value or an error will occur reading the new value!
 
@@ -193,7 +376,7 @@ class EDAutopilot:
             self.write_ship_configs(self.ship_configs)
 
         # config the voice interface
-        self.vce = Voice()
+        self.vce = Voice(log_func=self.log_ui)
         self.vce.v_enabled = self.config['VoiceEnable']
         self.vce.set_voice_id(self.config['VoiceID'])
         self.speak_ui('voice.autopilot.welcome')
@@ -217,7 +400,7 @@ class EDAutopilot:
         # Create instance of each of the needed Classes
         self.gfx_settings = EDGraphicsSettings()
 
-        self.scr = Screen.Screen(cb)
+        self.scr = Screen.Screen(cb, log_func=self.log_ui)
         self.scr.scaleX = self.config['TargetScale']
         self.scr.scaleY = self.config['TargetScale']
 
@@ -231,7 +414,7 @@ class EDAutopilot:
         self.waypoint = EDWayPoint(self, self.jn.ship_state()['odyssey'])
         self.robigo = Robigo(self)
         self.status = StatusParser()
-        self.nav_route = NavRouteParser()
+        self.nav_route = NavRouteParser(log_func=self.log_ui)
         self.ship_control = EDShipControl(self, self.scr, self.keys, cb)
         self.internal_panel = EDInternalStatusPanel(self, self.scr, self.keys, cb)
         self.galaxy_map = EDGalaxyMap(self, self.scr, self.keys, cb, self.jn.ship_state()['odyssey'])
@@ -264,8 +447,6 @@ class EDAutopilot:
         self.refuel_cnt = 0
         self.current_ship_type = None
         self.gui_loaded = False
-
-        self.ap_ckb = cb
 
         # Overlay vars
         self.ap_state = "Idle"
@@ -423,7 +604,7 @@ class EDAutopilot:
         if hasattr(self.internal_panel, 'update_ocr_language'):
             self.internal_panel.update_ocr_language()
 
-        logger.info(f"OCR language switched to '{language}'.")
+        self.log_ui('ui.log.ocr_language_switched', language=language)
         return True
 
     def write_config(self, data, fileName='./configs/AP.json'):
@@ -487,7 +668,7 @@ class EDAutopilot:
                 self.pitchrate = current_ship_cfg.get('PitchRate', 33.0)
                 self.yawrate = current_ship_cfg.get('YawRate', 8.0)
                 self.sunpitchuptime = current_ship_cfg.get('SunPitchUp+Time', 0.0)
-                logger.info(f"Loaded your custom configuration for {ship_type} from ship_configs.json")
+                self.log_ui(self.LOG_KEYS['SHIP_CONFIG_CUSTOM'], ship_type=ship_type)
                 return
         
         # Step 2: Try to load defaults from ship file
@@ -499,7 +680,7 @@ class EDAutopilot:
             self.pitchrate = ship_defaults.get('PitchRate', 33.0)
             self.yawrate = ship_defaults.get('YawRate', 8.0)
             self.sunpitchuptime = ship_defaults.get('SunPitchUp+Time', 0.0)
-            logger.info(f"Loaded default configuration for {ship_type} from default ship cfg file")
+            self.log_ui(self.LOG_KEYS['SHIP_CONFIG_DEFAULT'], ship_type=ship_type)
             return
 
         # Step 3: Use hardcoded defaults
@@ -508,7 +689,7 @@ class EDAutopilot:
         self.pitchrate = 33.0
         self.yawrate = 8.0
         self.sunpitchuptime = 0.0
-        logger.info(f"Using hardcoded default configuration for {ship_type}")
+        self.log_ui(self.LOG_KEYS['SHIP_CONFIG_HARDCODED'], ship_type=ship_type)
         
         # Add empty entry to ship_configs for future customization
         if ship_type not in self.ship_configs['Ship_Configs']:
@@ -578,10 +759,12 @@ class EDAutopilot:
                 )
             self.overlay.overlay_paint()
 
-    def update_ap_status(self, txt):
-        self.ap_state = txt
+    def update_ap_status(self, key: str, **kwargs):
+        text = self._t(key, **kwargs)
+        self.ap_state = text
         self.update_overlay()
-        self.ap_ckb('statusline', txt)
+        self.ap_ckb('statusline', text)
+        return text
 
 
     # draws the matching rectangle within the image
@@ -858,7 +1041,7 @@ class EDAutopilot:
             cv2.moveWindow('fss', self.cv_view_x, self.cv_view_y+100)
             cv2.waitKey(30)
 
-        logger.info("elw detected:{0:6.2f} ".format(maxVal)+" sig:{0:6.2f}".format(maxVal1))
+        self.log_ui(self.LOG_KEYS['ELW_SIGNAL'], detection=maxVal, signal=maxVal1)
 
         # check if the circle or the signal meets probability number, if so, determine which type by its region
         #if (maxVal > 0.65 or (maxVal1 > 0.60 and maxLoc1[1] < 30) ):
@@ -876,11 +1059,12 @@ class EDAutopilot:
                     ", Probabilty: {0:3.0f}% ".format((maxVal1*100))+
                     ", Date: "+str(datetime.now())+str("\n"))
             f.close()
-            self.vce.say(sstr+" like world detected ")
-            self.fss_detected = sstr+" like world detected "
-            logger.info(sstr+" world at: "+str(self.jn.ship_state()["location"]))
+            self.speak_ui(self.VOICE_KEYS['ELW_DETECTED'], world=sstr)
+            self.fss_detected = self._t(self.STATUS_KEYS['ELW_DETECTED'], world=sstr)
+            self.log_ui(self.LOG_KEYS['ELW_WORLD_FOUND'], world=sstr,
+                        location=self.jn.ship_state()["location"])
         else:
-            self.fss_detected = "nothing found"
+            self.fss_detected = self._t('status.elw_none')
 
         self.keys.send('SetSpeed100')
 
@@ -908,8 +1092,8 @@ class EDAutopilot:
             return False
 
         # Interdiction detected.
-        self.vce.say("Danger. Interdiction detected.")
-        self.ap_ckb('log', 'Interdiction detected.')
+        self.speak_ui(self.VOICE_KEYS['INTERDICTION'])
+        self.log_ui(self.LOG_KEYS['WARNING_INTERDICTION'])
 
         # Keep setting speed to zero to submit while in supercruise or system jump.
         while self.status.get_flag(FlagsSupercruise) or self.status.get_flag2(Flags2FsdHyperdriveCharging):
@@ -1194,8 +1378,8 @@ class EDAutopilot:
         #logger.debug("Disenage = "+str(maxVal))
 
         if maxVal > scr_reg.disengage_thresh:
-            logger.info("'PRESS [] TO DISENGAGE' detected. Disengaging Supercruise")
-            self.vce.say("Disengaging Supercruise")
+            self.log_ui(self.LOG_KEYS['SC_DISENGAGE_DETECTED'])
+            self.speak_ui(self.VOICE_KEYS['DISENGAGING_SUPERCRUISE'])
             return True
         else:
             return False
@@ -1217,7 +1401,9 @@ class EDAutopilot:
         normalized_ocr = normalize_ocr_text(raw_text, self.ocr_language)
         if normalized_ocr:
             sim = self.ocr.string_similarity(normalized_target, normalized_ocr)
-            logger.info(f"Disengage similarity with {str(ocr_textlist)} is {sim} (normalized='{normalized_ocr}')")
+            self.log_ui(self.LOG_KEYS['SC_DISENGAGE_SIMILARITY'],
+                        candidates=str(ocr_textlist), similarity=sim,
+                        normalized=normalized_ocr)
         else:
             logger.debug("Disengage OCR returned empty string after normalization")
 
@@ -1253,12 +1439,12 @@ class EDAutopilot:
         if self.ocr_language == 'ru':
             # Російська — суворіший matching, але більш надійний
             if sim >= 0.50 or keyword_hit:
-                logger.info("'PRESS [] TO DISENGAGE' detected. Disengaging Supercruise")
+                self.log_ui(self.LOG_KEYS['SC_DISENGAGE_DETECTED'])
                 return True
         else:
             # Англійська — залишити стару поведінку (поріг 0.35)
             if sim >= 0.35 or keyword_hit:
-                logger.info("'PRESS [] TO DISENGAGE' detected. Disengaging Supercruise")
+                self.log_ui(self.LOG_KEYS['SC_DISENGAGE_DETECTED'])
                 return True
 
         return False
@@ -1287,23 +1473,20 @@ class EDAutopilot:
             self.sc_sco_is_active = self.status.get_flag2(Flags2FsdScoActive)
 
             if self.sc_sco_is_active and not sc_sco_is_active_ls:
-                self.ap_ckb('log+vce', "Supercruise Overcharge activated")
+                self.log_ui(self.LOG_KEYS['SCO_OVERCHARGE_ON'], voice=True)
             if sc_sco_is_active_ls and not self.sc_sco_is_active:
-                self.ap_ckb('log+vce', "Supercruise Overcharge deactivated")
+                self.log_ui(self.LOG_KEYS['SCO_OVERCHARGE_OFF'], voice=True)
 
             # Protection if SCO is active
             if self.sc_sco_is_active:
                 if self.status.get_flag(FlagsOverHeating):
-                    logger.info("SCO Aborting, overheating")
-                    self.ap_ckb('log+vce', "SCO Aborting, overheating")
+                    self.log_ui(self.LOG_KEYS['SCO_ABORT_OVERHEAT'], voice=True)
                     self.keys.send('UseBoostJuice')
                 elif self.status.get_flag(FlagsLowFuel):
-                    logger.info("SCO Aborting, < 25% fuel")
-                    self.ap_ckb('log+vce', "SCO Aborting, < 25% fuel")
+                    self.log_ui(self.LOG_KEYS['SCO_ABORT_LOW_FUEL'], voice=True)
                     self.keys.send('UseBoostJuice')
                 elif self.jn.ship_state()['fuel_percent'] < self.config['FuelThreasholdAbortAP']:
-                    logger.info("SCO Aborting, < users low fuel threshold")
-                    self.ap_ckb('log+vce', "SCO Aborting, < users low fuel threshold")
+                    self.log_ui(self.LOG_KEYS['SCO_ABORT_USER_FUEL'], voice=True)
                     self.keys.send('UseBoostJuice')
 
             # Check again in a bit
@@ -1354,7 +1537,7 @@ class EDAutopilot:
         # if we get docking granted ED's docking computer will take over
         self.keys.send('SetSpeedZero', repeat=2)
         sleep(3)  # Wait for ship to come to stop
-        self.ap_ckb('log+vce', "Initiating Docking Procedure")
+        self.log_ui(self.LOG_KEYS['DOCKING_INITIATE'], voice=True)
         # Request docking through Nav panel.
         self.request_docking()
         sleep(1)
@@ -1384,11 +1567,12 @@ class EDAutopilot:
                     pass
 
         if not granted:
-            self.ap_ckb('log', 'Docking denied: '+str(self.jn.ship_state()['no_dock_reason']))
+            self.log_ui(self.LOG_KEYS['DOCKING_DENIED'],
+                         reason=str(self.jn.ship_state()['no_dock_reason']))
             logger.warning('Did not get docking authorization, reason:'+str(self.jn.ship_state()['no_dock_reason']))
             raise Exception('Docking failed (Did not get docking authorization)')
         else:
-            self.ap_ckb('log+vce', "Docking request granted")
+            self.log_ui(self.LOG_KEYS['DOCKING_REQUEST_GRANTED'], voice=True)
             # allow auto dock to take over
             for i in range(self.config['WaitForAutoDockTimer']):
                 sleep(1)
@@ -1406,7 +1590,7 @@ class EDAutopilot:
                     self.keys.send("UI_Left", repeat=2)  # back to fuel
                     return
 
-            self.ap_ckb('log', 'Auto dock timer timed out.')
+            self.log_ui(self.LOG_KEYS['AUTODOCK_TIMEOUT'], level='warning')
             logger.warning('Auto dock timer timed out. Aborting Docking.')
             raise Exception('Docking failed (Auto dock timer timed out)')
 
@@ -1466,7 +1650,7 @@ class EDAutopilot:
             logger.error('align=err1, nav_align not in super or space')
             raise Exception('nav_align not in super or space')
 
-        self.ap_ckb('log+vce', 'Compass Align')
+        self.log_ui(self.LOG_KEYS['NAV_COMPASS_ALIGN'], voice=True)
 
         # try multiple times to get aligned.  If the sun is shining on console, this it will be hard to match
         # the vehicle should be positioned with the sun below us via the sun_avoid() routine after a jump
@@ -1532,7 +1716,7 @@ class EDAutopilot:
     def fsd_target_align(self, scr_reg):
         """ Coarse align to the target to support FSD jumping """
 
-        self.vce.say("Target Align")
+        self.speak_ui(self.VOICE_KEYS['TARGET_ALIGN'])
 
         logger.debug('align= fine align')
 
@@ -1632,13 +1816,13 @@ class EDAutopilot:
                 break
             if self.is_destination_occluded(scr_reg):
                 self.occluded_reposition(scr_reg)
-                self.ap_ckb('log+vce', 'Target Align')
+                self.log_ui(self.STATUS_KEYS['ALIGN'], voice=True)
             sleep(0.1)
 
         # Could not be found, return
         if off is None:
             logger.debug("sc_target_align not finding target")
-            self.ap_ckb('log', 'Target not found, terminating SC Assist')
+            self.log_ui(self.LOG_KEYS['SC_TARGET_NOT_FOUND'], level='warning')
             return ScTargetAlignReturn.Lost
 
         #logger.debug("sc_target_align x: "+str(off['x'])+" y:"+str(off['y']))
@@ -1672,12 +1856,12 @@ class EDAutopilot:
             # this checks if suddenly the target show up behind the planet
             if self.is_destination_occluded(scr_reg):
                 self.occluded_reposition(scr_reg)
-                self.ap_ckb('log+vce', 'Target Align')
+                self.log_ui(self.STATUS_KEYS['ALIGN'], voice=True)
 
             # check for SC Disengage
             if self.sc_disengage_label_up(scr_reg):
                 if self.sc_disengage_active(scr_reg):
-                    self.ap_ckb('log+vce', 'Disengage Supercruise')
+                    self.log_ui(self.LOG_KEYS['SC_DISENGAGE_COMMAND'], voice=True)
                     self.keys.send('HyperSuperCombination')
                     self.stop_sco_monitoring()
                     return ScTargetAlignReturn.Disengage
@@ -1689,7 +1873,7 @@ class EDAutopilot:
             # Check if target is outside the target region (behind us) and break loop
             if new is None:
                 logger.debug("sc_target_align lost target")
-                self.ap_ckb('log', 'Target lost, attempting re-alignment.')
+                self.log_ui(self.LOG_KEYS['SC_TARGET_LOST'])
                 return ScTargetAlignReturn.Lost
 
         # TODO - find a better way to clear these
@@ -1709,7 +1893,7 @@ class EDAutopilot:
         this is important because when we do nav_align() if it does not see the Nav Point
         in the compass (because it is a hollow circle), then it will pitch down, this will
         bring the target into view quickly. """
-        self.ap_ckb('log+vce', 'Target occluded, repositioning.')
+        self.log_ui(self.LOG_KEYS['NAV_TARGET_OCCLUDED'], voice=True)
         self.keys.send('SetSpeed50')
         sleep(5)
         self.pitchDown(90)
@@ -1745,11 +1929,11 @@ class EDAutopilot:
                 logger.debug('position=scanning complete')
                 self.keys.send('SecondaryFire', state=0)
         else:
-            self.ap_ckb('log', 'Not in analysis mode. Skipping discovery scan (honk).')
+            self.log_ui(self.LOG_KEYS['ANALYSIS_MODE_REQUIRED'], level='warning')
 
     def logout(self):
         """ Performs menu action to log out of game """
-        self.update_ap_status("Logout")
+        self.update_ap_status(self.STATUS_KEYS['LOGOUT'])
         self.keys.send_key('Down', SCANCODE["Key_Escape"])
         sleep(0.5)
         self.keys.send_key('Up', SCANCODE["Key_Escape"])
@@ -1760,7 +1944,7 @@ class EDAutopilot:
         sleep(0.5)
         self.keys.send('UI_Select')
         sleep(0.5)
-        self.update_ap_status("Idle")
+        self.update_ap_status(self.STATUS_KEYS['IDLE'])
 
     # position() happens after a refuel and performs
     #   - accelerate past sun
@@ -1770,7 +1954,7 @@ class EDAutopilot:
         logger.debug('position')
         add_time = 12
 
-        self.vce.say("Maneuvering")
+        self.speak_ui(self.VOICE_KEYS['MANEUVERING'])
 
         self.keys.send('SetSpeed100')
 
@@ -1798,7 +1982,7 @@ class EDAutopilot:
     def jump(self, scr_reg):
         logger.debug('jump')
 
-        self.vce.say("Frameshift Jump")
+        self.speak_ui(self.VOICE_KEYS['FRAMESHIFT_JUMP'])
 
         jump_tries = self.config['JumpTries']
         for i in range(jump_tries):
@@ -1894,16 +2078,16 @@ class EDAutopilot:
             scr_reg.set_sun_threshold(self.config['SunBrightThreshold'])
 
         # Lets avoid the sun, shall we
-        self.vce.say("Avoiding star")
-        self.update_ap_status("Avoiding star")
-        self.ap_ckb('log', 'Avoiding star')
+        self.speak_ui(self.VOICE_KEYS['AVOIDING_STAR'])
+        self.update_ap_status(self.STATUS_KEYS['AVOIDING_STAR'])
+        self.log_ui(self.LOG_KEYS['AVOIDING_STAR'])
         self.sun_avoid(scr_reg)
 
         if self.jn.ship_state()['fuel_percent'] < self.config['RefuelThreshold'] and is_star_scoopable and has_fuel_scoop:
             logger.debug('refuel= start refuel')
-            self.vce.say("Refueling")
-            self.ap_ckb('log', 'Refueling')
-            self.update_ap_status("Refueling")
+            self.speak_ui(self.VOICE_KEYS['REFUELING'])
+            self.log_ui(self.LOG_KEYS['REFUELING'])
+            self.update_ap_status(self.STATUS_KEYS['REFUELING'])
 
             # mnvr into position
             self.keys.send('SetSpeed100')
@@ -1925,7 +2109,7 @@ class EDAutopilot:
                     self.keys.send('SetSpeedZero')
 
                 if ((time.time()-startime) > int(self.config['FuelScoopTimeOut'])):
-                    self.vce.say("Refueling abort, insufficient scooping")
+                    self.speak_ui(self.VOICE_KEYS['REFUEL_ABORT'])
                     return False
 
             logger.debug('refuel= wait for refuel')
@@ -1940,7 +2124,7 @@ class EDAutopilot:
                     self.keys.send('SetSpeedZero')
 
                 if ((time.time()-startime) > int(self.config['FuelScoopTimeOut'])):
-                    self.vce.say("Refueling abort, insufficient scooping")
+                    self.speak_ui(self.VOICE_KEYS['REFUEL_ABORT'])
                     return True
                 sleep(1)
 
@@ -1948,18 +2132,18 @@ class EDAutopilot:
             return True
 
         elif is_star_scoopable == False:
-            self.ap_ckb('log', 'Skip refuel - not a fuel star')
+            self.log_ui(self.LOG_KEYS['SKIP_REFUEL_NOT_STAR'])
             logger.debug('refuel= needed, unsuitable star')
             self.pitchUp(20)
             return False
 
         elif self.jn.ship_state()['fuel_percent'] >= self.config['RefuelThreshold']:
-            self.ap_ckb('log', 'Skip refuel - fuel level okay')
+            self.log_ui(self.LOG_KEYS['SKIP_REFUEL_OKAY'])
             logger.debug('refuel= not needed')
             return False
 
         elif not has_fuel_scoop:
-            self.ap_ckb('log', 'Skip refuel - no fuel scoop fitted')
+            self.log_ui(self.LOG_KEYS['SKIP_REFUEL_NO_SCOOP'])
             logger.debug('No fuel scoop fitted.')
             self.pitchUp(20)
             return False
@@ -1969,7 +2153,7 @@ class EDAutopilot:
             return False
 
     def waypoint_undock_seq(self):
-        self.update_ap_status("Executing Undocking/Launch")
+        self.update_ap_status(self.STATUS_KEYS['UNDOCKING'])
 
         # Store current location (on planet or in space)
         on_planet = self.status.get_flag(FlagsHasLatLong)
@@ -1984,7 +2168,7 @@ class EDAutopilot:
             if self.status.get_flag(FlagsDocked):
                 # Check if we have an advanced docking computer
                 if not self.jn.ship_state()['has_adv_dock_comp']:
-                    self.ap_ckb('log', "Unable to undock. Advanced Docking Computer not fitted.")
+                    self.log_ui(self.LOG_KEYS['UNDOCK_MISSING_COMPUTER'], level='warning')
                     logger.warning('Unable to undock. Advanced Docking Computer not fitted.')
                     raise Exception('Unable to undock. Advanced Docking Computer not fitted.')
 
@@ -1997,13 +2181,13 @@ class EDAutopilot:
 
                 # If we are on an Orbital Construction Site we will need to pitch up 90 deg to avoid crashes
                 if on_orbital_construction_site:
-                    self.ap_ckb('log+vce', 'Maneuvering')
+                    self.log_ui(self.LOG_KEYS['AUTOPILOT_MANEUVERING'], voice=True)
                     # The pitch rates are defined in SC, not normal flights, so bump this up a bit
                     self.pitchUp(90 * 1.25)
 
                 # If we are on a Fleet Carrier we will pitch up 90 deg and fly away to avoid planet
                 elif fleet_carrier:
-                    self.ap_ckb('log+vce', 'Maneuvering')
+                    self.log_ui(self.LOG_KEYS['AUTOPILOT_MANEUVERING'], voice=True)
                     # The pitch rates are defined in SC, not normal flights, so bump this up a bit
                     self.pitchUp(90 * 1.25)
 
@@ -2020,14 +2204,14 @@ class EDAutopilot:
                     self.start_sco_monitoring()
 
                     # Wait the configured time before continuing
-                    self.ap_ckb('log', 'Flying for configured FC departure time.')
+                    self.log_ui(self.LOG_KEYS['FC_DEPARTURE'])
                     sleep(self.config['FCDepartureTime'])
                     self.keys.send('SetSpeed50')
 
                 if not fleet_carrier:
                     # In space (launched from starport or outpost etc.)
                     sleep(1.5)
-                    self.update_ap_status("Undock Complete, accelerating")
+                    self.update_ap_status(self.STATUS_KEYS['UNDOCK_COMPLETE'])
                     self.keys.send('SetSpeed100')
                     sleep(1)
                     self.keys.send('UseBoostJuice')
@@ -2040,7 +2224,7 @@ class EDAutopilot:
                 # We are on a landing pad (docked)
                 # Check if we have an advanced docking computer
                 if not self.jn.ship_state()['has_adv_dock_comp']:
-                    self.ap_ckb('log', "Unable to undock. Advanced Docking Computer not fitted.")
+                    self.log_ui(self.LOG_KEYS['UNDOCK_MISSING_COMPUTER'], level='warning')
                     logger.warning('Unable to undock. Advanced Docking Computer not fitted.')
                     raise Exception('Unable to undock. Advanced Docking Computer not fitted.')
 
@@ -2050,14 +2234,14 @@ class EDAutopilot:
                 # need to wait until undock complete, that is when we are back in_space
                 while self.jn.ship_state()['status'] != 'in_space':
                     sleep(1)
-                self.update_ap_status("Undock Complete, accelerating")
+                self.update_ap_status(self.STATUS_KEYS['UNDOCK_COMPLETE'])
 
             elif self.status.get_flag(FlagsLanded):
                 # We are on planet surface (not docked at planet landing pad)
                 # Hold UP for takeoff
                 self.keys.send('UpThrustButton', hold=6)
                 self.keys.send('LandingGearToggle')
-                self.update_ap_status("Takeoff Complete, accelerating")
+                self.update_ap_status(self.STATUS_KEYS['TAKEOFF_COMPLETE'])
 
             # Undocked or off the surface, so leave planet
             self.keys.send('SetSpeed50')
@@ -2115,7 +2299,7 @@ class EDAutopilot:
         # Check we have a route and that we have a destination to a star (body 0).
         # We can have one without the other.
         if destination_body != 0 or destination_name == "":
-            self.ap_ckb('log', "A valid destination system is not selected.")
+            self.log_ui(self.LOG_KEYS['DESTINATION_MISSING'], level='warning')
             return False
 
         # if we are starting the waypoint docked at a station, we need to undock first
@@ -2137,7 +2321,7 @@ class EDAutopilot:
         """ Supercruise to the specified target, which may be a station, FC, body, signal source, etc.
         Returns True if we travel successfully travel there, else False. """
         # If waypoint file has a Station Name associated then attempt targeting it
-        self.update_ap_status(f"Targeting Station: {station_name}")
+        self.update_ap_status(self.STATUS_KEYS['TARGETING_STATION'], station=station_name)
         #res = self.nav_panel.lock_destination(station_name)
         #if not res:
         #    return False
@@ -2153,11 +2337,11 @@ class EDAutopilot:
         # Successful targeting of Station, lets go to it
         sleep(3)  # Wait for compass to stop flashing blue!
         if self.have_destination(scr_reg):
-            self.ap_ckb('log', " - Station: " + station_name)
-            self.update_ap_status(f"SC to Station: {station_name}")
+            self.log_ui(self.LOG_KEYS['STATION_SELECTED'], station=station_name)
+            self.update_ap_status(self.STATUS_KEYS['SC_TO_STATION'], station=station_name)
             self.sc_assist(scr_reg)
         else:
-            self.ap_ckb('log', f" - Could not target station: {station_name}")
+            self.log_ui(self.LOG_KEYS['STATION_TARGET_FAILED'], station=station_name)
             return False
 
         return True
@@ -2186,11 +2370,11 @@ class EDAutopilot:
             self.update_overlay()
 
             if self.jn.ship_state()['status'] == 'in_space' or self.jn.ship_state()['status'] == 'in_supercruise':
-                self.update_ap_status("Align")
+                self.update_ap_status(self.STATUS_KEYS['ALIGN'])
 
                 self.mnvr_to_target(scr_reg)
 
-                self.update_ap_status("Jump")
+                self.update_ap_status(self.STATUS_KEYS['JUMP'])
 
                 self.jump(scr_reg)
 
@@ -2217,13 +2401,13 @@ class EDAutopilot:
                 # Refuel
                 refueled = self.refuel(scr_reg)
 
-                self.update_ap_status("Maneuvering")
+                self.update_ap_status(self.STATUS_KEYS['MANEUVERING'])
 
                 self.position(scr_reg, refueled)
 
                 if self.jn.ship_state()['fuel_percent'] < self.config['FuelThreasholdAbortAP']:
-                    self.ap_ckb('log', "AP Aborting, low fuel")
-                    self.vce.say("AP Aborting, low fuel")
+                    self.log_ui(self.LOG_KEYS['LOW_FUEL_ABORT'])
+                    self.speak_ui(self.VOICE_KEYS['LOW_FUEL_ABORT'])
                     break
 
         sleep(2)  # wait until screen stabilizes from possible last positioning
@@ -2231,7 +2415,8 @@ class EDAutopilot:
         # if there is no destination defined, we are done
         if not self.have_destination(scr_reg):
             self.keys.send('SetSpeedZero')
-            self.vce.say("Destination Reached, distance jumped:"+str(int(self.total_dist_jumped))+" lightyears")
+            self.speak_ui(self.VOICE_KEYS['DESTINATION_REACHED'],
+                           distance=int(self.total_dist_jumped))
             if self.config["AutomaticLogout"] == True:
                 sleep(5)
                 self.logout()
@@ -2239,7 +2424,7 @@ class EDAutopilot:
         # else there is a destination in System, so let jump over to SC Assist
         else:
             self.keys.send('SetSpeed100')
-            self.vce.say("System Reached, preparing for supercruise")
+            self.speak_ui(self.VOICE_KEYS['SYSTEM_REACHED'])
             sleep(1)
             return False
 
@@ -2254,7 +2439,7 @@ class EDAutopilot:
         align_failed = False
         # see if we have a compass up, if so then we have a target
         if not self.have_destination(scr_reg):
-            self.ap_ckb('log', "Quiting SC Assist - Compass not found. Rotate ship and try again.")
+            self.log_ui(self.LOG_KEYS['SC_COMPASS_MISSING'], level='warning')
             logger.debug("Quiting sc_assist - compass not found")
             return
 
@@ -2276,7 +2461,7 @@ class EDAutopilot:
         self.jn.ship_state()['interdicted'] = False
 
         # Loop forever keeping tight align to target, until we get SC Disengage popup
-        self.ap_ckb('log+vce', 'Target Align')
+        self.log_ui(self.STATUS_KEYS['ALIGN'], voice=True)
         while True:
             sleep(0.05)
             if self.jn.ship_state()['status'] == 'in_supercruise':
@@ -2316,7 +2501,7 @@ class EDAutopilot:
             # check for SC Disengage
             if self.sc_disengage_label_up(scr_reg):
                 if self.sc_disengage_active(scr_reg):
-                    self.ap_ckb('log+vce', 'Disengage Supercruise')
+                    self.log_ui(self.LOG_KEYS['SC_DISENGAGE_COMMAND'], voice=True)
                     self.keys.send('HyperSuperCombination')
                     self.stop_sco_monitoring()
                     break
@@ -2336,7 +2521,7 @@ class EDAutopilot:
             # Check if this is a target we cannot dock at
             skip_docking = False
             if not self.jn.ship_state()['has_adv_dock_comp'] and not self.jn.ship_state()['has_std_dock_comp']:
-                self.ap_ckb('log', "Skipping docking. No Docking Computer fitted.")
+                self.log_ui(self.LOG_KEYS['SKIP_DOCK_NO_COMPUTER'])
                 skip_docking = True
 
             if not self.jn.ship_state()['SupercruiseDestinationDrop_type'] is None:
@@ -2349,22 +2534,22 @@ class EDAutopilot:
                         or "-class Surveyor" in self.jn.ship_state()['SupercruiseDestinationDrop_type']
                         or "-class Traveller" in self.jn.ship_state()['SupercruiseDestinationDrop_type']
                         or "-class Tanker" in self.jn.ship_state()['SupercruiseDestinationDrop_type']):
-                    self.ap_ckb('log', "Skipping docking. No docking privilege at MegaShips.")
+                    self.log_ui(self.LOG_KEYS['SKIP_DOCK_NO_PRIVILEGE'])
                     skip_docking = True
 
             if not skip_docking:
                 # go into docking sequence
                 self.dock()
-                self.ap_ckb('log+vce', "Docking complete, refueled, repaired and re-armed")
-                self.update_ap_status("Docking Complete")
+                self.log_ui(self.LOG_KEYS['DOCKING_COMPLETE_REFIT'], voice=True)
+                self.update_ap_status(self.STATUS_KEYS['DOCKING_COMPLETE'])
             else:
                 self.keys.send('SetSpeedZero')
         else:
-            self.vce.say("Exiting Supercruise, setting throttle to zero")
+            self.speak_ui(self.VOICE_KEYS['EXITING_SUPERCRUISE'])
             self.keys.send('SetSpeedZero')  # make sure we don't continue to land
-            self.ap_ckb('log', "Supercruise dropped, terminating SC Assist")
+            self.log_ui(self.LOG_KEYS['SC_TERMINATED'])
 
-        self.ap_ckb('log+vce', "Supercruise Assist complete")
+        self.log_ui(self.LOG_KEYS['SC_ASSIST_COMPLETE'], voice=True)
 
     def _post_sc_drop_alignment(self, scr_reg):
         """Align on the compass target and boost once after supercruise drop."""
@@ -2375,14 +2560,14 @@ class EDAutopilot:
         if ship_status not in ('in_space', 'in_supercruise'):
             return
 
-        self.ap_ckb('log', 'Post-drop Compass Align')
+        self.log_ui(self.LOG_KEYS['POST_DROP_ALIGN'])
         try:
             self.nav_align(scr_reg)
         except Exception:
             logger.debug('Unable to execute post-drop align', exc_info=True)
             return
 
-        self.ap_ckb('log', 'Post-drop Boost')
+        self.log_ui(self.LOG_KEYS['POST_DROP_BOOST'])
         self.keys.send('UseBoostJuice')
 
     def robigo_assist(self):
@@ -2394,7 +2579,7 @@ class EDAutopilot:
         while True:
             if self.afk_combat.check_shields_up() == False:
                 set_focus_elite_window()
-                self.vce.say("Shields down, evading")
+                self.speak_ui(self.VOICE_KEYS['SHIELDS_DOWN'])
                 self.afk_combat.evade()
                 # after supercruise the menu is reset to top
                 self.afk_combat.launch_fighter()  # at new location launch fighter
@@ -2402,10 +2587,10 @@ class EDAutopilot:
 
             if self.afk_combat.check_fighter_destroyed() == True:
                 set_focus_elite_window()
-                self.vce.say("Fighter Destroyed, redeploying")
+                self.speak_ui(self.VOICE_KEYS['FIGHTER_DESTROYED'])
                 self.afk_combat.launch_fighter()  # assuming two fighter bays
 
-        self.vce.say("Terminating AFK Combat Assist")
+        self.speak_ui(self.VOICE_KEYS['AFK_COMBAT_TERMINATE'])
 
     def dss_assist(self):
         while True:
@@ -2413,12 +2598,12 @@ class EDAutopilot:
             if self.jn.ship_state()['status'] == 'in_supercruise':
                 cur_star_system = self.jn.ship_state()['cur_star_system']
                 if cur_star_system != self._prev_star_system:
-                    self.update_ap_status("DSS Scan")
-                    self.ap_ckb('log', 'DSS Scan: '+cur_star_system)
+                    self.update_ap_status(self.STATUS_KEYS['DSS_SCAN'])
+                    self.log_ui(self.LOG_KEYS['DSS_SCAN'], system=cur_star_system)
                     set_focus_elite_window()
                     self.honk()
                     self._prev_star_system = cur_star_system
-                    self.update_ap_status("Idle")
+                    self.update_ap_status(self.STATUS_KEYS['IDLE'])
 
     def single_waypoint_assist(self):
         """ Travel to a system or station or both."""
@@ -2426,13 +2611,15 @@ class EDAutopilot:
             return False
 
         if self._single_waypoint_system != "":
-            self.ap_ckb('log+vce', f"Targeting system {self._single_waypoint_system}.")
+            self.log_ui(self.LOG_KEYS['NAV_TARGETING_SYSTEM'],
+                        voice=True, system=self._single_waypoint_system)
             # Select destination in galaxy map based on name
             res = self.galaxy_map.set_gal_map_destination_text(self, self._single_waypoint_system, self.jn.ship_state)
             if res:
-                self.ap_ckb('log', f"System has been targeted.")
+                self.log_ui(self.LOG_KEYS['NAV_SYSTEM_TARGETED'])
             else:
-                self.ap_ckb('log+vce', f"Unable to target {self._single_waypoint_system} in Galaxy Map.")
+                self.log_ui(self.LOG_KEYS['NAV_TARGET_SYSTEM_FAILED'],
+                            voice=True, system=self._single_waypoint_system)
                 return False
 
             # Jump to destination
@@ -2624,7 +2811,7 @@ class EDAutopilot:
                 set_focus_elite_window()
                 self.update_overlay()
                 try:
-                    self.update_ap_status("SC to Target")
+                    self.update_ap_status(self.STATUS_KEYS['SC_TO_TARGET'])
                     self.sc_assist(self.scrReg)
                 except EDAP_Interrupt:
                     logger.debug("Caught stop exception")
@@ -2721,17 +2908,22 @@ class EDAutopilot:
                     if ship != self.current_ship_type:
                         if self.current_ship_type is not None:
                             cur_ship_fullname = get_ship_fullname(self.current_ship_type)
-                            self.ap_ckb('log+vce', f"Switched ship from your {cur_ship_fullname} to your {ship_fullname}.")
+                            self.log_ui(self.LOG_KEYS['SHIP_SWITCHED'], voice=True,
+                                        previous=cur_ship_fullname, new=ship_fullname)
                         else:
-                            self.ap_ckb('log+vce', f"Welcome aboard your {ship_fullname}.")
+                            self.log_ui(self.LOG_KEYS['SHIP_WELCOME'], voice=True,
+                                        ship=ship_fullname)
 
                         # Check for fuel scoop and advanced docking computer
                         if not self.jn.ship_state()['has_fuel_scoop']:
-                            self.ap_ckb('log+vce', f"Warning, your {ship_fullname} is not fitted with a Fuel Scoop.")
+                            self.log_ui(self.LOG_KEYS['SHIP_WARNING_NO_SCOOP'], voice=True,
+                                        ship=ship_fullname)
                         if not self.jn.ship_state()['has_adv_dock_comp']:
-                            self.ap_ckb('log+vce', f"Warning, your {ship_fullname} is not fitted with an Advanced Docking Computer.")
+                            self.log_ui(self.LOG_KEYS['SHIP_WARNING_NO_ADC'], voice=True,
+                                        ship=ship_fullname)
                         if self.jn.ship_state()['has_std_dock_comp']:
-                            self.ap_ckb('log+vce', f"Warning, your {ship_fullname} is fitted with a Standard Docking Computer.")
+                            self.log_ui(self.LOG_KEYS['SHIP_WARNING_STANDARD_DC'], voice=True,
+                                        ship=ship_fullname)
 
                         # Store ship for change detection BEFORE loading config and GUI update
                         self.current_ship_type = ship
@@ -2755,11 +2947,11 @@ class EDAutopilot:
         If the ship rotates too much, increase the pitch value.
         """
         if not self.status.get_flag(FlagsSupercruise):
-            self.ap_ckb('log', "Enter Supercruise and try again.")
+            self.log_ui(self.LOG_KEYS['NAV_ENTER_SUPERCRUISE'], level='warning')
             return
 
         if self.jn.ship_state()['target'] is None:
-            self.ap_ckb('log', "Select a target system and try again.")
+            self.log_ui(self.LOG_KEYS['NAV_SELECT_TARGET'], level='warning')
             return
 
         set_focus_elite_window()
@@ -2773,11 +2965,11 @@ class EDAutopilot:
         If the ship rotates too much, increase the roll value.
         """
         if not self.status.get_flag(FlagsSupercruise):
-            self.ap_ckb('log', "Enter Supercruise and try again.")
+            self.log_ui(self.LOG_KEYS['NAV_ENTER_SUPERCRUISE'], level='warning')
             return
 
         if self.jn.ship_state()['target'] is None:
-            self.ap_ckb('log', "Select a target system and try again.")
+            self.log_ui(self.LOG_KEYS['NAV_SELECT_TARGET'], level='warning')
             return
 
         set_focus_elite_window()
@@ -2791,11 +2983,11 @@ class EDAutopilot:
         If the ship rotates too much, increase the yaw value.
         """
         if not self.status.get_flag(FlagsSupercruise):
-            self.ap_ckb('log', "Enter Supercruise and try again.")
+            self.log_ui(self.LOG_KEYS['NAV_ENTER_SUPERCRUISE'], level='warning')
             return
 
         if self.jn.ship_state()['target'] is None:
-            self.ap_ckb('log', "Select a target system and try again.")
+            self.log_ui(self.LOG_KEYS['NAV_SELECT_TARGET'], level='warning')
             return
 
         set_focus_elite_window()

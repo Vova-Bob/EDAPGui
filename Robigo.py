@@ -110,7 +110,7 @@ class Robigo:
 
         # we don't have any missions to complete as the screen did not change
         if found:
-            print("no missions to complete")
+            ap.log_ui(ap.LOG_KEYS['ROBIGO_NO_MISSIONS'])
             ap.keys.send("UI_Left")
             return
 
@@ -255,7 +255,7 @@ class Robigo:
             # takes about 10-22 sec to acknowledge missions
             sleep(15)
             if ap.jn.ship_state()['mission_redirected'] == 0:
-                print("Didnt make it to sirius atmos, should SC again")     
+                ap.log_ui(ap.LOG_KEYS['ROBIGO_RETRY_SUPERCRUISE'], level='warning')
 
             self.mission_redirected = ap.jn.ship_state()['mission_redirected']
              
@@ -307,14 +307,14 @@ class Robigo:
        
             if self.state == STATE_MISSIONS:
                 if not self.do_single_loop:  # if looping, then do mission processing
-                    ap.update_ap_status("Completing missions")
+                    ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_COMPLETING_MISSIONS'])
                     
                     # Complete Missions, if we have any
                     self.goto_passenger_lounge(ap)
                     sleep(2.5)  # wait for new menu comes up
                     self.complete_missions(ap)
 
-                    ap.update_ap_status("Get missions")
+                    ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_GET_MISSIONS'])
                     # Select and fill up on Sirius missions   
                     self.goto_passenger_lounge(ap)
                     sleep(1)
@@ -322,13 +322,13 @@ class Robigo:
                 self.state = STATE_ROUTE_TO_SOTHIS
                 
             elif self.state == STATE_ROUTE_TO_SOTHIS:
-                ap.update_ap_status("Route to SOTHIS")
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_ROUTE_SOTHIS'])
                 # Target SOTHIS and plot route
                 ap.jn.ship_state()["target"] = None   # must clear out previous target from Journal
                 dest = ap.galaxy_map.set_gal_map_destination_text(ap, "SOTHIS", target_select_cb=ap.jn.ship_state)
 
                 if dest == False:
-                    ap.update_ap_status("SOTHIS not set: " + str(dest))
+                    ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_SOTHIS_NOT_SET'], destination=str(dest))
                     break
                 
                 sleep(1)    # give time to popdown GalaxyMap
@@ -342,7 +342,7 @@ class Robigo:
                 self.state = STATE_FSD_TO_SOTHIS
                 
             elif self.state == STATE_FSD_TO_SOTHIS:
-                ap.update_ap_status("FSD to SOTHIS")
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_FSD_TO_SOTHIS'])
                 
                 # away from station, time for Route Assist to get us to SOTHIS
                 ap.fsd_assist(ap.scrReg)
@@ -350,37 +350,38 @@ class Robigo:
                 self.state = STATE_TARGET_SIRIUS
             
             elif self.state == STATE_TARGET_SIRIUS:
-                ap.update_ap_status("Target Sirius")
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_TARGET_SIRIUS'])
                 # [In Sothis]
                 # select Siruis Atmos
                 found = self.lock_target(ap, 'sirius_atmos')  
                 
                 if found == False:
-                    ap.update_ap_status("No Sirius Atmos in Nav Panel")
+                    ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_NO_SIRIUS'])
                     return
                 self.state = STATE_SC_TO_SIRIUS
  
             elif self.state == STATE_SC_TO_SIRIUS:
-                ap.update_ap_status("SC to Marker")            
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_SC_TO_MARKER'])
                 self.travel_to_sirius_atmos(ap)
 
-                ap.update_ap_status("Missions: "+str(self.mission_redirected))
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_MISSIONS_COUNT'],
+                                     missions=str(self.mission_redirected))
                 self.state = STATE_ROUTE_TO_ROBIGO
         
             elif self.state == STATE_ROUTE_TO_ROBIGO:  
-                ap.update_ap_status("Route to Robigo")     
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_ROUTE_ROBIGO'])
                 # Set Route back to Robigo
                 dest = ap.galaxy_map.set_gal_map_destination_text(ap, "ROBIGO", target_select_cb=ap.jn.ship_state)
                 sleep(2)
                 
                 if dest == False:
-                    ap.update_ap_status("Robigo not set: " + str(dest))
+                    ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_ROBIGO_NOT_SET'], destination=str(dest))
                     break
                 
                 self.state = STATE_FSD_TO_ROBIGO
 
             elif self.state == STATE_FSD_TO_ROBIGO:
-                ap.update_ap_status("FSD to Robigo")      
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_FSD_TO_ROBIGO'])
                 # have Route Assist bring us back to Robigo system
                 ap.fsd_assist(ap.scrReg)
                 ap.keys.send("SetSpeed50")
@@ -388,19 +389,19 @@ class Robigo:
                 self.state = STATE_TARGET_ROBIGO_MINES
       
             elif self.state == STATE_TARGET_ROBIGO_MINES:
-                ap.update_ap_status("Target Robigo Mines")     
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_TARGET_MINES'])
                 # In Robigo System, select Robigo Mines in the Nav Panel, which should 1 down (we select in the blind)
                 #   The Robigo Mines position in the list is dependent on distance from current location
                 #   The Speed50 above and waiting 2 seconds ensures Robigo Mines is 2 down from top
                 found = self.lock_target(ap, 'robigo_mines')
                 
                 if found == False:
-                    ap.update_ap_status("No lock on Robigo Mines in Nav Panel")
+                    ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_NO_MINES_LOCK'])
                     return
                 self.state = STATE_SC_TO_ROBIGO_MINES
 
             elif self.state == STATE_SC_TO_ROBIGO_MINES:
-                ap.update_ap_status("SC to Robigo Mines")
+                ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_SC_TO_MINES'])
                 # SC Assist to Robigo Mines and dock
                 ap.sc_assist(ap.scrReg)
                 
@@ -409,11 +410,15 @@ class Robigo:
                 starttime = time.time()
                 loop_cnt += 1
                 if loop_cnt != 0:
-                    ap.ap_ckb('log',"Loop: "+str(loop_cnt)+" Time: "+  time.strftime("%H:%M:%S", time.gmtime(elapsed_time)))
+                    ap.log_ui(
+                        ap.LOG_KEYS['ROBIGO_LOOP_STATS'],
+                        loop=loop_cnt,
+                        duration=time.strftime("%H:%M:%S", time.gmtime(elapsed_time))
+                    )
                 
                 self.state = STATE_MISSIONS
                 if self.do_single_loop == True:  # we did one loop, return
-                    ap.update_ap_status("Single Loop Complete")
+                    ap.update_ap_status(ap.STATUS_KEYS['ROBIGO_SINGLE_LOOP_COMPLETE'])
                     return  
             
             # Useful Journal data that might be able to leverage
