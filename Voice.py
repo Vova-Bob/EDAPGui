@@ -1,10 +1,18 @@
 # pip install pyttsx3
 
-from threading import Thread
-import kthread
+import json
+import logging
+import os
 import queue
-import pyttsx3
+import shutil
+import subprocess
+import sys
+import tempfile
 from time import sleep
+
+import kthread
+import pyttsx3
+from simple_localization.localization import LocalizationManager
 
 #rate = voiceEngine.getProperty('rate')
 #volume = voiceEngine.getProperty('volume')
@@ -13,17 +21,77 @@ from time import sleep
 #voiceEngine.setProperty('voice', voice.id)   id = 0, 1, ...
 
 """
-File:Voice.py    
+File:Voice.py
 
 Description:
   Class to enapsulate the Text to Speech package in python
 
 To Use:
   See main() at bottom as example
-  
+
 Author: sumzer0@yahoo.com
 
 """
+
+
+class _UkrainianNeuralEngine:
+
+    def __init__(self, voice_name, log_import_error, log_init_failed,
+                 log_synthesis_failed, resolve_voice, resolve_stress):
+        self.tts = None
+        self.voice = None
+        self.stress_mode = None
+        self.voice_name = voice_name
+        self._log_import_error = log_import_error
+        self._log_init_failed = log_init_failed
+        self._log_synthesis_failed = log_synthesis_failed
+        self._resolve_voice = resolve_voice
+        self._resolve_stress = resolve_stress
+        self._voices_cls = None
+        self._stress_cls = None
+
+    def ensure_initialized(self):
+        if self.tts is not None:
+            return True
+        try:
+            from ukrainian_tts.tts import TTS, Voices, Stress
+            self._voices_cls = Voices
+            self._stress_cls = Stress
+        except Exception as error:
+            self._log_import_error(error)
+            return False
+        try:
+            self.tts = TTS(device="cpu")
+            self.voice = self._resolve_voice(self.voice_name, self._voices_cls)
+            self.stress_mode = self._resolve_stress(self._stress_cls)
+            if self.voice is None:
+                raise ValueError('Ukrainian neural TTS voice is not available')
+            if self.stress_mode is None:
+                raise ValueError('Ukrainian neural TTS stress mode is not available')
+        except Exception as error:
+            self._log_init_failed(error)
+            self.tts = None
+            return False
+        return True
+
+    def speak(self, text: str, tmp_dir, playback_callback):
+        if not self.ensure_initialized():
+            return False
+        tmp_file = tempfile.NamedTemporaryFile(delete=False, suffix='.wav', dir=tmp_dir)
+        tmp_path = tmp_file.name
+        try:
+            with tmp_file as handle:
+                self.tts.tts(text, self.voice.value, self.stress_mode.value, handle)
+            playback_callback(tmp_path)
+            return True
+        except Exception as error:
+            self._log_synthesis_failed(error)
+            return False
+        finally:
+            try:
+                os.remove(tmp_path)
+            except OSError:
+                pass
 
 
 class Voice:
@@ -37,6 +105,37 @@ class Voice:
         self.v_id = 0
         self.log_func = log_func
         self._last_voice_warning = None
+        self._fallback_localizer = None
+        self.ui_language = 'en'
+        self.voice_language = 'en'
+        self.ua_voice_name = 'Dmytro'
+        self.ua_neural_enabled = False
+        self._ua_neural_engine = None
+        self._load_voice_settings()
+
+    def _read_config(self):
+        config_path = os.path.join(os.path.dirname(__file__), 'configs', 'AP.json')
+        try:
+            with open(config_path, 'r', encoding='utf-8') as config_file:
+                return json.load(config_file)
+        except Exception:
+            return None
+
+    def _load_voice_settings(self):
+        config = self._read_config()
+        language = 'en'
+        neural_enabled = False
+        ui_language = 'en'
+        if config:
+            language = config.get('VoiceLanguage', language)
+            ui_language = config.get('Language', ui_language)
+            self.ua_voice_name = config.get('UAVoice', self.ua_voice_name)
+            neural_enabled = bool(config.get('UkrainianNeuralTTS', False))
+        if language:
+            self.voice_language = str(language).lower()
+        if ui_language:
+            self.ui_language = str(ui_language).lower()
+        self.ua_neural_enabled = neural_enabled and self.voice_language.startswith('uk')
 
     def say(self, vSay):
         if self.v_enabled:
@@ -58,22 +157,117 @@ class Voice:
     def quit(self):
         self.v_quit = True
         
+    def _get_localizer(self):
+        if self._fallback_localizer is not None:
+            return self._fallback_localizer
+        locales_dir = os.path.join(os.path.dirname(__file__), 'locales')
+        try:
+            self._fallback_localizer = LocalizationManager(locales_dir, self.ui_language)
+        except Exception:
+            try:
+                self._fallback_localizer = LocalizationManager(locales_dir, 'en')
+            except Exception:
+                self._fallback_localizer = None
+        return self._fallback_localizer
+
+    def _format_localized(self, key, **kwargs):
+        localizer = self._get_localizer()
+        try:
+            template = localizer[key] if localizer else key
+            return template.format(**kwargs)
+        except Exception:
+            return f"{key}: {kwargs}" if kwargs else key
+
+    def _emit_log(self, key, level='info', **kwargs):
+        if callable(self.log_func):
+            self.log_func(key, level=level, **kwargs)
+            return
+        message = self._format_localized(key, **kwargs)
+        logger = logging.getLogger(__name__)
+        level_method = getattr(logger, level, logger.info)
+        level_method(message)
+
     def _log_voice_error(self, voice_id, total, fallback=0):
         warning_key = (voice_id, total)
         if self._last_voice_warning == warning_key:
             return
         self._last_voice_warning = warning_key
-        if callable(self.log_func):
-            self.log_func('log.voice.id_out_of_range', level='warning',
-                          voice_id=voice_id, total=total, fallback=fallback)
-        else:
-            print(f"Voice ID {voice_id} out of range (only {total} voices). Using {fallback}.")
+        self._emit_log('log.voice.id_out_of_range', level='warning',
+                       voice_id=voice_id, total=total, fallback=fallback)
 
     def _log_tts_warning(self, error):
-        if callable(self.log_func):
-            self.log_func('log.voice.tts_error', level='warning', error=str(error))
-        else:
-            print(f"TTS warning: {error}")
+        self._emit_log('log.voice.tts_error', level='warning', error=str(error))
+
+    def _log_ua_tts_import_error(self, error):
+        self._emit_log('log.voice.ua_tts_import_error', level='warning', error=str(error))
+
+    def _log_ua_tts_init_failed(self, error):
+        self._emit_log('log.voice.ua_tts_init_failed', level='warning', error=str(error))
+
+    def _log_ua_tts_synthesis_failed(self, error):
+        self._emit_log('log.voice.ua_tts_synthesis_failed', level='warning', error=str(error))
+
+    def _log_ua_tts_unknown_voice(self, voice_name):
+        self._emit_log('log.voice.ua_tts_unknown_voice', level='warning', voice=voice_name)
+
+    def _resolve_ua_neural_voice(self, config_voice_name, voices_cls):
+        default_voice = getattr(voices_cls, 'Dmytro', None)
+        voice_name = str(config_voice_name).strip() if config_voice_name else ''
+        normalized_name = voice_name.lower()
+        mapping = {
+            'dmytro': getattr(voices_cls, 'Dmytro', default_voice),
+            'natalia': getattr(voices_cls, 'Natalia', default_voice),
+            'mykyta': getattr(voices_cls, 'Mykyta', default_voice),
+            'oleksa': getattr(voices_cls, 'Oleksa', default_voice),
+            'tetiana': getattr(voices_cls, 'Tetiana', default_voice),
+        }
+        resolved = mapping.get(normalized_name, default_voice)
+        if resolved is None and hasattr(voices_cls, '__iter__'):
+            try:
+                resolved = list(voices_cls)[0]
+            except Exception:
+                resolved = None
+        if resolved is None:
+            return default_voice
+        if normalized_name not in mapping and voice_name:
+            self._log_ua_tts_unknown_voice(voice_name)
+        return resolved
+
+    def _resolve_ua_stress_mode(self, stress_cls):
+        return getattr(stress_cls, 'Dictionary', None) or (list(stress_cls)[0] if hasattr(stress_cls, '__iter__') else None)
+
+    def _should_use_ua_tts(self):
+        return self.ua_neural_enabled and self.voice_language.startswith('uk')
+
+    def _ensure_ua_engine(self):
+        if not self._should_use_ua_tts():
+            return False
+        if self._ua_neural_engine is None:
+            ua_engine = _UkrainianNeuralEngine(
+                self.ua_voice_name,
+                self._log_ua_tts_import_error,
+                self._log_ua_tts_init_failed,
+                self._log_ua_tts_synthesis_failed,
+                self._resolve_ua_neural_voice,
+                self._resolve_ua_stress_mode)
+            if not ua_engine.ensure_initialized():
+                self.ua_neural_enabled = False
+                return False
+            self._ua_neural_engine = ua_engine
+        return True
+
+    def _play_audio_file(self, filepath):
+        if sys.platform.startswith('win'):
+            import winsound
+            winsound.PlaySound(filepath, winsound.SND_FILENAME)
+            return
+        player = shutil.which('aplay') or shutil.which('paplay') or shutil.which('afplay')
+        if player:
+            subprocess.run([player, filepath], check=True)
+            return
+        message = self._format_localized('log.voice.ua_tts_playback_missing')
+        self._emit_log('log.voice.ua_tts_playback_missing', level='warning')
+        raise RuntimeError(message)
 
     def _normalize_voice_id(self, requested_id, voices):
         fallback = 0
@@ -129,6 +323,9 @@ class Voice:
             if words is None:
                 continue
             try:
+                if self._ensure_ua_engine() and self._ua_neural_engine is not None:
+                    if self._ua_neural_engine.speak(words, None, self._play_audio_file):
+                        continue
                 engine.say(words)
                 engine.runAndWait()
             except Exception as error:
@@ -139,9 +336,9 @@ def main():
     v = Voice()
     v.set_on()
     sleep(2)
-    v.say("Hey dude")
+    v.say(v._format_localized('voice.demo.sample_phrase'))
     sleep(2)
-    v.say("whats up")
+    v.say(v._format_localized('voice.demo.sample_phrase'))
     sleep(2)
     v.quit()
 
