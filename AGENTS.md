@@ -83,7 +83,6 @@ Rules for using this dependency:
 
 Example reference usage (for agents, not to be pasted literally):
 
-```python
 from ukrainian_tts.tts import TTS, Voices, Stress
 
 tts = TTS(device="cpu")
