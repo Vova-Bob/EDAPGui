@@ -36,6 +36,7 @@ class Voice:
         self.t.start()
         self.v_id = 0
         self.log_func = log_func
+        self._last_voice_warning = None
 
     def say(self, vSay):
         if self.v_enabled:
@@ -58,6 +59,10 @@ class Voice:
         self.v_quit = True
         
     def _log_voice_error(self, voice_id, total, fallback=0):
+        warning_key = (voice_id, total)
+        if self._last_voice_warning == warning_key:
+            return
+        self._last_voice_warning = warning_key
         if callable(self.log_func):
             self.log_func('log.voice.id_out_of_range', level='warning',
                           voice_id=voice_id, total=total, fallback=fallback)
@@ -83,6 +88,7 @@ class Voice:
         if requested_id < 0 or requested_id >= total:
             self._log_voice_error(requested_id, total, fallback)
             return fallback
+        self._last_voice_warning = None
         return requested_id
 
     def _apply_voice(self, engine, voices, voice_id):
