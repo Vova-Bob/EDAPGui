@@ -91,69 +91,68 @@ class EDWayPoint:
             # Perform any checks on the data returned
             # Check if the waypoint data contains the 'GlobalShoppingList' (new requirement)
             if 'GlobalShoppingList' not in s:
-                # self.ap.ap_ckb('log', f"Waypoint file is invalid. Check log file for details.")
-                logger.warning(f"Waypoint file {filename} is invalid or old version. "
-                               f"It does not contain a 'GlobalShoppingList' waypoint.")
+                self._log('WAYPOINT_GLOBAL_LIST_MISSING', filename=filename)
                 s = None
 
-            # Check the
             err = False
-            for key, value in s.items():
-                if key == 'GlobalShoppingList':
-                    # Special case
-                    if 'BuyCommodities' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'BuyCommodities'.")
-                        err = True
-                    if 'UpdateCommodityCount' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'UpdateCommodityCount'.")
-                        err = True
-                    if 'Skip' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'Skip'.")
-                        err = True
-                else:
-                    # All other cases
-                    if 'SystemName' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'SystemName'.")
-                        err = True
-                    if 'StationName' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'StationName'.")
-                        err = True
-                    if 'GalaxyBookmarkType' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'GalaxyBookmarkType'.")
-                        err = True
-                    if 'GalaxyBookmarkNumber' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'GalaxyBookmarkNumber'.")
-                        err = True
-                    if 'SystemBookmarkType' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'SystemBookmarkType'.")
-                        err = True
-                    if 'SystemBookmarkNumber' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'SystemBookmarkNumber'.")
-                        err = True
-                    if 'SellCommodities' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'SellCommodities'.")
-                        err = True
-                    if 'BuyCommodities' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'BuyCommodities'.")
-                        err = True
-                    if 'UpdateCommodityCount' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'UpdateCommodityCount'.")
-                        err = True
-                    if 'FleetCarrierTransfer' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'FleetCarrierTransfer'.")
-                        err = True
-                    if 'Skip' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'Skip'.")
-                        err = True
-                    if 'Completed' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'Completed'.")
-                        err = True
+            if s is not None:
+                for key, value in s.items():
+                    if key == 'GlobalShoppingList':
+                        # Special case
+                        if 'BuyCommodities' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='BuyCommodities')
+                            err = True
+                        if 'UpdateCommodityCount' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='UpdateCommodityCount')
+                            err = True
+                        if 'Skip' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='Skip')
+                            err = True
+                    else:
+                        # All other cases
+                        if 'SystemName' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='SystemName')
+                            err = True
+                        if 'StationName' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='StationName')
+                            err = True
+                        if 'GalaxyBookmarkType' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='GalaxyBookmarkType')
+                            err = True
+                        if 'GalaxyBookmarkNumber' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='GalaxyBookmarkNumber')
+                            err = True
+                        if 'SystemBookmarkType' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='SystemBookmarkType')
+                            err = True
+                        if 'SystemBookmarkNumber' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='SystemBookmarkNumber')
+                            err = True
+                        if 'SellCommodities' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='SellCommodities')
+                            err = True
+                        if 'BuyCommodities' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='BuyCommodities')
+                            err = True
+                        if 'UpdateCommodityCount' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='UpdateCommodityCount')
+                            err = True
+                        if 'FleetCarrierTransfer' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='FleetCarrierTransfer')
+                            err = True
+                        if 'Skip' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='Skip')
+                            err = True
+                        if 'Completed' not in value:
+                            self._log('WAYPOINT_FIELD_MISSING', waypoint=key, field='Completed')
+                            err = True
 
             if err:
                 s = None
 
         except Exception as e:
-            logger.warning("EDWayPoint.py read_waypoints error :" + str(e))
+            self._log('WAYPOINT_READ_ERROR', filename=filename, error=str(e))
+            s = None
 
         return s
 

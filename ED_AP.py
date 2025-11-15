@@ -7,7 +7,7 @@ from tkinter import messagebox
 
 import cv2
 
-from simple_localization import LocalizationManager
+from simple_localization import LocalizationManager, OCRTokenManager
 
 from EDAP_EDMesg_Server import EDMesgServer
 from EDGalaxyMap import EDGalaxyMap
@@ -149,6 +149,7 @@ LOG_MESSAGE_KEYS = {
     'SCO_ABORT_USER_FUEL': 'log.sco.abort_user_threshold',
     'ANALYSIS_MODE_REQUIRED': 'log.autopilot.analysis_mode_required',
     'AVOIDING_STAR': 'log.autopilot.avoiding_star',
+    'SUN_AVOID_TIMEOUT': 'log.autopilot.sun_avoid_timeout',
     'REFUELING': 'log.autopilot.refueling',
     'SKIP_REFUEL_NOT_STAR': 'log.autopilot.skip_refuel_not_star',
     'SKIP_REFUEL_OKAY': 'log.autopilot.skip_refuel_full',
@@ -182,6 +183,18 @@ LOG_MESSAGE_KEYS = {
     'NAV_TARGET_OCCLUDED': 'log.navigation.target_occluded',
     'NAV_TARGETING_SYSTEM': 'log.navigation.targeting_system',
     'NAV_TARGET_SYSTEM_FAILED': 'log.navigation.target_system_failed',
+    'SYSTEM_MAP_OPENING': 'log.system_map.opening',
+    'SYSTEM_MAP_ALREADY_OPEN': 'log.system_map.already_open',
+    'GALAXY_MAP_OPENING': 'log.galaxy_map.opening',
+    'GALAXY_MAP_ALREADY_OPEN': 'log.galaxy_map.already_open',
+    'GALAXY_MAP_ENTER_NAME': 'log.galaxy_map.enter_name',
+    'GALAXY_MAP_PREVIOUS_ROUTE': 'log.galaxy_map.previous_route',
+    'GALAXY_MAP_WAITING_UPDATE': 'log.galaxy_map.waiting_update',
+    'GALAXY_MAP_ROUTE_CHANGED': 'log.galaxy_map.route_changed',
+    'GALAXY_MAP_ROUTE_CORRECT': 'log.galaxy_map.route_correct',
+    'GALAXY_MAP_ROUTE_WRONG': 'log.galaxy_map.route_wrong',
+    'GALAXY_MAP_ASSUME_CORRECT': 'log.galaxy_map.assume_correct',
+    'GALAXY_MAP_WAYPOINT_ERROR': 'log.galaxy_map.waypoint_error',
     'SHIP_SWITCHED': 'log.ship.switch',
     'SHIP_WELCOME': 'log.ship.welcome',
     'SHIP_WARNING_NO_SCOOP': 'log.ship.warning_no_scoop',
@@ -193,6 +206,9 @@ LOG_MESSAGE_KEYS = {
     'WAYPOINT_FILE_INVALID': 'log.waypoint.file_invalid',
     'WAYPOINT_NO_FILE_LOADED': 'log.waypoint.no_file_loaded',
     'WAYPOINT_FILE_SELECTED': 'log.waypoint.file_selected',
+    'WAYPOINT_GLOBAL_LIST_MISSING': 'log.waypoint.global_list_missing',
+    'WAYPOINT_FIELD_MISSING': 'log.waypoint.field_missing',
+    'WAYPOINT_READ_ERROR': 'log.waypoint.read_error',
     'WAYPOINT_LIST_COMPLETED': 'log.waypoint.list_completed',
     'WAYPOINT_NEXT': 'log.waypoint.next',
     'WAYPOINT_ALREADY_IN_SYSTEM': 'log.waypoint.already_in_system',
@@ -222,10 +238,17 @@ LOG_MESSAGE_KEYS = {
     'WAYPOINT_TRADE_GENERIC': 'log.trade.generic',
     'TRADE_DOWNLOAD_MARKET_DATA': 'log.trade.download_market_data',
     'TRADE_MARKET_NOT_SELLING': 'log.trade.market_not_selling',
+    'TRADE_MARKET_NOT_SELLING_DETAIL': 'log.trade.market_not_selling_detail',
     'TRADE_BUYING_QUANTITY': 'log.trade.buying_quantity',
+    'TRADE_BUY_EXECUTE_DETAIL': 'log.trade.buy_execute_detail',
+    'TRADE_BUY_ATTEMPT': 'log.trade.buy_attempt',
     'TRADE_MARKET_NOT_BUYING': 'log.trade.market_not_buying',
+    'TRADE_MARKET_NOT_BUYING_DETAIL': 'log.trade.market_not_buying_detail',
     'TRADE_SELLING_ALL': 'log.trade.selling_all',
     'TRADE_SELLING_QUANTITY': 'log.trade.selling_quantity',
+    'TRADE_SELL_EXECUTE_DETAIL': 'log.trade.sell_execute_detail',
+    'TRADE_SELL_ALL_ATTEMPT': 'log.trade.sell_all_attempt',
+    'TRADE_SELL_ATTEMPT': 'log.trade.sell_attempt',
     'MARKET_READ_ERROR': 'log.market.read_error',
     'CARGO_READ_ERROR': 'log.cargo.read_error',
     'NAVROUTE_READ_ERROR': 'log.navroute.read_error',
@@ -352,7 +375,7 @@ class EDAutopilot:
 
         # Load localized OCR strings for the selected in-game language
         self.ocr_language = ocr_language
-        self.ocr_locale = LocalizationManager('locales', self.ocr_language)
+        self.ocr_tokens = OCRTokenManager('locales', self.ocr_language)
 
         # Load UI localization for overlay and status strings
         self.ui_language = self.config.get('Language', 'en')
@@ -590,7 +613,7 @@ class EDAutopilot:
         self.ocr_language = language
 
         try:
-            self.ocr_locale.change_language(language)
+            self.ocr_tokens.change_language(language)
         except Exception as exc:
             logger.error(f"Failed to switch OCR localization to '{language}': {exc}")
             self.ocr_language = previous_language
@@ -1048,20 +1071,24 @@ class EDAutopilot:
         # only check for singal
         if maxVal1 > 0.70 and maxLoc1[1] < 30:
             if maxLoc1[0] < wid_div3:
-                sstr = "Earth"
+                world_key = 'world.type.earth'
             elif maxLoc1[0] > (wid_div3*2):
-                sstr = "Water"
+                world_key = 'world.type.water'
             else:
-                sstr = "Ammonia"
+                world_key = 'world.type.ammonia'
+
+            world_label = self._t(world_key)
+            if world_label == world_key:
+                world_label = world_key.rsplit('.', 1)[-1].replace('_', ' ').title()
             # log the entry into the elw.txt file
             f = open("elw.txt", 'a')
-            f.write(self.jn.ship_state()["location"]+", Type: "+sstr+
+            f.write(self.jn.ship_state()["location"]+", Type: "+world_label+
                     ", Probabilty: {0:3.0f}% ".format((maxVal1*100))+
                     ", Date: "+str(datetime.now())+str("\n"))
             f.close()
-            self.speak_ui(self.VOICE_KEYS['ELW_DETECTED'], world=sstr)
-            self.fss_detected = self._t(self.STATUS_KEYS['ELW_DETECTED'], world=sstr)
-            self.log_ui(self.LOG_KEYS['ELW_WORLD_FOUND'], world=sstr,
+            self.speak_ui(self.VOICE_KEYS['ELW_DETECTED'], world=world_label)
+            self.fss_detected = self._t(self.STATUS_KEYS['ELW_DETECTED'], world=world_label)
+            self.log_ui(self.LOG_KEYS['ELW_WORLD_FOUND'], world=world_label,
                         location=self.jn.ship_state()["location"])
         else:
             self.fss_detected = self._t('status.elw_none')
@@ -1397,7 +1424,8 @@ class EDAutopilot:
         sim = 0.0
         ocr_textlist = self.ocr.image_simple_ocr(image)
         raw_text = ' '.join(ocr_textlist) if ocr_textlist else ''
-        normalized_target = normalize_ocr_text(self.ocr_locale["PRESS_TO_DISENGAGE_MSG"], self.ocr_language)
+        target_token = self.ocr_tokens['ocr.supercruise.press_to_disengage']
+        normalized_target = normalize_ocr_text(target_token, self.ocr_language)
         normalized_ocr = normalize_ocr_text(raw_text, self.ocr_language)
         if normalized_ocr:
             sim = self.ocr.string_similarity(normalized_target, normalized_ocr)
@@ -1625,8 +1653,7 @@ class EDAutopilot:
 
             # if we are pitching more than N seconds break, may be in high density area star area (close to core)
             if ((time.time()-starttime) > fail_safe_timeout):
-                logger.debug('sun avoid failsafe timeout')
-                print("sun avoid failsafe timeout")
+                self.log_ui(self.LOG_KEYS['SUN_AVOID_TIMEOUT'], level='warning')
                 break
 
         sleep(0.35)                 # up slightly so not to overheat when scooping

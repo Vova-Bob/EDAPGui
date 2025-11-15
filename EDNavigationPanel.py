@@ -29,7 +29,7 @@ class EDNavigationPanel:
         self.screen = screen
         self.keys = keys
         self.ap_ckb = cb
-        self.ocr_locale = self.ap.ocr_locale
+        self.ocr_tokens = self.ap.ocr_tokens
         self.status_parser = StatusParser()
         self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
         self._load_tab_texts()
@@ -48,10 +48,10 @@ class EDNavigationPanel:
         self.nav_pnl_location_height = 35  # Nav panel location height in pixels at 1920x1080
 
     def _load_tab_texts(self):
-        self.navigation_tab_text = self.ocr_locale["NAV_PNL_TAB_NAVIGATION"]
-        self.transactions_tab_text = self.ocr_locale["NAV_PNL_TAB_TRANSACTIONS"]
-        self.contacts_tab_text = self.ocr_locale["NAV_PNL_TAB_CONTACTS"]
-        self.target_tab_text = self.ocr_locale["NAV_PNL_TAB_TARGET"]
+        self.navigation_tab_text = self.ocr_tokens["ocr.nav_panel.tab.navigation"]
+        self.transactions_tab_text = self.ocr_tokens["ocr.nav_panel.tab.transactions"]
+        self.contacts_tab_text = self.ocr_tokens["ocr.nav_panel.tab.contacts"]
+        self.target_tab_text = self.ocr_tokens["ocr.nav_panel.tab.target"]
         self._normalized_tabs = {
             'navigation': normalize_ocr_text(self.navigation_tab_text, self.ocr_language),
             'transactions': normalize_ocr_text(self.transactions_tab_text, self.ocr_language),
@@ -61,7 +61,7 @@ class EDNavigationPanel:
 
     def update_ocr_language(self):
         self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
-        self.ocr_locale = self.ap.ocr_locale
+        self.ocr_tokens = self.ap.ocr_tokens
         self._load_tab_texts()
 
     def request_docking_ocr(self) -> bool:
