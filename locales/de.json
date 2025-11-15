@@ -1,16 +1,4 @@
 {
-    "PRESS_TO_DISENGAGE_MSG": "?",
-    "INT_PNL_TAB_MODULES": "?",
-    "INT_PNL_TAB_FIRE_GROUPS": "?",
-    "INT_PNL_TAB_SHIP": "?",
-    "INT_PNL_TAB_INVENTORY": "?",
-    "INT_PNL_TAB_STORAGE": "?",
-    "INT_PNL_TAB_STATUS": "?",
-    "NAV_PNL_TAB_NAVIGATION": "?",
-    "NAV_PNL_TAB_TRANSACTIONS": "?",
-    "NAV_PNL_TAB_CONTACTS": "?",
-    "NAV_PNL_TAB_TARGET": "?",
-    "STN_SVCS_CONNECTED_TO": "?",
     "ui.window.title": "EDAutopilot {version}",
     "ui.log.starting": "Starting ED Autopilot {version}.",
     "ui.log.loaded": "ED Autopilot loaded successfully.",
@@ -405,7 +393,5 @@
     "log.waypoint.read_error": "Wegpunktdatei {filename} konnte nicht gelesen werden: {error}",
     "world.type.ammonia": "Ammoniak",
     "world.type.earth": "Erde",
-    "world.type.water": "Wasser",
-    "ocr.system_map.cartographics": "KARTOGRAPHIE",
-    "ocr.galaxy_map.cartographics": "KARTOGRAPHIE"
+    "world.type.water": "Wasser"
 }

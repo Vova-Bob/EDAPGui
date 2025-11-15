@@ -7,7 +7,7 @@ from tkinter import messagebox
 
 import cv2
 
-from simple_localization import LocalizationManager
+from simple_localization import LocalizationManager, OCRTokenManager
 
 from EDAP_EDMesg_Server import EDMesgServer
 from EDGalaxyMap import EDGalaxyMap
@@ -375,7 +375,7 @@ class EDAutopilot:
 
         # Load localized OCR strings for the selected in-game language
         self.ocr_language = ocr_language
-        self.ocr_locale = LocalizationManager('locales', self.ocr_language)
+        self.ocr_tokens = OCRTokenManager('locales', self.ocr_language)
 
         # Load UI localization for overlay and status strings
         self.ui_language = self.config.get('Language', 'en')
@@ -613,7 +613,7 @@ class EDAutopilot:
         self.ocr_language = language
 
         try:
-            self.ocr_locale.change_language(language)
+            self.ocr_tokens.change_language(language)
         except Exception as exc:
             logger.error(f"Failed to switch OCR localization to '{language}': {exc}")
             self.ocr_language = previous_language
@@ -1424,7 +1424,8 @@ class EDAutopilot:
         sim = 0.0
         ocr_textlist = self.ocr.image_simple_ocr(image)
         raw_text = ' '.join(ocr_textlist) if ocr_textlist else ''
-        normalized_target = normalize_ocr_text(self.ocr_locale["PRESS_TO_DISENGAGE_MSG"], self.ocr_language)
+        target_token = self.ocr_tokens['ocr.supercruise.press_to_disengage']
+        normalized_target = normalize_ocr_text(target_token, self.ocr_language)
         normalized_ocr = normalize_ocr_text(raw_text, self.ocr_language)
         if normalized_ocr:
             sim = self.ocr.string_similarity(normalized_target, normalized_ocr)

@@ -19,6 +19,7 @@ class EDSystemMap:
         self.status_parser = StatusParser()
         self.ap_ckb = cb
         self.log_keys = getattr(self.ap, 'LOG_KEYS', {})
+        self.ocr_tokens = getattr(self.ap, 'ocr_tokens', None)
         # The rect is top left x, y, and bottom right x, y in fraction of screen resolution
         self.reg = {
             'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
@@ -34,8 +35,10 @@ class EDSystemMap:
         return text
 
     def _get_ocr_targets(self, key: str) -> list[str]:
-        value = self.ap._t(key)
-        if not value or value == key:
+        value = ''
+        if self.ocr_tokens:
+            value = self.ocr_tokens.get(key, '') or ''
+        if not value:
             return ["CARTOGRAPHICS"]
         return [item.strip() for item in value.split('|') if item.strip()]
 

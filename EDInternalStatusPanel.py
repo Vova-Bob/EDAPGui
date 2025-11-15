@@ -21,7 +21,7 @@ class EDInternalStatusPanel:
         self.screen = screen
         self.keys = keys
         self.ap_ckb = cb
-        self.ocr_locale = self.ap.ocr_locale
+        self.ocr_tokens = self.ap.ocr_tokens
         self.status_parser = StatusParser()
         self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
         self._load_tab_texts()
@@ -33,12 +33,12 @@ class EDInternalStatusPanel:
         self.nav_pnl_tab_height = 35  # Nav panel tab height in pixels at 1920x1080
 
     def _load_tab_texts(self):
-        self.modules_tab_text = self.ocr_locale["INT_PNL_TAB_MODULES"]
-        self.fire_groups_tab_text = self.ocr_locale["INT_PNL_TAB_FIRE_GROUPS"]
-        self.ship_tab_text = self.ocr_locale["INT_PNL_TAB_SHIP"]
-        self.inventory_tab_text = self.ocr_locale["INT_PNL_TAB_INVENTORY"]
-        self.storage_tab_text = self.ocr_locale["INT_PNL_TAB_STORAGE"]
-        self.status_tab_text = self.ocr_locale["INT_PNL_TAB_STATUS"]
+        self.modules_tab_text = self.ocr_tokens["ocr.internal_panel.tab.modules"]
+        self.fire_groups_tab_text = self.ocr_tokens["ocr.internal_panel.tab.fire_groups"]
+        self.ship_tab_text = self.ocr_tokens["ocr.internal_panel.tab.ship"]
+        self.inventory_tab_text = self.ocr_tokens["ocr.internal_panel.tab.inventory"]
+        self.storage_tab_text = self.ocr_tokens["ocr.internal_panel.tab.storage"]
+        self.status_tab_text = self.ocr_tokens["ocr.internal_panel.tab.status"]
         self._normalized_tabs = {
             'modules': normalize_ocr_text(self.modules_tab_text, self.ocr_language),
             'fire_groups': normalize_ocr_text(self.fire_groups_tab_text, self.ocr_language),
@@ -50,7 +50,7 @@ class EDInternalStatusPanel:
 
     def update_ocr_language(self):
         self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
-        self.ocr_locale = self.ap.ocr_locale
+        self.ocr_tokens = self.ap.ocr_tokens
         self._load_tab_texts()
 
     def show_right_panel(self):

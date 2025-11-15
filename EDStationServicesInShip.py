@@ -25,7 +25,7 @@ class EDStationServicesInShip:
     def __init__(self, ed_ap, screen, keys, cb):
         self.ap = ed_ap
         self.ocr = ed_ap.ocr
-        self.ocr_locale = self.ap.ocr_locale
+        self.ocr_tokens = self.ap.ocr_tokens
         self.screen = screen
         self.keys = keys
         self.ap_ckb = cb
@@ -66,7 +66,7 @@ class EDStationServicesInShip:
         scl_reg = reg_scale_for_station(self.reg['connected_to'], self.screen.screen_width, self.screen.screen_height)
 
         # Wait for screen to appear
-        res = self.ocr.wait_for_text(self.ap, [self.ocr_locale["STN_SVCS_CONNECTED_TO"]], scl_reg)
+        res = self.ocr.wait_for_text(self.ap, [self.ocr_tokens["ocr.station_services.connected_to"]], scl_reg)
 
         # Store image
         # image = self.screen.get_screen_rect_pct(scl_reg['rect'])
