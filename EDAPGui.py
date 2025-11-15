@@ -196,6 +196,10 @@ class APGui():
         self.TCE_Destination_Filepath = StringVar()
 
         self.radiobuttonvar['ocr_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('OCRLanguage', 'en'))
+        self.radiobuttonvar['voice_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('VoiceLanguage', 'en'))
+        self.checkboxvar['UkrainianNeuralTTS'] = BooleanVar()
+        self.checkboxvar['UkrainianNeuralTTS'].set(self.ed_ap.config.get('UkrainianNeuralTTS', False))
+        self.ua_voice_var = tk.StringVar(value=self.ed_ap.config.get('UAVoice', 'Dmytro'))
 
         self.FSD_A_running = False
         self.SC_A_running = False
@@ -215,6 +219,9 @@ class APGui():
         self.checkboxvar['Automatic logout'].set(self.ed_ap.config['AutomaticLogout'])
         self.checkboxvar['Enable Overlay'].set(self.ed_ap.config['OverlayTextEnable'])
         self.checkboxvar['Enable Voice'].set(self.ed_ap.config['VoiceEnable'])
+        self.radiobuttonvar['voice_language'].set(self.ed_ap.config.get('VoiceLanguage', 'en'))
+        self.checkboxvar['UkrainianNeuralTTS'].set(self.ed_ap.config.get('UkrainianNeuralTTS', False))
+        self.ua_voice_var.set(self.ed_ap.config.get('UAVoice', 'Dmytro'))
 
         self.radiobuttonvar['dss_button'].set(self.ed_ap.config['DSSButton'])
 
@@ -631,6 +638,11 @@ class APGui():
             self.ed_ap.config['HotKey_StartRobigo'] = str(self.entries['buttons']['Start Robigo'].get())
             self.ed_ap.config['HotKey_StopAllAssists'] = str(self.entries['buttons']['Stop All'].get())
             self.ed_ap.config['VoiceEnable'] = self.checkboxvar['Enable Voice'].get()
+            self.ed_ap.config['VoiceLanguage'] = self.radiobuttonvar['voice_language'].get()
+            if self.ed_ap.config['VoiceLanguage'] != 'uk':
+                self.checkboxvar['UkrainianNeuralTTS'].set(False)
+            self.ed_ap.config['UkrainianNeuralTTS'] = self.checkboxvar['UkrainianNeuralTTS'].get()
+            self.ed_ap.config['UAVoice'] = str(self.ua_voice_var.get())
             self.ed_ap.config['TCEDestinationFilepath'] = str(self.TCE_Destination_Filepath.get())
             self.ed_ap.config['DebugOverlay'] = self.checkboxvar['Debug Overlay'].get()
         except Exception:
@@ -638,6 +650,18 @@ class APGui():
                 self._t('ui.message.invalid_float_title'),
                 self._t('ui.message.invalid_float_body')
             )
+
+    def update_voice_controls_state(self):
+        voice_lang = self.radiobuttonvar['voice_language'].get()
+        is_uk = voice_lang == 'uk'
+        neural_state = 'normal' if is_uk else 'disabled'
+        voice_state = 'readonly' if is_uk else 'disabled'
+        if not is_uk:
+            self.checkboxvar['UkrainianNeuralTTS'].set(False)
+        if hasattr(self, 'ua_neural_checkbox'):
+            self.ua_neural_checkbox.config(state=neural_state)
+        if hasattr(self, 'ua_voice_combo'):
+            self.ua_voice_combo.config(state=voice_state)
 
     # ckbox.state:(ACTIVE | DISABLED)
 
@@ -1008,6 +1032,9 @@ class APGui():
         self.radiobuttonvar['ocr_language'].set(lang)
         self.log_msg(self._t('ui.log.ocr_language_switched', language=self._get_ocr_language_display(lang)))
 
+    def on_voice_language_change(self):
+        self.update_voice_controls_state()
+
     def gui_gen(self, win):
 
         modes_check_fields = ('FSD Route Assist', 'Supercruise Assist', 'Waypoint Assist', 'Robigo Assist', 'AFK Combat Assist', 'DSS Assist')
@@ -1343,6 +1370,61 @@ class APGui():
         cb_enable = Checkbutton(blk_voice, text=self._t('ui.checkbox.enable'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Enable Voice'], command=(lambda field='Enable Voice': self.check_cb(field)))
         self._register_widget_text(cb_enable, 'ui.checkbox.enable')
         cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
+
+        lbl_voice_language = tk.Label(blk_voice, text=self._t('ui.voice.language.label'), anchor='w', pady=2)
+        self._register_widget_text(lbl_voice_language, 'ui.voice.language.label')
+        lbl_voice_language.grid(row=1, column=0, sticky='w', padx=NUMERIC_LABEL_PADX)
+        frm_voice_language = tk.Frame(blk_voice)
+        frm_voice_language.grid(row=1, column=1, sticky='w', padx=NUMERIC_ENTRY_PADX)
+        rb_voice_en = Radiobutton(
+            frm_voice_language,
+            pady=3,
+            text=self._t('ui.voice.language.english'),
+            variable=self.radiobuttonvar['voice_language'],
+            value='en',
+            command=self.on_voice_language_change
+        )
+        self._register_widget_text(rb_voice_en, 'ui.voice.language.english')
+        rb_voice_en.grid(row=0, column=0, sticky='w')
+        rb_voice_uk = Radiobutton(
+            frm_voice_language,
+            pady=3,
+            text=self._t('ui.voice.language.ukrainian'),
+            variable=self.radiobuttonvar['voice_language'],
+            value='uk',
+            command=self.on_voice_language_change
+        )
+        self._register_widget_text(rb_voice_uk, 'ui.voice.language.ukrainian')
+        rb_voice_uk.grid(row=1, column=0, sticky='w')
+
+        self.ua_neural_checkbox = Checkbutton(
+            blk_voice,
+            text=self._t('ui.voice.ua_neural_enabled'),
+            onvalue=1,
+            offvalue=0,
+            anchor='w',
+            pady=3,
+            justify=LEFT,
+            wraplength=260,
+            variable=self.checkboxvar['UkrainianNeuralTTS']
+        )
+        self._register_widget_text(self.ua_neural_checkbox, 'ui.voice.ua_neural_enabled')
+        self.ua_neural_checkbox.grid(row=2, column=0, columnspan=2, sticky=(N, S, E, W))
+        Hovertip(self.ua_neural_checkbox, self._t('ui.voice.ua_neural_tooltip'))
+
+        lbl_ua_voice = tk.Label(blk_voice, text=self._t('ui.voice.ua_voice.label'), anchor='w', pady=2)
+        self._register_widget_text(lbl_ua_voice, 'ui.voice.ua_voice.label')
+        lbl_ua_voice.grid(row=3, column=0, sticky='w', padx=NUMERIC_LABEL_PADX)
+        self.ua_voice_combo = ttk.Combobox(
+            blk_voice,
+            values=['Dmytro', 'Natalia', 'Mykyta', 'Oleksa', 'Tetiana'],
+            textvariable=self.ua_voice_var,
+            state='readonly'
+        )
+        self.ua_voice_combo.grid(row=3, column=1, sticky='w', padx=NUMERIC_ENTRY_PADX)
+        self._register_widget_text(self.ua_voice_combo, 'ui.voice.ua_voice.label')
+
+        self.update_voice_controls_state()
 
         # Scanner settings block
         blk_voice = LabelFrame(blk_settings, text=self._t('ui.frame.elw_scanner'))
