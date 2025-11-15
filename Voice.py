@@ -34,7 +34,7 @@ class Voice:
         self.v_quit = False
         self.t = kthread.KThread(target=self.voice_exec, name="Voice", daemon=True)
         self.t.start()
-        self.v_id = 1
+        self.v_id = 0
         self.log_func = log_func
 
     def say(self, vSay):
@@ -57,38 +57,76 @@ class Voice:
     def quit(self):
         self.v_quit = True
         
-    def _log_voice_error(self, voice_id, total):
+    def _log_voice_error(self, voice_id, total, fallback=0):
         if callable(self.log_func):
             self.log_func('log.voice.id_out_of_range', level='warning',
-                          voice_id=voice_id, total=total)
+                          voice_id=voice_id, total=total, fallback=fallback)
         else:
-            print("Voice ID out of range")
+            print(f"Voice ID {voice_id} out of range (only {total} voices). Using {fallback}.")
+
+    def _log_tts_warning(self, error):
+        if callable(self.log_func):
+            self.log_func('log.voice.tts_error', level='warning', error=str(error))
+        else:
+            print(f"TTS warning: {error}")
+
+    def _normalize_voice_id(self, requested_id, voices):
+        fallback = 0
+        total = len(voices)
+        if total == 0:
+            return fallback
+        try:
+            requested_id = int(requested_id)
+        except (TypeError, ValueError):
+            self._log_voice_error(requested_id, total, fallback)
+            return fallback
+        if requested_id < 0 or requested_id >= total:
+            self._log_voice_error(requested_id, total, fallback)
+            return fallback
+        return requested_id
+
+    def _apply_voice(self, engine, voices, voice_id):
+        if not voices:
+            return
+        try:
+            engine.setProperty('voice', voices[voice_id].id)
+        except Exception as error:
+            self._log_tts_warning(error)
+
+    def list_voices(self):
+        engine = pyttsx3.init()
+        voices = engine.getProperty('voices')
+        for idx, voice in enumerate(voices):
+            print(f"{idx}: {voice.name} ({voice.id})")
+        if not voices:
+            print("No voices installed.")
 
     def voice_exec(self):
         engine = pyttsx3.init()
         voices = engine.getProperty('voices')
-        v_id_current = 0   # David
-        engine.setProperty('voice', voices[v_id_current].id)
+        v_id_current = self._normalize_voice_id(self.v_id, voices)
+        self._apply_voice(engine, voices, v_id_current)
         engine.setProperty('rate', 160)
         while not self.v_quit:
             # check if the voice ID changed
             if self.v_id != v_id_current:
-                v_id_current = self.v_id
-                try:
-                    engine.setProperty('voice', voices[v_id_current].id)
-                except Exception:
-                    self._log_voice_error(v_id_current, len(voices))
-                    v_id_current = 0
-                    engine.setProperty('voice', voices[v_id_current].id)
-                           
+                new_id = self._normalize_voice_id(self.v_id, voices)
+                if new_id != v_id_current:
+                    v_id_current = new_id
+                    self._apply_voice(engine, voices, v_id_current)
+
             try:
                 words = self.q.get(timeout=1)
-                self.q.task_done()
-                if words is not None:
-                    engine.say(words)
-                    engine.runAndWait()
-            except:
-                pass
+            except queue.Empty:
+                continue
+            self.q.task_done()
+            if words is None:
+                continue
+            try:
+                engine.say(words)
+                engine.runAndWait()
+            except Exception as error:
+                self._log_tts_warning(error)
 
 
 def main():
