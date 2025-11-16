@@ -636,6 +636,9 @@ class EDAutopilot:
             self.nav_panel.update_ocr_language()
         if hasattr(self.internal_panel, 'update_ocr_language'):
             self.internal_panel.update_ocr_language()
+        if hasattr(self, 'waypoint'):
+            # Автопідбір файлу маршрутів під мову OCR, поки користувач не вказав власний.
+            self.waypoint.update_default_file_for_language(language)
 
         self.log_ui('ui.log.ocr_language_switched', language=language)
         return True

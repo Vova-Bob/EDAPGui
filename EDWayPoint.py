@@ -24,9 +24,11 @@ class EDWayPoint:
     def __init__(self, ed_ap, is_odyssey=True):
         self.ap = ed_ap
         self.is_odyssey = is_odyssey
-        self.filename = './waypoints.json'
+        self.filename = self._get_default_waypoint_path()
         self.stats_log = {'Colonisation': 0, 'Construction': 0, 'Fleet Carrier': 0, 'Station': 0}
         self.waypoints = {}
+        # Автоматично вмикаємо перемикання файлу лише для мовних шаблонів example_*.json
+        self.using_default_file = Path(self.filename).name.startswith('example_')
         #  { "Ninabin": {"DockWithTarget": false, "TradeSeq": None, "Completed": false} }
         # for i, key in enumerate(self.waypoints):
         # self.waypoints[target]['DockWithTarget'] == True ... then go into SC Assist
@@ -34,7 +36,13 @@ class EDWayPoint:
         # if docked and self.waypoints[target]['Completed'] == False
         #    execute_seq(self.waypoints[target]['TradeSeq'])
 
-        ss = self.read_waypoints()
+        ss = self.read_waypoints(self.filename)
+
+        if ss is None and self.filename != './waypoints/waypoints.json':
+            # Якщо мовний шаблон недоступний, повертаємось до базового файлу.
+            self.filename = './waypoints/waypoints.json'
+            self.using_default_file = False
+            ss = self.read_waypoints(self.filename)
 
         # if we read it then point to it, otherwise use the default table above
         if ss is not None:
@@ -75,6 +83,7 @@ class EDWayPoint:
         if ss is not None:
             self.waypoints = ss
             self.filename = filename
+            self.using_default_file = False
             self._log('WAYPOINT_FILE_LOADED', filename=filename)
             logger.debug("EDWayPoint: read json:" + str(ss))
             return True
@@ -85,8 +94,7 @@ class EDWayPoint:
     def read_waypoints(self, filename='./waypoints/waypoints.json'):
         s = None
         try:
-            with open(filename, "r", encoding="utf-8") as fp:
-                s = json.load(fp)
+            s = self._read_json_utf8(filename)
 
             # Perform any checks on the data returned
             # Check if the waypoint data contains the 'GlobalShoppingList' (new requirement)
@@ -160,10 +168,63 @@ class EDWayPoint:
         if data is None:
             data = self.waypoints
         try:
-            with open(filename, "w", encoding="utf-8") as fp:
-                json.dump(data, fp, indent=4)
+            self._write_json_utf8(filename, data)
         except Exception as e:
             logger.warning("EDWayPoint.py write_waypoints error:" + str(e))
+
+    def _get_default_waypoint_path(self, language: str | None = None) -> str:
+        """Повертає типовий файл маршрутів з урахуванням мови OCR.
+
+        Використовуємо окремі шаблони для ru/en, щоб користувач міг одразу
+        працювати зі зрозумілим кодуванням і назвами товарів.
+        """
+        lang = language or getattr(self.ap, 'ocr_language', 'en')
+        base_dir = Path('./waypoints')
+        template_map = {
+            'ru': base_dir / 'example_RU_repeat.json',
+            'en': base_dir / 'example_EN_repeat.json',
+        }
+
+        user_primary = base_dir / 'waypoints.json'
+        preferred = template_map.get(lang, user_primary)
+
+        if user_primary.exists():
+            return str(user_primary)
+
+        if preferred.exists():
+            return str(preferred)
+
+        return str(preferred)
+
+    def update_default_file_for_language(self, language: str) -> None:
+        """Оновлює типовий файл маршрутів, якщо користувач ще не вибрав свій."""
+        if not self.using_default_file:
+            return
+
+        new_default = self._get_default_waypoint_path(language)
+        if new_default == self.filename:
+            return
+
+        ss = self.read_waypoints(new_default)
+        if ss is None:
+            return
+
+        self.filename = new_default
+        self.waypoints = ss
+        self._log('WAYPOINT_FILE_LOADED', filename=new_default)
+        logger.debug("EDWayPoint: read json:" + str(ss))
+
+    @staticmethod
+    def _read_json_utf8(filename: str):
+        """Читаємо JSON у кодуванні UTF-8 без ручних перекодувань."""
+        with open(filename, "r", encoding="utf-8") as fp:
+            return json.load(fp)
+
+    @staticmethod
+    def _write_json_utf8(filename: str, data) -> None:
+        """Зберігаємо JSON як UTF-8, не екранізуючи не-ASCII символи."""
+        with open(filename, "w", encoding="utf-8") as fp:
+            json.dump(data, fp, indent=4, ensure_ascii=False)
 
     def mark_waypoint_complete(self, key):
         self.waypoints[key]['Completed'] = True
