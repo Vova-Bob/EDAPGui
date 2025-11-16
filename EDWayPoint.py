@@ -85,7 +85,7 @@ class EDWayPoint:
     def read_waypoints(self, filename='./waypoints/waypoints.json'):
         s = None
         try:
-            with open(filename, "r") as fp:
+            with open(filename, "r", encoding="utf-8") as fp:
                 s = json.load(fp)
 
             # Perform any checks on the data returned
@@ -160,7 +160,7 @@ class EDWayPoint:
         if data is None:
             data = self.waypoints
         try:
-            with open(filename, "w") as fp:
+            with open(filename, "w", encoding="utf-8") as fp:
                 json.dump(data, fp, indent=4)
         except Exception as e:
             logger.warning("EDWayPoint.py write_waypoints error:" + str(e))
