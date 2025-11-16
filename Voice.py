@@ -37,8 +37,9 @@ Author: sumzer0@yahoo.com
 class _UkrainianNeuralEngine:
 
     def __init__(self, voice_name, log_import_error, log_init_failed,
-                 log_synthesis_failed, resolve_voice, resolve_stress):
-        self.tts = None
+                 log_synthesis_failed, resolve_voice, resolve_stress,
+                 voices_cls=None, stress_cls=None, tts_instance=None):
+        self.tts = tts_instance
         self.voice = None
         self.stress_mode = None
         self.voice_name = voice_name
@@ -47,30 +48,25 @@ class _UkrainianNeuralEngine:
         self._log_synthesis_failed = log_synthesis_failed
         self._resolve_voice = resolve_voice
         self._resolve_stress = resolve_stress
-        self._voices_cls = None
-        self._stress_cls = None
+        self._voices_cls = voices_cls
+        self._stress_cls = stress_cls
 
     def ensure_initialized(self):
-        if self.tts is not None:
+        if self.tts is None or self._voices_cls is None or self._stress_cls is None:
+            self._log_init_failed(RuntimeError('ukrainian tts components unavailable'))
+            return False
+        if self.voice is not None and self.stress_mode is not None:
             return True
         try:
-            from ukrainian_tts.tts import TTS, Voices, Stress
-            self._voices_cls = Voices
-            self._stress_cls = Stress
-        except Exception as error:
-            self._log_import_error(error)
-            return False
-        try:
-            self.tts = TTS(device="cpu")
             self.voice = self._resolve_voice(self.voice_name, self._voices_cls)
             self.stress_mode = self._resolve_stress(self._stress_cls)
         except Exception as error:
             self._log_init_failed(error)
-            self.tts = None
+            self.voice = None
+            self.stress_mode = None
             return False
         if self.voice is None or self.stress_mode is None:
             self._log_init_failed(RuntimeError('ukrainian tts components unavailable'))
-            self.tts = None
             return False
         return True
 
@@ -110,9 +106,11 @@ class Voice:
         self.voice_language = 'en'
         self.ua_voice_name = 'Dmytro'
         self.ua_neural_enabled = False
+        self._ua_neural_enabled = False
         self._ua_neural_failure_logged = False
         self._ua_neural_engine = None
         self._load_voice_settings()
+        self._initialize_ua_engine()
 
     def _read_config(self):
         config_path = os.path.join(os.path.dirname(__file__), 'configs', 'AP.json')
@@ -136,7 +134,9 @@ class Voice:
             self.voice_language = str(language).lower()
         if ui_language:
             self.ui_language = str(ui_language).lower()
-        self.ua_neural_enabled = neural_enabled and self.voice_language.startswith('uk')
+        ua_requested = neural_enabled and self.voice_language.startswith('uk')
+        self.ua_neural_enabled = ua_requested
+        self._ua_neural_enabled = ua_requested
 
     def say(self, vSay):
         if self.v_enabled:
@@ -238,29 +238,44 @@ class Voice:
         return getattr(stress_cls, 'Dictionary', None) or (list(stress_cls)[0] if hasattr(stress_cls, '__iter__') else None)
 
     def _should_use_ua_tts(self):
-        return self.ua_neural_enabled and self.voice_language.startswith('uk') and not self._ua_neural_failure_logged
+        return self._ua_neural_enabled and self.voice_language.startswith('uk') and not self._ua_neural_failure_logged
 
-    def _ensure_ua_engine(self):
-        if not self._should_use_ua_tts():
-            return False
-        if self._ua_neural_engine is None:
+    def _initialize_ua_engine(self):
+        if not self._should_use_ua_tts() or self._ua_neural_engine is not None:
+            return
+        try:
+            from ukrainian_tts.tts import TTS, Voices, Stress
+        except Exception as error:
+            self._log_ua_tts_import_error(error)
+            self._disable_ua_neural_after_failure()
+            self._ua_neural_engine = None
+            return
+        try:
             ua_engine = _UkrainianNeuralEngine(
                 self.ua_voice_name,
                 self._log_ua_tts_import_error,
                 self._log_ua_tts_init_failed,
                 self._log_ua_tts_synthesis_failed,
                 self._resolve_ua_neural_voice,
-                self._resolve_ua_stress_mode)
+                self._resolve_ua_stress_mode,
+                voices_cls=Voices,
+                stress_cls=Stress,
+                tts_instance=TTS(device="cpu"))
             if not ua_engine.ensure_initialized():
-                self.ua_neural_enabled = False
-                self._ua_neural_failure_logged = True
-                return False
+                self._disable_ua_neural_after_failure()
+                self._ua_neural_engine = None
+                return
             self._ua_neural_engine = ua_engine
-        return True
+        except Exception as error:
+            self._log_ua_tts_init_failed(error)
+            self._disable_ua_neural_after_failure()
+            self._ua_neural_engine = None
 
     def _disable_ua_neural_after_failure(self):
         self.ua_neural_enabled = False
+        self._ua_neural_enabled = False
         self._ua_neural_failure_logged = True
+        self._ua_neural_engine = None
 
     def _play_audio_file(self, filepath):
         if sys.platform.startswith('win'):
@@ -336,10 +351,15 @@ class Voice:
             if words is None:
                 continue
             try:
-                if self._ensure_ua_engine() and self._ua_neural_engine is not None:
-                    if self._ua_neural_engine.speak(words, None, self._play_audio_file):
-                        continue
-                    self._disable_ua_neural_after_failure()
+                if self._ua_neural_enabled and self._ua_neural_engine is not None:
+                    try:
+                        if self._ua_neural_engine.speak(words, None, self._play_audio_file):
+                            continue
+                    except Exception as error:
+                        self._log_ua_tts_synthesis_failed(error)
+                        self._disable_ua_neural_after_failure()
+                    else:
+                        self._disable_ua_neural_after_failure()
                 engine.say(words)
                 engine.runAndWait()
             except Exception as error:
