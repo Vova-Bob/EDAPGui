@@ -295,6 +295,7 @@ class EDAutopilot:
             "DiscordUserID": "",
             "VoiceEnable": False,
             "VoiceID": 1,                  # my Windows only have 3 defined (0-2)
+            "VoiceLanguage": 'en',
             "ElwScannerEnable": False,
             "LogDEBUG": False,             # enable for debug messages
             "LogINFO": True,
@@ -353,6 +354,8 @@ class EDAutopilot:
                 cnf['Language'] = 'en'
             if 'OCRLanguage' not in cnf:
                 cnf['OCRLanguage'] = 'en'
+            if 'VoiceLanguage' not in cnf:
+                cnf['VoiceLanguage'] = 'en'
             if 'EnableEDMesg' not in cnf:
                 cnf['EnableEDMesg'] = False
             if 'EDMesgActionsPort' not in cnf:
