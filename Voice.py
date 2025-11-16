@@ -41,6 +41,7 @@ class Voice:
         self.v_id = 0
         self.log_func = log_func
         self._last_voice_warning = None
+        self._last_language_warning = None
         self._fallback_localizer = None
         self.ui_language = 'en'
         self.voice_language = 'en'
@@ -207,13 +208,17 @@ class Voice:
                     index=language_match
                 )
             normalized_id = language_match
+            self._last_language_warning = None
         elif self.voice_language:
-            self._emit_log(
-                'log.voice.language_no_match',
-                level='warning',
-                language=self.voice_language,
-                voice_id=normalized_id
-            )
+            warning_key = (self.voice_language, normalized_id)
+            if self._last_language_warning != warning_key:
+                self._last_language_warning = warning_key
+                self._emit_log(
+                    'log.voice.language_no_match',
+                    level='warning',
+                    language=self.voice_language,
+                    voice_id=normalized_id
+                )
         return normalized_id
 
     def _apply_voice(self, engine, voices, voice_id):
