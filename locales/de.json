@@ -329,6 +329,8 @@
     "log.voice.ua_tts_synthesis_failed": "Ukrainian neural TTS synthesis failed; falling back to standard voice. Error: {error}",
     "log.voice.ua_tts_unknown_voice": "Unknown Ukrainian neural TTS voice '{voice}', using default.",
     "log.voice.ua_tts_playback_missing": "No audio playback backend available for Ukrainian neural TTS; using standard voice.",
+    "log.voice.ua_tts_bridge_unavailable": "Ukrainische TTS-Bridge ist nicht verfügbar; es wird auf die Standardstimme zurückgegriffen.",
+    "log.voice.ua_tts_bridge_error": "Fehler der ukrainischen TTS-Bridge: {error}",
     "log.voice.list_available_header": "Available system voices:",
     "log.voice.list_available_entry": "{index}: {name} ({id})",
     "log.voice.no_voices_installed": "No voices installed.",
