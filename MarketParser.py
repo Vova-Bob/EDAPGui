@@ -140,8 +140,8 @@ class MarketParser:
         # print(json.dumps(data, indent=4))
         return data
 
-    def _log(self, key: str, *, level: str = 'info', **kwargs):
-        if self._log_func:
+    def _log(self, key: str, *, level: str = 'info', ui: bool = True, **kwargs):
+        if ui and self._log_func:
             try:
                 self._log_func(key, level=level, **kwargs)
                 return
@@ -192,7 +192,7 @@ class MarketParser:
 
         self._log('log.market.list_sellable.start', level='debug', market=data.get('StationName', ''))
         for x in sorted_list2:
-            self._log('log.market.list_sellable.entry', level='debug', entry=json.dumps(x, ensure_ascii=False))
+            self._log('log.market.list_sellable.entry', level='debug', entry=json.dumps(x, ensure_ascii=False), ui=False)
         self._log('log.market.list_sellable.end', level='debug', count=len(sorted_list2))
 
         return sorted_list2
@@ -234,7 +234,7 @@ class MarketParser:
 
         self._log('log.market.list_buyable.start', level='debug', market=data.get('StationName', ''))
         for x in sorted_list2:
-            self._log('log.market.list_buyable.entry', level='debug', entry=json.dumps(x, ensure_ascii=False))
+            self._log('log.market.list_buyable.entry', level='debug', entry=json.dumps(x, ensure_ascii=False), ui=False)
         self._log('log.market.list_buyable.end', level='debug', count=len(sorted_list2))
 
         return sorted_list2

@@ -328,9 +328,21 @@ class OCR:
         if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True, str(ocr_textlist)
-        else:
-            logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
-            return False, str(ocr_textlist)
+
+        if self.language == 'ru' and normalized_target == 'пристыкован к':
+            # Російський HUD показує статус докування як "Пристыкован к <станція>".
+            # OCR інколи втрачає початкову літеру або плутає регістр, тому допускаємо
+            # часткові збіги для цього конкретного ключа.
+            if (
+                "пристыкован к" in normalized_ocr
+                or "ристыкован к" in normalized_ocr
+                or "стыкован к" in normalized_ocr
+            ):
+                logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}' (tolerant match).")
+                return True, str(ocr_textlist)
+
+        logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
+        return False, str(ocr_textlist)
 
     def select_item_in_list(self, text, region, keys, min_w, min_h) -> bool:
         """ Attempt to find the item by text in a list defined by the region.
