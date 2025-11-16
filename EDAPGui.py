@@ -197,9 +197,10 @@ class APGui():
 
         self.radiobuttonvar['ocr_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('OCRLanguage', 'en'))
         self.radiobuttonvar['voice_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('VoiceLanguage', 'en'))
-        self.checkboxvar['UkrainianNeuralTTS'] = BooleanVar()
-        self.checkboxvar['UkrainianNeuralTTS'].set(self.ed_ap.config.get('UkrainianNeuralTTS', False))
-        self.ua_voice_var = tk.StringVar(value=self.ed_ap.config.get('UAVoice', 'Dmytro'))
+        self.voice_selection_var = tk.StringVar(master=self.root)
+        self.voice_options = self._load_voice_options()
+        self._set_voice_selection(self.ed_ap.config.get('VoiceID', 0))
+        self._auto_select_voice_for_language()
 
         self.FSD_A_running = False
         self.SC_A_running = False
@@ -220,8 +221,6 @@ class APGui():
         self.checkboxvar['Enable Overlay'].set(self.ed_ap.config['OverlayTextEnable'])
         self.checkboxvar['Enable Voice'].set(self.ed_ap.config['VoiceEnable'])
         self.radiobuttonvar['voice_language'].set(self.ed_ap.config.get('VoiceLanguage', 'en'))
-        self.checkboxvar['UkrainianNeuralTTS'].set(self.ed_ap.config.get('UkrainianNeuralTTS', False))
-        self.ua_voice_var.set(self.ed_ap.config.get('UAVoice', 'Dmytro'))
 
         self.radiobuttonvar['dss_button'].set(self.ed_ap.config['DSSButton'])
 
@@ -639,10 +638,7 @@ class APGui():
             self.ed_ap.config['HotKey_StopAllAssists'] = str(self.entries['buttons']['Stop All'].get())
             self.ed_ap.config['VoiceEnable'] = self.checkboxvar['Enable Voice'].get()
             self.ed_ap.config['VoiceLanguage'] = self.radiobuttonvar['voice_language'].get()
-            if self.ed_ap.config['VoiceLanguage'] != 'uk':
-                self.checkboxvar['UkrainianNeuralTTS'].set(False)
-            self.ed_ap.config['UkrainianNeuralTTS'] = self.checkboxvar['UkrainianNeuralTTS'].get()
-            self.ed_ap.config['UAVoice'] = str(self.ua_voice_var.get())
+            self.ed_ap.config['VoiceID'] = self._get_selected_voice_id()
             self.ed_ap.config['TCEDestinationFilepath'] = str(self.TCE_Destination_Filepath.get())
             self.ed_ap.config['DebugOverlay'] = self.checkboxvar['Debug Overlay'].get()
         except Exception:
@@ -652,16 +648,12 @@ class APGui():
             )
 
     def update_voice_controls_state(self):
-        voice_lang = self.radiobuttonvar['voice_language'].get()
-        is_uk = voice_lang == 'uk'
-        neural_state = 'normal' if is_uk else 'disabled'
-        voice_state = 'readonly' if is_uk else 'disabled'
-        if not is_uk:
-            self.checkboxvar['UkrainianNeuralTTS'].set(False)
-        if hasattr(self, 'ua_neural_checkbox'):
-            self.ua_neural_checkbox.config(state=neural_state)
-        if hasattr(self, 'ua_voice_combo'):
-            self.ua_voice_combo.config(state=voice_state)
+        has_voices = bool(self.voice_options)
+        voice_state = 'readonly' if has_voices else 'disabled'
+        if hasattr(self, 'voice_combo'):
+            self.voice_combo.config(state=voice_state, values=[option.get('label', '') for option in self.voice_options])
+            if not has_voices:
+                self.voice_selection_var.set('')
 
     # ckbox.state:(ACTIVE | DISABLED)
 
@@ -1033,7 +1025,75 @@ class APGui():
         self.log_msg(self._t('ui.log.ocr_language_switched', language=self._get_ocr_language_display(lang)))
 
     def on_voice_language_change(self):
+        language = self.radiobuttonvar['voice_language'].get()
+        self.ed_ap.config['VoiceLanguage'] = language
+        self.ed_ap.vce.set_voice_language(language)
+        self._auto_select_voice_for_language()
         self.update_voice_controls_state()
+
+    def _load_voice_options(self):
+        options = []
+        try:
+            for voice in self.ed_ap.vce.get_voice_options():
+                languages = [str(lang).lower() for lang in voice.get('languages', []) if lang]
+                option = {
+                    'id': voice.get('index', 0),
+                    'name': voice.get('name', ''),
+                    'languages': languages,
+                }
+                option['label'] = self._format_voice_option_label(option)
+                options.append(option)
+        except Exception as error:
+            self.log_msg(self._t('log.voice.tts_error', error=str(error)))
+        return options
+
+    def _format_voice_option_label(self, option):
+        languages = option.get('languages') or []
+        language_hint = languages[0] if languages else ''
+        suffix = f" [{language_hint}]" if language_hint else ''
+        return f"{option.get('id', 0)}: {option.get('name', '')}{suffix}"
+
+    def _set_voice_selection(self, voice_id):
+        for option in self.voice_options:
+            if option.get('id') == voice_id:
+                self.voice_selection_var.set(option.get('label', ''))
+                return
+        if self.voice_options:
+            self.voice_selection_var.set(self.voice_options[0].get('label', ''))
+        else:
+            self.voice_selection_var.set('')
+
+    def _find_voice_option_for_language(self, language):
+        target = str(language).lower().strip()
+        if not target:
+            return None
+        for option in self.voice_options:
+            if Voice.matches_language_metadata(
+                option.get('languages', []),
+                option.get('name', ''),
+                option.get('id', ''),
+                target,
+            ):
+                return option
+        return None
+
+    def _auto_select_voice_for_language(self):
+        option = self._find_voice_option_for_language(self.radiobuttonvar['voice_language'].get())
+        if option:
+            self.voice_selection_var.set(option.get('label', ''))
+            self.on_voice_selection_change()
+
+    def _get_selected_voice_id(self):
+        value = str(self.voice_selection_var.get())
+        try:
+            return int(value.split(':', 1)[0])
+        except (ValueError, IndexError):
+            return 0
+
+    def on_voice_selection_change(self, _event=None):
+        new_id = self._get_selected_voice_id()
+        self.ed_ap.config['VoiceID'] = new_id
+        self.ed_ap.vce.set_voice_id(new_id)
 
     def gui_gen(self, win):
 
@@ -1397,32 +1457,18 @@ class APGui():
         self._register_widget_text(rb_voice_uk, 'ui.voice.language.ukrainian')
         rb_voice_uk.grid(row=1, column=0, sticky='w')
 
-        self.ua_neural_checkbox = Checkbutton(
+        lbl_voice_choice = tk.Label(blk_voice, text=self._t('ui.voice.voice.label'), anchor='w', pady=2)
+        self._register_widget_text(lbl_voice_choice, 'ui.voice.voice.label')
+        lbl_voice_choice.grid(row=2, column=0, sticky='w', padx=NUMERIC_LABEL_PADX)
+        self.voice_combo = ttk.Combobox(
             blk_voice,
-            text=self._t('ui.voice.ua_neural_enabled'),
-            onvalue=1,
-            offvalue=0,
-            anchor='w',
-            pady=3,
-            justify=LEFT,
-            wraplength=260,
-            variable=self.checkboxvar['UkrainianNeuralTTS']
-        )
-        self._register_widget_text(self.ua_neural_checkbox, 'ui.voice.ua_neural_enabled')
-        self.ua_neural_checkbox.grid(row=2, column=0, columnspan=2, sticky=(N, S, E, W))
-        Hovertip(self.ua_neural_checkbox, self._t('ui.voice.ua_neural_tooltip'))
-
-        lbl_ua_voice = tk.Label(blk_voice, text=self._t('ui.voice.ua_voice.label'), anchor='w', pady=2)
-        self._register_widget_text(lbl_ua_voice, 'ui.voice.ua_voice.label')
-        lbl_ua_voice.grid(row=3, column=0, sticky='w', padx=NUMERIC_LABEL_PADX)
-        self.ua_voice_combo = ttk.Combobox(
-            blk_voice,
-            values=['Dmytro', 'Natalia', 'Mykyta', 'Oleksa', 'Tetiana'],
-            textvariable=self.ua_voice_var,
+            values=[option.get('label', '') for option in self.voice_options],
+            textvariable=self.voice_selection_var,
             state='readonly'
         )
-        self.ua_voice_combo.grid(row=3, column=1, sticky='w', padx=NUMERIC_ENTRY_PADX)
-        self._register_widget_text(self.ua_voice_combo, 'ui.voice.ua_voice.label')
+        self.voice_combo.grid(row=2, column=1, sticky='w', padx=NUMERIC_ENTRY_PADX)
+        self.voice_combo.bind('<<ComboboxSelected>>', self.on_voice_selection_change)
+        self._register_widget_text(self.voice_combo, 'ui.voice.voice.label')
 
         self.update_voice_controls_state()
 
