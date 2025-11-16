@@ -405,6 +405,7 @@ class EDAutopilot:
         self.vce = Voice(log_func=self.log_ui)
         self.vce.v_enabled = self.config['VoiceEnable']
         self.vce.set_voice_id(self.config['VoiceID'])
+        self.vce.set_voice_language(self.config.get('VoiceLanguage', 'en'))
         self.speak_ui('voice.autopilot.welcome')
 
         # set log level based on config input, defaulting to warning
