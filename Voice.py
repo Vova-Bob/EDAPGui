@@ -32,6 +32,19 @@ Author: sumzer0@yahoo.com
 
 class Voice:
 
+    LANGUAGE_KEYWORDS = {
+        'en': (
+            'english', 'en-us', 'en-gb', 'eng', 'enus', 'en-gb', 'en_'
+        ),
+        'uk': (
+            'ukrain', 'anatol', 'natalia', 'volodymyr', 'marianna', 'oleksa', 'dmytro',
+            'uk-', 'uk_', 'ukrainian'
+        ),
+        'ru': ('russian', 'rus', 'ru-', 'ru_'),
+        'de': ('german', 'deutsch', 'de-', 'de_'),
+        'fr': ('french', 'franc', 'fr-', 'fr_'),
+    }
+
     def __init__(self, log_func=None):
         self.q = queue.Queue(5)
         self.v_enabled = False
@@ -83,6 +96,13 @@ class Voice:
         
     def set_voice_id(self, id):
         self.v_id = id
+
+    def set_voice_language(self, language):
+        if language:
+            normalized = str(language).lower()
+            if normalized != self.voice_language:
+                self.voice_language = normalized
+                self._last_language_warning = None
 
     def quit(self):
         self.v_quit = True
@@ -142,15 +162,49 @@ class Voice:
             langs.append(lang_str)
         return langs
 
-    def _matches_language(self, voice, language):
+    @classmethod
+    def matches_language_metadata(cls, languages, name, voice_id, language):
         target = str(language).lower().strip()
         if not target:
             return False
-        for lang in self._voice_languages(voice):
+        for lang in languages or []:
+            lang_normalized = str(lang).lower()
+            if lang_normalized.startswith(target):
+                return True
+            if f"-{target}" in lang_normalized:
+                return True
+        if cls._match_language_keywords(voice_id, target):
+            return True
+        if cls._match_language_keywords(name, target):
+            return True
+        return False
+
+    @classmethod
+    def _match_language_keywords(cls, text, target):
+        if not text:
+            return False
+        lowered = str(text).lower()
+        keywords = cls.LANGUAGE_KEYWORDS.get(target, (target,))
+        for keyword in keywords:
+            if keyword and keyword in lowered:
+                return True
+        return False
+
+    @classmethod
+    def _matches_language(cls, voice, language):
+        target = str(language).lower().strip()
+        if not target:
+            return False
+        languages = cls._voice_languages(voice)
+        for lang in languages:
             if lang.startswith(target):
                 return True
             if f"-{target}" in lang:
                 return True
+        if cls._match_language_keywords(getattr(voice, 'id', ''), target):
+            return True
+        if cls._match_language_keywords(getattr(voice, 'name', ''), target):
+            return True
         return False
 
     @staticmethod
@@ -159,7 +213,7 @@ class Voice:
             return False
         lowered = name.lower()
         keywords = (
-            'ukrain', 'anatol', 'natalia', 'volodymyr', 'marianna', 'oleksa', 'dmytro', 'uk-'
+            'ukrain', 'anatol', 'natalia', 'volodymyr', 'marianna', 'oleksa', 'dmytro', 'uk-', 'ukrainian'
         )
         return any(keyword in lowered for keyword in keywords)
 
@@ -194,13 +248,17 @@ class Voice:
         self._last_voice_warning = None
         return requested_id
 
-    def _select_voice_id(self, voices):
+    def _select_voice_id(self, voices, previous_id=None):
         normalized_id = self._normalize_voice_id(self.v_id, voices)
         if not voices:
             return normalized_id
-        language_match = self._find_voice_for_language(voices, self.voice_language)
+        has_language_metadata = any(self._voice_languages(voice) for voice in voices)
+        enable_language_search = has_language_metadata or self.voice_language == 'uk'
+        language_match = None
+        if enable_language_search:
+            language_match = self._find_voice_for_language(voices, self.voice_language)
         if language_match is not None:
-            if language_match != normalized_id:
+            if language_match != normalized_id and language_match != previous_id:
                 self._emit_log(
                     'log.voice.language_override',
                     language=self.voice_language,
@@ -209,7 +267,7 @@ class Voice:
                 )
             normalized_id = language_match
             self._last_language_warning = None
-        elif self.voice_language:
+        elif self.voice_language and enable_language_search:
             warning_key = (self.voice_language, normalized_id)
             if self._last_language_warning != warning_key:
                 self._last_language_warning = warning_key
@@ -274,12 +332,11 @@ class Voice:
         engine.setProperty('rate', 160)
         current_language = self.voice_language
         while not self.v_quit:
-            # check if the voice ID changed
-            if self.v_id != v_id_current or self.voice_language != current_language:
+            desired_id = self._select_voice_id(voices, previous_id=v_id_current)
+            if desired_id != v_id_current or self.voice_language != current_language:
                 current_language = self.voice_language
-                new_id = self._select_voice_id(voices)
-                if new_id != v_id_current:
-                    v_id_current = new_id
+                if desired_id != v_id_current:
+                    v_id_current = desired_id
                     self._apply_voice(engine, voices, v_id_current)
 
             try:

@@ -1027,7 +1027,7 @@ class APGui():
     def on_voice_language_change(self):
         language = self.radiobuttonvar['voice_language'].get()
         self.ed_ap.config['VoiceLanguage'] = language
-        self.ed_ap.vce.voice_language = language
+        self.ed_ap.vce.set_voice_language(language)
         self._auto_select_voice_for_language()
         self.update_voice_controls_state()
 
@@ -1068,14 +1068,13 @@ class APGui():
         if not target:
             return None
         for option in self.voice_options:
-            for lang in option.get('languages', []):
-                lang_normalized = str(lang).lower()
-                if lang_normalized.startswith(target) or f"-{target}" in lang_normalized:
-                    return option
-        if target == 'uk':
-            for option in self.voice_options:
-                if Voice._matches_ukrainian_name(option.get('name', '')):
-                    return option
+            if Voice.matches_language_metadata(
+                option.get('languages', []),
+                option.get('name', ''),
+                option.get('id', ''),
+                target,
+            ):
+                return option
         return None
 
     def _auto_select_voice_for_language(self):
