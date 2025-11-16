@@ -354,6 +354,8 @@
     "log.voice.ua_tts_synthesis_failed": "Сбой синтеза украинским нейронным TTS; возвращаюсь к стандартному голосу. Ошибка: {error}",
     "log.voice.ua_tts_unknown_voice": "Неизвестный украинский нейронный голос '{voice}', используется голос по умолчанию.",
     "log.voice.ua_tts_playback_missing": "Нет аудиоплеера для украинского нейронного TTS; используется стандартный голос.",
+    "log.voice.ua_tts_bridge_unavailable": "Мост украинского нейронного TTS недоступен; возврат к стандартному голосу. Ошибка: {error}",
+    "log.voice.ua_tts_bridge_error": "Ошибка моста украинского TTS: {error}",
     "log.voice.list_available_header": "Доступные голоса:",
     "log.voice.list_available_entry": "Голос {index}: {name}",
     "log.voice.no_voices_installed": "В системе не установлено ни одного голоса.",

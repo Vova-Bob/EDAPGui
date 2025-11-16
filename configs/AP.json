@@ -29,6 +29,7 @@
     "VoiceLanguage": "en",
     "UkrainianNeuralTTS": false,
     "UAVoice": "Dmytro",
+    "UATTSBridgeURL": "http://127.0.0.1:8765/speak",
     "ElwScannerEnable": false,
     "LogDEBUG": false,
     "LogINFO": true,
