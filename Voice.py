@@ -64,12 +64,12 @@ class _UkrainianNeuralEngine:
             self.tts = TTS(device="cpu")
             self.voice = self._resolve_voice(self.voice_name, self._voices_cls)
             self.stress_mode = self._resolve_stress(self._stress_cls)
-            if self.voice is None:
-                raise ValueError('Ukrainian neural TTS voice is not available')
-            if self.stress_mode is None:
-                raise ValueError('Ukrainian neural TTS stress mode is not available')
         except Exception as error:
             self._log_init_failed(error)
+            self.tts = None
+            return False
+        if self.voice is None or self.stress_mode is None:
+            self._log_init_failed(RuntimeError('ukrainian tts components unavailable'))
             self.tts = None
             return False
         return True
@@ -110,6 +110,7 @@ class Voice:
         self.voice_language = 'en'
         self.ua_voice_name = 'Dmytro'
         self.ua_neural_enabled = False
+        self._ua_neural_failure_logged = False
         self._ua_neural_engine = None
         self._load_voice_settings()
 
@@ -237,7 +238,7 @@ class Voice:
         return getattr(stress_cls, 'Dictionary', None) or (list(stress_cls)[0] if hasattr(stress_cls, '__iter__') else None)
 
     def _should_use_ua_tts(self):
-        return self.ua_neural_enabled and self.voice_language.startswith('uk')
+        return self.ua_neural_enabled and self.voice_language.startswith('uk') and not self._ua_neural_failure_logged
 
     def _ensure_ua_engine(self):
         if not self._should_use_ua_tts():
@@ -252,9 +253,14 @@ class Voice:
                 self._resolve_ua_stress_mode)
             if not ua_engine.ensure_initialized():
                 self.ua_neural_enabled = False
+                self._ua_neural_failure_logged = True
                 return False
             self._ua_neural_engine = ua_engine
         return True
+
+    def _disable_ua_neural_after_failure(self):
+        self.ua_neural_enabled = False
+        self._ua_neural_failure_logged = True
 
     def _play_audio_file(self, filepath):
         if sys.platform.startswith('win'):
@@ -296,10 +302,17 @@ class Voice:
     def list_voices(self):
         engine = pyttsx3.init()
         voices = engine.getProperty('voices')
-        for idx, voice in enumerate(voices):
-            print(f"{idx}: {voice.name} ({voice.id})")
         if not voices:
-            print("No voices installed.")
+            self._emit_log('log.voice.no_voices_installed', level='warning')
+            return
+        self._emit_log('log.voice.list_available_header')
+        for idx, voice in enumerate(voices):
+            self._emit_log(
+                'log.voice.list_available_entry',
+                index=idx,
+                name=voice.name,
+                id=voice.id
+            )
 
     def voice_exec(self):
         engine = pyttsx3.init()
@@ -326,6 +339,7 @@ class Voice:
                 if self._ensure_ua_engine() and self._ua_neural_engine is not None:
                     if self._ua_neural_engine.speak(words, None, self._play_audio_file):
                         continue
+                    self._disable_ua_neural_after_failure()
                 engine.say(words)
                 engine.runAndWait()
             except Exception as error:
