@@ -27,8 +27,6 @@
     "VoiceEnable": false,
     "VoiceID": 1,
     "VoiceLanguage": "en",
-    "UkrainianNeuralTTS": false,
-    "UAVoice": "Dmytro",
     "ElwScannerEnable": false,
     "LogDEBUG": false,
     "LogINFO": true,

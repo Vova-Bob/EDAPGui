@@ -295,6 +295,7 @@ class EDAutopilot:
             "DiscordUserID": "",
             "VoiceEnable": False,
             "VoiceID": 1,                  # my Windows only have 3 defined (0-2)
+            "VoiceLanguage": 'en',
             "ElwScannerEnable": False,
             "LogDEBUG": False,             # enable for debug messages
             "LogINFO": True,
@@ -353,6 +354,8 @@ class EDAutopilot:
                 cnf['Language'] = 'en'
             if 'OCRLanguage' not in cnf:
                 cnf['OCRLanguage'] = 'en'
+            if 'VoiceLanguage' not in cnf:
+                cnf['VoiceLanguage'] = 'en'
             if 'EnableEDMesg' not in cnf:
                 cnf['EnableEDMesg'] = False
             if 'EDMesgActionsPort' not in cnf:
@@ -402,6 +405,7 @@ class EDAutopilot:
         self.vce = Voice(log_func=self.log_ui)
         self.vce.v_enabled = self.config['VoiceEnable']
         self.vce.set_voice_id(self.config['VoiceID'])
+        self.vce.set_voice_language(self.config.get('VoiceLanguage', 'en'))
         self.speak_ui('voice.autopilot.welcome')
 
         # set log level based on config input, defaulting to warning
