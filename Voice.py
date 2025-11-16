@@ -255,28 +255,31 @@ class Voice:
         has_language_metadata = any(self._voice_languages(voice) for voice in voices)
         enable_language_search = has_language_metadata or self.voice_language == 'uk'
         language_match = None
-        if enable_language_search:
-            language_match = self._find_voice_for_language(voices, self.voice_language)
-        if language_match is not None:
-            if language_match != normalized_id and language_match != previous_id:
-                self._emit_log(
-                    'log.voice.language_override',
-                    language=self.voice_language,
-                    name=voices[language_match].name,
-                    index=language_match
-                )
-            normalized_id = language_match
-            self._last_language_warning = None
-        elif self.voice_language and enable_language_search:
-            warning_key = (self.voice_language, normalized_id)
-            if self._last_language_warning != warning_key:
-                self._last_language_warning = warning_key
-                self._emit_log(
-                    'log.voice.language_no_match',
-                    level='warning',
-                    language=self.voice_language,
-                    voice_id=normalized_id
-                )
+        if enable_language_search and self.voice_language:
+            if self._matches_language(voices[normalized_id], self.voice_language):
+                language_match = normalized_id
+            else:
+                language_match = self._find_voice_for_language(voices, self.voice_language)
+            if language_match is not None:
+                if language_match != normalized_id and language_match != previous_id:
+                    self._emit_log(
+                        'log.voice.language_override',
+                        language=self.voice_language,
+                        name=voices[language_match].name,
+                        index=language_match
+                    )
+                normalized_id = language_match
+                self._last_language_warning = None
+            else:
+                warning_key = (self.voice_language, normalized_id)
+                if self._last_language_warning != warning_key:
+                    self._last_language_warning = warning_key
+                    self._emit_log(
+                        'log.voice.language_no_match',
+                        level='warning',
+                        language=self.voice_language,
+                        voice_id=normalized_id
+                    )
         return normalized_id
 
     def _apply_voice(self, engine, voices, voice_id):
