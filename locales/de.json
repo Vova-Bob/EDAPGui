@@ -38,6 +38,8 @@
     "ui.calibration.target_prompt": "Select OK to begin calibration. You must be in space and have a star system targeted in center screen.",
     "ui.calibration.compass_prompt": "Select OK to begin calibration. You must be in space and have the compass visible.",
     "ui.overlay.calibration.match": "Übereinstimmung: {value:.4f}",
+    "ui.overlay.calibration.region.target": "Ziel",
+    "ui.overlay.calibration.region.compass": "Kompass",
     "log.autopilot.calibration.start": "Kalibrierung startet.",
     "log.autopilot.calibration.complete": "Kalibrierung abgeschlossen.",
     "log.autopilot.calibration.target_best_match": "Zielkalibrierung bestes Match: {match:.2f}% bei Skalierung {scale:.4f}.",

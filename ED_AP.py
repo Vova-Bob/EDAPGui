@@ -921,7 +921,13 @@ class EDAutopilot:
         key = 'target'
         targ_region = self.scrReg.reg[key]
         self.overlay.overlay_rect1(key, targ_region['rect'], (0, 0, 255), 2)
-        self.overlay.overlay_floating_text(key, key, targ_region['rect'][0], targ_region['rect'][1], (0, 0, 255))
+        self.overlay.overlay_floating_text(
+            key,
+            self._t('ui.overlay.calibration.region.target'),
+            targ_region['rect'][0],
+            targ_region['rect'][1],
+            (0, 0, 255)
+        )
         self.overlay.overlay_paint()
 
         # Calibrate system target
@@ -949,7 +955,13 @@ class EDAutopilot:
         key = 'compass'
         targ_region = self.scrReg.reg[key]
         self.overlay.overlay_rect1(key, targ_region['rect'], (0, 0, 255), 2)
-        self.overlay.overlay_floating_text(key, key, targ_region['rect'][0], targ_region['rect'][1], (0, 0, 255))
+        self.overlay.overlay_floating_text(
+            key,
+            self._t('ui.overlay.calibration.region.compass'),
+            targ_region['rect'][0],
+            targ_region['rect'][1],
+            (0, 0, 255)
+        )
         self.overlay.overlay_paint()
 
         # Calibrate compass
