@@ -31,6 +31,7 @@ from Overlay import *
 from StatusParser import StatusParser
 from Voice import *
 from Robigo import *
+from EDInterdictionEscape import EDInterdictionEscape
 from TCE_Integration import TceIntegration
 
 """
@@ -323,6 +324,7 @@ class EDAutopilot:
             "EDMesgActionsPort": 15570,
             "EDMesgEventsPort": 15571,
             "DebugOverlay": False,
+            "InterdictionEscapeEnabled": False,
         }
         self.supported_ocr_languages = ('en', 'ru')
         self.ap_ckb = cb
@@ -375,6 +377,8 @@ class EDAutopilot:
                 cnf['EDMesgEventsPort'] = 15571
             if 'DebugOverlay' not in cnf:
                 cnf['DebugOverlay'] = False
+            if 'InterdictionEscapeEnabled' not in cnf:
+                cnf['InterdictionEscapeEnabled'] = False
             self.config = cnf
             logger.debug("read AP json:"+str(cnf))
         else:
@@ -453,6 +457,16 @@ class EDAutopilot:
         self.robigo = Robigo(self)
         self.status = StatusParser()
         self.nav_route = NavRouteParser(log_func=self.log_ui)
+        self.interdiction_escape = EDInterdictionEscape(
+            self.jn,
+            self.status,
+            self.keys,
+            nav_route=self.nav_route,
+            scr_reg=self.scrReg,
+            log_func=self.log_ui,
+            speak_func=self.speak_ui,
+            enabled=self.config.get('InterdictionEscapeEnabled', False),
+        )
         self.ship_control = EDShipControl(self, self.scr, self.keys, cb)
         self.internal_panel = EDInternalStatusPanel(self, self.scr, self.keys, cb)
         self.galaxy_map = EDGalaxyMap(self, self.scr, self.keys, cb, self.jn.ship_state()['odyssey'])
@@ -1146,6 +1160,17 @@ class EDAutopilot:
         (needs to be verified). Returns False if not interdicted, True after interdiction is detected and we
         get away. Use return result to determine the next action (continue, or do something else).
         """
+        if self.interdiction_escape and self.interdiction_escape.enabled:
+            armed = self.interdiction_escape.check_and_arm(
+                sc_assist_enabled=self.sc_assist_enabled,
+                fsd_assist_enabled=self.fsd_assist_enabled,
+                waypoint_assist_enabled=self.waypoint_assist_enabled,
+            )
+            if armed:
+                handled = self.interdiction_escape.run_escape_sequence()
+                if handled:
+                    return True
+
         # Return if we are not being interdicted.
         if not self.status.get_flag(FlagsBeingInterdicted):
             return False

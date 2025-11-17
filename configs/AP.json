@@ -42,5 +42,6 @@
     "EnableEDMesg": false,
     "EDMesgActionsPort": 15570,
     "EDMesgEventsPort": 15571,
-    "DebugOverlay": false
+    "DebugOverlay": false,
+    "InterdictionEscapeEnabled": false
 }
