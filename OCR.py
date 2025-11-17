@@ -41,6 +41,8 @@ _OCR_RU_SIMILAR_CHARS = str.maketrans({
 
 _OCR_STRIP_CHARS = str.maketrans('', '', '()[]{}"\'`´‘’“”<>=+*_.,:;!?/\\|')
 
+_JW_SIMILARITY = JaroWinkler()
+
 
 def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
     """Normalize OCR output and comparison targets for reliable matching."""
@@ -90,25 +92,59 @@ def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
     return normalized
 
 
-def ru_contains_disengage_keywords(text: str) -> bool:
-    """Повертає True, якщо нормалізований текст містить фрагменти команд для виходу з СК."""
-    # Перевіряємо мінімальні "стеми" ключових слів, щоб дозволити часткові збіги.
-    has_press = (
-        "нажм" in text or
-        "нажт" in text or
-        "нажми" in text or
-        "нажмите" in text
+def _best_ru_token_similarity(tokens: list[str], target: str) -> tuple[float, str]:
+    """Return the best Jaro-Winkler similarity for the given target and token list."""
+    best_score = 0.0
+    best_token = ''
+    for token in tokens:
+        score = _JW_SIMILARITY.similarity(target, token)
+        if score > best_score:
+            best_score = score
+            best_token = token
+    return best_score, best_token
+
+
+def ru_contains_disengage_keywords(text: str, return_details: bool = False):
+    """Повертає True, якщо нормалізований текст містить фрагменти команд для виходу з СК.
+
+    Гнучкий fuzz-моніторинг шукає окремо слово, схоже на «нажмите», та слово,
+    схоже на «останови…». Це дає стійкість до OCR-помилок типу «ажмите»,
+    «остановић» тощо. За замовчуванням повертається тільки булевий результат,
+    але за потреби можна отримати деталізацію для логів.
+    """
+    tokens = text.split()
+
+    press_score, press_token = _best_ru_token_similarity(tokens, "нажмите")
+    stop_score, stop_token = _best_ru_token_similarity(tokens, "останови")
+
+    # Додаткові швидкі перевірки для типових спотворень.
+    press_hit = (
+        press_score >= 0.60 or
+        any(t.startswith(("нажм", "ажм", "накм", "ажж")) for t in tokens)
     )
 
-    has_stop = (
-        "останов" in text or
-        "астанов" in text or
-        "астановт" in text or
-        "остановт" in text or
-        "остановить" in text
+    stop_hit = (
+        stop_score >= 0.58 or
+        any(t.startswith(("останов", "останови", "стано", "остено")) for t in tokens)
     )
 
-    return has_press and has_stop
+    has_key_hint = any('h' in t or 'н' in t for t in tokens)
+    keyword_hit = press_hit and stop_hit
+
+    details = {
+        'tokens': tokens,
+        'press_token': press_token,
+        'press_score': press_score,
+        'stop_token': stop_token,
+        'stop_score': stop_score,
+        'has_key_hint': has_key_hint,
+        'press_hit': press_hit,
+        'stop_hit': stop_hit,
+    }
+
+    if return_details:
+        return keyword_hit, details
+    return keyword_hit
 
 
 class OCR:

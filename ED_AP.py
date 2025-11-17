@@ -1486,7 +1486,14 @@ class EDAutopilot:
         # Ключові слова
         # -------------------------------
         if self.ocr_language == 'ru':
-            keyword_hit = ru_contains_disengage_keywords(normalized_ocr)
+            keyword_hit, ru_debug = ru_contains_disengage_keywords(normalized_ocr, return_details=True)
+            logger.info(
+                "RU disengage target='%s' normalized='%s' tokens=%s | press='%s' (%.2f) stop='%s' (%.2f) key_hint=%s trigger=%s",
+                normalized_target, normalized_ocr, ru_debug['tokens'],
+                ru_debug['press_token'], ru_debug['press_score'],
+                ru_debug['stop_token'], ru_debug['stop_score'],
+                ru_debug['has_key_hint'], keyword_hit,
+            )
         else:
             # Англійська логіка — залишити як була, але на нормалізованих рядках
             has_press = 'press' in normalized_ocr
@@ -1497,8 +1504,8 @@ class EDAutopilot:
         # Фінальна перевірка тригера
         # -------------------------------
         if self.ocr_language == 'ru':
-            # Російська — суворіший matching, але більш надійний
-            if sim >= 0.50 or keyword_hit:
+            # Російська — fuzzy по ключових словах «нажмите»/«останови…», щоб пережити OCR-похибки.
+            if sim >= 0.45 or keyword_hit:
                 self.log_ui(self.LOG_KEYS['SC_DISENGAGE_DETECTED'])
                 return True
         else:
