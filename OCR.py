@@ -107,39 +107,63 @@ def _best_ru_token_similarity(tokens: list[str], target: str) -> tuple[float, st
 def ru_contains_disengage_keywords(text: str, return_details: bool = False):
     """Повертає True, якщо нормалізований текст містить фрагменти команд для виходу з СК.
 
-    Гнучкий fuzz-моніторинг шукає окремо слово, схоже на «нажмите», та слово,
-    схоже на «останови…». Це дає стійкість до OCR-помилок типу «ажмите»,
-    «остановић» тощо. За замовчуванням повертається тільки булевий результат,
-    але за потреби можна отримати деталізацію для логів.
+    Евристика для російської HUD-підказки більш агресивна до OCR-помилок: спершу
+    шукаємо префіксні токени «нажм…»/«ажм…» та «остан…»/«стоп…», бо гра часто
+    «відгризає» закінчення слів. Це безпечніше для автопілота: потрібні обидва
+    ключові слова, тож випадковий шум типу односимвольних токенів не спрацює.
     """
     tokens = text.split()
+    meaningful_tokens = [t for t in tokens if len(t) >= 3]
+
+    # Кандидати для «нажмите» за префіксом/усіченням (нажм, ажм, жми, жмит…).
+    press_prefix_candidates = [
+        t for t in meaningful_tokens
+        if (
+            t.startswith(("нажм", "ажм"))
+            or "жмит" in t
+            or t.startswith("жми")
+        )
+    ]
+
+    # Кандидати для «остановить» за префіксом/усіченням (остан, останов, стоп…).
+    stop_prefix_candidates = [
+        t for t in meaningful_tokens
+        if (
+            t.startswith(("остан", "останов", "остано", "стоп"))
+        )
+    ]
 
     press_score, press_token = _best_ru_token_similarity(tokens, "нажмите")
     stop_score, stop_token = _best_ru_token_similarity(tokens, "останови")
 
-    # Додаткові швидкі перевірки для типових спотворень.
-    press_hit = (
-        press_score >= 0.60 or
-        any(t.startswith(("нажм", "ажм", "накм", "ажж")) for t in tokens)
-    )
+    press_hit_jw = press_score >= 0.65
+    stop_hit_jw = stop_score >= 0.65
 
-    stop_hit = (
-        stop_score >= 0.58 or
-        any(t.startswith(("останов", "останови", "стано", "остено")) for t in tokens)
-    )
+    press_hit_prefix = any(len(t) >= 3 for t in press_prefix_candidates)
+    stop_hit_prefix = any(len(t) >= 4 for t in stop_prefix_candidates)
 
-    has_key_hint = any('h' in t or 'н' in t for t in tokens)
-    keyword_hit = press_hit and stop_hit
+    # Для коротких обрізаних токенів ("нажм", "остан") префіксна гілка дає
+    # високу вагу без потреби у високому JW-скіфі — важливо вийти з СК швидко.
+    keyword_hit = (press_hit_prefix and stop_hit_prefix) or (press_hit_jw and stop_hit_jw)
+    has_prefix_token = bool(press_prefix_candidates or stop_prefix_candidates)
+    has_min_tokens = len(meaningful_tokens) >= 2
 
     details = {
         'tokens': tokens,
+        'meaningful_tokens': meaningful_tokens,
         'press_token': press_token,
         'press_score': press_score,
         'stop_token': stop_token,
         'stop_score': stop_score,
-        'has_key_hint': has_key_hint,
-        'press_hit': press_hit,
-        'stop_hit': stop_hit,
+        'press_prefix_candidates': press_prefix_candidates,
+        'stop_prefix_candidates': stop_prefix_candidates,
+        'press_hit_jw': press_hit_jw,
+        'stop_hit_jw': stop_hit_jw,
+        'press_hit_prefix': press_hit_prefix,
+        'stop_hit_prefix': stop_hit_prefix,
+        'has_prefix_token': has_prefix_token,
+        'has_min_tokens': has_min_tokens,
+        'keyword_hit': keyword_hit,
     }
 
     if return_details:
