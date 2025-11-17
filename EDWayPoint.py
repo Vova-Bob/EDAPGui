@@ -234,41 +234,54 @@ class EDWayPoint:
         except (TypeError, ValueError):
             return default
 
+    @staticmethod
+    def _is_repeat_record(waypoint: dict) -> bool:
+        """Визначає, чи є записом-маркерами повтору (SystemName == REPEAT)."""
+        return waypoint.get('SystemName', "").upper() == "REPEAT"
+
     def mark_waypoint_complete(self, key):
-        self.waypoints[key]['Completed'] = True
+        if key not in self.waypoints:
+            logger.warning(f"Waypoint {key} not found when marking complete.")
+            return
+
+        waypoint = self.waypoints.get(key, {})
+        waypoint['Completed'] = True
         self.write_waypoints(data=None, filename=self.filename)
+        self._log(
+            'WAYPOINT_MARKED_COMPLETE',
+            waypoint=key,
+            station=waypoint.get('StationName', ''),
+            system=waypoint.get('SystemName', ''),
+            filename=str(Path(self.filename)),
+        )
 
     def get_waypoint(self) -> tuple[str, dict] | tuple[None, None]:
         """ Returns the next waypoint list or None if we are at the end of the waypoints.
         """
-        dest_key = "-1"
+        for i, key in enumerate(self.waypoints):
+            # skip records we already processed
+            if i < self.step:
+                continue
 
-        # loop back to beginning if last record is "REPEAT"
-        while dest_key == "-1":
-            for i, key in enumerate(self.waypoints):
-                # skip records we already processed
-                if i < self.step:
-                    continue
+            if key == "GlobalShoppingList":
+                continue
 
-                # if this entry is REPEAT (and not skipped), mark them all as Completed = False
-                if ((self.waypoints[key].get('SystemName', "").upper() == "REPEAT")
-                        and not self.waypoints[key]['Skip']):
-                    self.mark_all_waypoints_not_complete()
-                    break
+            waypoint = self.waypoints[key]
 
-                # if this step is marked to skip... i.e. completed, go to next step
-                if (key == "GlobalShoppingList" or self.waypoints[key]['Completed']
-                        or self.waypoints[key]['Skip']):
-                    continue
-
-                # This is the next uncompleted step
-                self.step = i
-                dest_key = key
-                break
-            else:
+            if self._is_repeat_record(waypoint):
+                # Уникаємо автоматичного повтору без явного скидання Completed/Skip.
+                self._log('WAYPOINT_REPEAT_REACHED', filename=str(Path(self.filename)))
                 return None, None
 
-        return dest_key, self.waypoints[dest_key]
+            # if this step is marked to skip... i.e. completed, go to next step
+            if waypoint['Completed'] or waypoint['Skip']:
+                continue
+
+            # This is the next uncompleted step
+            self.step = i
+            return key, waypoint
+
+        return None, None
 
     def mark_all_waypoints_not_complete(self):
         for j, tkey in enumerate(self.waypoints):
@@ -279,9 +292,24 @@ class EDWayPoint:
                 # Handle legacy format where 'Completed' might be missing
                 # Or log a warning if the structure is unexpected
                 logger.warning(f"Waypoint {tkey} missing 'Completed' key during reset.")
-            self.step = 0
+        self.step = 0
         self.write_waypoints(data=None, filename=self.filename)
         self.log_stats()
+
+    def log_waypoint_summary(self):
+        """Коротка зведена інформація про стан маршрутів."""
+        self._log('WAYPOINT_SUMMARY_HEADER', filename=str(Path(self.filename).name))
+        for key, waypoint in self.waypoints.items():
+            if key == 'GlobalShoppingList':
+                continue
+            self._log(
+                'WAYPOINT_SUMMARY_ENTRY',
+                waypoint=key,
+                system=waypoint.get('SystemName', ''),
+                station=waypoint.get('StationName', ''),
+                skip=waypoint.get('Skip'),
+                completed=waypoint.get('Completed'),
+            )
 
     def log_stats(self):
         calc1 = 1.5 ** self.stats_log['Colonisation']
@@ -519,6 +547,7 @@ class EDWayPoint:
 
         self.step = 0  # start at first waypoint
         self._log('WAYPOINT_FILE_SELECTED', filename=str(Path(self.filename).name))
+        self.log_waypoint_summary()
         self.reset_stats()
 
         # Loop until complete, or error
