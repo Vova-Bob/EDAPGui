@@ -41,6 +41,8 @@ _OCR_RU_SIMILAR_CHARS = str.maketrans({
 
 _OCR_STRIP_CHARS = str.maketrans('', '', '()[]{}"\'`´‘’“”<>=+*_.,:;!?/\\|')
 
+_JW_SIMILARITY = JaroWinkler()
+
 
 def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
     """Normalize OCR output and comparison targets for reliable matching."""
@@ -90,25 +92,83 @@ def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
     return normalized
 
 
-def ru_contains_disengage_keywords(text: str) -> bool:
-    """Повертає True, якщо нормалізований текст містить фрагменти команд для виходу з СК."""
-    # Перевіряємо мінімальні "стеми" ключових слів, щоб дозволити часткові збіги.
-    has_press = (
-        "нажм" in text or
-        "нажт" in text or
-        "нажми" in text or
-        "нажмите" in text
-    )
+def _best_ru_token_similarity(tokens: list[str], target: str) -> tuple[float, str]:
+    """Return the best Jaro-Winkler similarity for the given target and token list."""
+    best_score = 0.0
+    best_token = ''
+    for token in tokens:
+        score = _JW_SIMILARITY.similarity(target, token)
+        if score > best_score:
+            best_score = score
+            best_token = token
+    return best_score, best_token
 
-    has_stop = (
-        "останов" in text or
-        "астанов" in text or
-        "астановт" in text or
-        "остановт" in text or
-        "остановить" in text
-    )
 
-    return has_press and has_stop
+def ru_contains_disengage_keywords(text: str, return_details: bool = False):
+    """Повертає True, якщо нормалізований текст містить фрагменти команд для виходу з СК.
+
+    Евристика для російської HUD-підказки більш агресивна до OCR-помилок: спершу
+    шукаємо префіксні токени «нажм…»/«ажм…» та «остан…»/«стоп…», бо гра часто
+    «відгризає» закінчення слів. Це безпечніше для автопілота: потрібні обидва
+    ключові слова, тож випадковий шум типу односимвольних токенів не спрацює.
+    """
+    tokens = text.split()
+    meaningful_tokens = [t for t in tokens if len(t) >= 3]
+
+    # Кандидати для «нажмите» за префіксом/усіченням (нажм, ажм, жми, жмит…).
+    press_prefix_candidates = [
+        t for t in meaningful_tokens
+        if (
+            t.startswith(("нажм", "ажм"))
+            or "жмит" in t
+            or t.startswith("жми")
+        )
+    ]
+
+    # Кандидати для «остановить» за префіксом/усіченням (остан, останов, стоп…).
+    stop_prefix_candidates = [
+        t for t in meaningful_tokens
+        if (
+            t.startswith(("остан", "останов", "остано", "стоп"))
+        )
+    ]
+
+    press_score, press_token = _best_ru_token_similarity(tokens, "нажмите")
+    stop_score, stop_token = _best_ru_token_similarity(tokens, "останови")
+
+    press_hit_jw = press_score >= 0.65
+    stop_hit_jw = stop_score >= 0.65
+
+    press_hit_prefix = any(len(t) >= 3 for t in press_prefix_candidates)
+    stop_hit_prefix = any(len(t) >= 4 for t in stop_prefix_candidates)
+
+    # Для коротких обрізаних токенів ("нажм", "остан") префіксна гілка дає
+    # високу вагу без потреби у високому JW-скіфі — важливо вийти з СК швидко.
+    keyword_hit = (press_hit_prefix and stop_hit_prefix) or (press_hit_jw and stop_hit_jw)
+    has_prefix_token = bool(press_prefix_candidates or stop_prefix_candidates)
+    has_min_tokens = len(meaningful_tokens) >= 2
+
+    details = {
+        'tokens': tokens,
+        'meaningful_tokens': meaningful_tokens,
+        'press_token': press_token,
+        'press_score': press_score,
+        'stop_token': stop_token,
+        'stop_score': stop_score,
+        'press_prefix_candidates': press_prefix_candidates,
+        'stop_prefix_candidates': stop_prefix_candidates,
+        'press_hit_jw': press_hit_jw,
+        'stop_hit_jw': stop_hit_jw,
+        'press_hit_prefix': press_hit_prefix,
+        'stop_hit_prefix': stop_hit_prefix,
+        'has_prefix_token': has_prefix_token,
+        'has_min_tokens': has_min_tokens,
+        'keyword_hit': keyword_hit,
+    }
+
+    if return_details:
+        return keyword_hit, details
+    return keyword_hit
 
 
 class OCR:

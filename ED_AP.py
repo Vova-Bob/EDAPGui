@@ -1486,22 +1486,41 @@ class EDAutopilot:
         # Ключові слова
         # -------------------------------
         if self.ocr_language == 'ru':
-            keyword_hit = ru_contains_disengage_keywords(normalized_ocr)
+            keyword_hit, ru_debug = ru_contains_disengage_keywords(normalized_ocr, return_details=True)
+            triggered = False
+            reason = "ru_exit_no_match"
+
+            # Захист від шуму: потрібні хоча б два осмислені токени та хоч один
+            # токен, що нагадує початок «нажм…» або «остан…/стоп…».
+            if ru_debug['has_min_tokens'] and ru_debug['has_prefix_token']:
+                if ru_debug['press_hit_prefix'] and ru_debug['stop_hit_prefix']:
+                    triggered = True
+                    reason = "ru_exit_prefix_match"
+                elif ru_debug['press_hit_jw'] and ru_debug['stop_hit_jw']:
+                    triggered = True
+                    reason = "ru_exit_token_jw_match"
+                elif sim >= 0.45:
+                    triggered = True
+                    reason = "ru_exit_phrase_similarity"
+
+            logger.info(
+                "RU disengage target='%s' normalized='%s' tokens=%s | press_prefix=%s stop_prefix=%s | press='%s' (%.2f) stop='%s' (%.2f) sim=%.2f reason=%s triggered=%s",
+                normalized_target, normalized_ocr, ru_debug['tokens'],
+                ru_debug['press_prefix_candidates'], ru_debug['stop_prefix_candidates'],
+                ru_debug['press_token'], ru_debug['press_score'],
+                ru_debug['stop_token'], ru_debug['stop_score'],
+                sim, reason, triggered,
+            )
+
+            if triggered:
+                self.log_ui(self.LOG_KEYS['SC_DISENGAGE_DETECTED'])
+                return True
         else:
             # Англійська логіка — залишити як була, але на нормалізованих рядках
             has_press = 'press' in normalized_ocr
             has_diseng = 'diseng' in normalized_ocr or 'stop' in normalized_ocr
             keyword_hit = has_press and has_diseng
 
-        # -------------------------------
-        # Фінальна перевірка тригера
-        # -------------------------------
-        if self.ocr_language == 'ru':
-            # Російська — суворіший matching, але більш надійний
-            if sim >= 0.50 or keyword_hit:
-                self.log_ui(self.LOG_KEYS['SC_DISENGAGE_DETECTED'])
-                return True
-        else:
             # Англійська — залишити стару поведінку (поріг 0.35)
             if sim >= 0.35 or keyword_hit:
                 self.log_ui(self.LOG_KEYS['SC_DISENGAGE_DETECTED'])
