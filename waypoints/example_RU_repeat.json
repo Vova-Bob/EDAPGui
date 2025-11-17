@@ -4,8 +4,8 @@
     "StationName": "",
     "GalaxyBookmarkType": "",
     "GalaxyBookmarkNumber": 0,
-    "SystemBookmarkType": "",
-    "SystemBookmarkNumber": 0,
+    "SystemBookmarkType": "Station",
+    "SystemBookmarkNumber": 1,
     "SellCommodities": {},
     "BuyCommodities": {
       "Средство очистки почвы": 9999
@@ -21,8 +21,8 @@
     "StationName": "Mugby Station",
     "GalaxyBookmarkType": "",
     "GalaxyBookmarkNumber": 0,
-    "SystemBookmarkType": "",
-    "SystemBookmarkNumber": 0,
+    "SystemBookmarkType": "Station",
+    "SystemBookmarkNumber": 1,
     "SellCommodities": {
       "Боксит": 9999
     },
@@ -40,8 +40,8 @@
     "StationName": "Irens Dock",
     "GalaxyBookmarkType": "",
     "GalaxyBookmarkNumber": 0,
-    "SystemBookmarkType": "",
-    "SystemBookmarkNumber": 0,
+    "SystemBookmarkType": "Station",
+    "SystemBookmarkNumber": 1,
     "SellCommodities": {
       "Средство очистки почвы": 9999
     },

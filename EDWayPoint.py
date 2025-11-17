@@ -226,9 +226,17 @@ class EDWayPoint:
         with open(filename, "w", encoding="utf-8") as fp:
             json.dump(data, fp, indent=4, ensure_ascii=False)
 
+    @staticmethod
+    def _safe_int(value, default: int = 0) -> int:
+        """Бережно перетворюємо значення на int для полів закладок."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
     def mark_waypoint_complete(self, key):
         self.waypoints[key]['Completed'] = True
-        self.write_waypoints(data=None, filename='./waypoints/' + Path(self.filename).name)
+        self.write_waypoints(data=None, filename=self.filename)
 
     def get_waypoint(self) -> tuple[str, dict] | tuple[None, None]:
         """ Returns the next waypoint list or None if we are at the end of the waypoints.
@@ -272,7 +280,7 @@ class EDWayPoint:
                 # Or log a warning if the structure is unexpected
                 logger.warning(f"Waypoint {tkey} missing 'Completed' key during reset.")
             self.step = 0
-        self.write_waypoints(data=None, filename='./waypoints/' + Path(self.filename).name)
+        self.write_waypoints(data=None, filename=self.filename)
         self.log_stats()
 
     def log_stats(self):
@@ -409,7 +417,7 @@ class EDWayPoint:
                         sell_commodities[key] = sell_commodities[key] - qty
 
                 # Save changes
-                self.write_waypoints(data=None, filename='./waypoints/' + Path(self.filename).name)
+                self.write_waypoints(data=None, filename=self.filename)
 
             sleep(1)
 
@@ -475,7 +483,7 @@ class EDWayPoint:
                         global_buy_commodities[key] = qty_to_buy - qty
 
                 # Save changes
-                self.write_waypoints(data=None, filename='./waypoints/' + Path(self.filename).name)
+                self.write_waypoints(data=None, filename=self.filename)
 
             sleep(1.5)  # give time to popdown
             # Go to ship view
@@ -545,12 +553,12 @@ class EDWayPoint:
                 new_waypoint = False
 
             # Flag if we are using bookmarks
-            gal_bookmark = next_waypoint.get('GalaxyBookmarkNumber', -1) > 0
-            sys_bookmark = next_waypoint.get('SystemBookmarkNumber', -1) > 0
-            gal_bookmark_type = next_waypoint.get('GalaxyBookmarkType', '')
-            gal_bookmark_num = next_waypoint.get('GalaxyBookmarkNumber', 0)
-            sys_bookmark_type = next_waypoint.get('SystemBookmarkType', '')
-            sys_bookmark_num = next_waypoint.get('SystemBookmarkNumber', 0)
+            gal_bookmark_num = self._safe_int(next_waypoint.get('GalaxyBookmarkNumber'), 0)
+            sys_bookmark_num = self._safe_int(next_waypoint.get('SystemBookmarkNumber'), 0)
+            gal_bookmark_type = (next_waypoint.get('GalaxyBookmarkType', '') or '').strip()
+            sys_bookmark_type = (next_waypoint.get('SystemBookmarkType', '') or '').strip()
+            gal_bookmark = gal_bookmark_num > 0
+            sys_bookmark = sys_bookmark_num > 0
 
             next_wp_system = next_waypoint.get('SystemName', '').upper()
             next_wp_station = next_waypoint.get('StationName', '').upper()
