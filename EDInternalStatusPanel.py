@@ -24,6 +24,7 @@ class EDInternalStatusPanel:
         self.ocr_tokens = self.ap.ocr_tokens
         self.status_parser = StatusParser()
         self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self.log_keys = getattr(self.ap, 'LOG_KEYS', {})
         self._load_tab_texts()
 
         # The rect is [L, T, R, B] top left x, y, and bottom right x, y in fraction of screen resolution
@@ -53,6 +54,13 @@ class EDInternalStatusPanel:
         self.ocr_tokens = self.ap.ocr_tokens
         self._load_tab_texts()
 
+    def _log(self, key_name: str, *, level: str = 'info', voice: bool = False, **kwargs):
+        key = self.log_keys.get(key_name)
+        if not key:
+            logger.warning(f"Missing internal panel log key: {key_name}")
+            return ''
+        return self.ap.log_ui(key, level=level, voice=voice, **kwargs)
+
     def show_right_panel(self):
         """ Shows the Internal (Right) Panel.
         Returns True if successful, else False.
@@ -67,7 +75,7 @@ class EDInternalStatusPanel:
             cv2.imwrite(f'test/internal-panel/int_panel_full.png', image)
             return active, active_tab_name
         else:
-            print("Open Internal Panel")
+            self._log('INTERNAL_PANEL_OPENING', voice=True)
             logger.debug("show_right_panel: Open Internal Panel")
             self.ap.ship_control.goto_cockpit_view()
 
@@ -85,6 +93,7 @@ class EDInternalStatusPanel:
                 cv2.imwrite(f'test/internal-panel/internal_panel_full.png', image)
                 return active, active_tab_name
             else:
+                self._log('INTERNAL_PANEL_OPEN_FAILED', level='warning')
                 return False, ""
 
     def show_inventory_tab(self) -> bool | None:
@@ -98,7 +107,7 @@ class EDInternalStatusPanel:
         if active is None:
             return None
         if not active:
-            print("Internal (Right) Panel could not be opened")
+            self._log('INTERNAL_PANEL_OPEN_FAILED', level='warning')
             return False
         elif active_tab_name is self.inventory_tab_text:
             # Do nothing
@@ -214,7 +223,7 @@ class EDInternalStatusPanel:
 
     def transfer_to_fleetcarrier(self, ap):
         """ Transfer all goods to Fleet Carrier """
-        self.ap_ckb('log+vce', "Executing transfer to Fleet Carrier.")
+        self._log('FC_TRANSFER_TO_START', voice=True)
         logger.debug("transfer_to_fleetcarrier: entered")
         # Go to the internal (right) panel inventory tab
         self.show_inventory_tab()
@@ -240,12 +249,12 @@ class EDInternalStatusPanel:
         ap.keys.send("UI_Back", repeat=4)
         sleep(0.2)
         ap.keys.send("HeadLookReset")
-        print("End of unload FC")
+        self._log('FC_TRANSFER_TO_COMPLETE')
         # quit()
 
     def transfer_from_fleetcarrier(self, ap, buy_commodities):
         """ Transfer specific good from Fleet Carrier to ship"""
-        self.ap_ckb('log+vce', f"Executing transfer from Fleet Carrier.")
+        self._log('FC_TRANSFER_FROM_START', voice=True)
         logger.debug("transfer_to_fleetcarrier: entered")
         # Go to the internal (right) panel inventory tab
         self.show_inventory_tab()
@@ -277,7 +286,7 @@ class EDInternalStatusPanel:
         ap.keys.send("UI_Back", repeat=4)
         sleep(0.2)
         ap.keys.send("HeadLookReset")
-        print("End of transfer from FC")
+        self._log('FC_TRANSFER_FROM_COMPLETE')
 
 
 def dummy_cb(msg, body=None):

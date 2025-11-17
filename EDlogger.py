@@ -17,7 +17,7 @@ if os.path.exists(_filename):
 # Define the logging config.
 logging.basicConfig(filename=_filename, level=logging.ERROR,
                     format='%(asctime)s.%(msecs)03d %(levelname)-8s %(message)s',
-                    datefmt='%H:%M:%S')
+                    datefmt='%H:%M:%S', encoding='utf-8')
 
 logger = colorlog.getLogger('ed_log')
 

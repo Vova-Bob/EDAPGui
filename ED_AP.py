@@ -142,6 +142,8 @@ LOG_MESSAGE_KEYS = {
     'ELW_WORLD_FOUND': 'log.elw.world_detected',
     'SC_DISENGAGE_DETECTED': 'log.sc.disengage_detected',
     'SC_DISENGAGE_SIMILARITY': 'log.sc.disengage_similarity',
+    'INTERNAL_PANEL_OPENING': 'log.internal_panel.opening',
+    'INTERNAL_PANEL_OPEN_FAILED': 'log.internal_panel.open_failed',
     'SCO_OVERCHARGE_ON': 'log.sco.overcharge_activated',
     'SCO_OVERCHARGE_OFF': 'log.sco.overcharge_deactivated',
     'SCO_ABORT_OVERHEAT': 'log.sco.abort_overheat',
@@ -167,6 +169,10 @@ LOG_MESSAGE_KEYS = {
     'DOCKING_INITIATE': 'log.docking.initiate',
     'DOCKING_REQUEST_GRANTED': 'log.docking.request_granted',
     'DOCKING_COMPLETE_REFIT': 'log.docking.complete_refit',
+    'FC_TRANSFER_TO_START': 'log.fleetcarrier.transfer_to.start',
+    'FC_TRANSFER_TO_COMPLETE': 'log.fleetcarrier.transfer_to.complete',
+    'FC_TRANSFER_FROM_START': 'log.fleetcarrier.transfer_from.start',
+    'FC_TRANSFER_FROM_COMPLETE': 'log.fleetcarrier.transfer_from.complete',
     'SC_TARGET_NOT_FOUND': 'log.sc_assist.target_not_found',
     'SC_TARGET_LOST': 'log.sc_assist.target_lost',
     'SC_COMPASS_MISSING': 'log.sc_assist.compass_missing',
@@ -225,6 +231,10 @@ LOG_MESSAGE_KEYS = {
     'WAYPOINT_NO_BOOKMARK_SUPPORT': 'log.waypoint.no_bookmark_support',
     'WAYPOINT_SYSTEM_ARRIVED': 'log.waypoint.system_arrived',
     'WAYPOINT_EXECUTE_TRADE': 'log.waypoint.execute_trade',
+    'WAYPOINT_MARKED_COMPLETE': 'log.waypoint.marked_complete',
+    'WAYPOINT_REPEAT_REACHED': 'log.waypoint.repeat_reached',
+    'WAYPOINT_SUMMARY_HEADER': 'log.waypoint.summary_header',
+    'WAYPOINT_SUMMARY_ENTRY': 'log.waypoint.summary_entry',
     'WAYPOINT_CURRENT_COMPLETE': 'log.waypoint.current_complete',
     'WAYPOINT_ROUTE_COMPLETE': 'log.waypoint.route_complete',
     'WAYPOINT_ROUTE_ABORTED': 'log.waypoint.route_aborted',
@@ -630,6 +640,9 @@ class EDAutopilot:
             self.nav_panel.update_ocr_language()
         if hasattr(self.internal_panel, 'update_ocr_language'):
             self.internal_panel.update_ocr_language()
+        if hasattr(self, 'waypoint'):
+            # Автопідбір файлу маршрутів під мову OCR, поки користувач не вказав власний.
+            self.waypoint.update_default_file_for_language(language)
 
         self.log_ui('ui.log.ocr_language_switched', language=language)
         return True
@@ -867,11 +880,13 @@ class EDAutopilot:
             if maxVal > threshold and maxVal > max_pick:
                 # Draw box around region
                 self.overlay.overlay_rect(20, (left, top), (left + width, top + height), (0, 255, 0), 2)
-                self.overlay.overlay_floating_text(20, f'Match: {maxVal:5.4f}', left, top - 25, (0, 255, 0))
+                match_text = self._t('ui.overlay.calibration.match', value=maxVal)
+                self.overlay.overlay_floating_text(20, match_text, left, top - 25, (0, 255, 0))
             else:
                 # Draw box around region
                 self.overlay.overlay_rect(21, (left, top), (left + width, top + height), (255, 0, 0), 2)
-                self.overlay.overlay_floating_text(21, f'Match: {maxVal:5.4f}', left, top - 25, (255, 0, 0))
+                match_text = self._t('ui.overlay.calibration.match', value=maxVal)
+                self.overlay.overlay_floating_text(21, match_text, left, top - 25, (255, 0, 0))
 
             self.overlay.overlay_paint()
 
@@ -913,7 +928,13 @@ class EDAutopilot:
         key = 'target'
         targ_region = self.scrReg.reg[key]
         self.overlay.overlay_rect1(key, targ_region['rect'], (0, 0, 255), 2)
-        self.overlay.overlay_floating_text(key, key, targ_region['rect'][0], targ_region['rect'][1], (0, 0, 255))
+        self.overlay.overlay_floating_text(
+            key,
+            self._t('ui.overlay.calibration.region.target'),
+            targ_region['rect'][0],
+            targ_region['rect'][1],
+            (0, 0, 255)
+        )
         self.overlay.overlay_paint()
 
         # Calibrate system target
@@ -941,7 +962,13 @@ class EDAutopilot:
         key = 'compass'
         targ_region = self.scrReg.reg[key]
         self.overlay.overlay_rect1(key, targ_region['rect'], (0, 0, 255), 2)
-        self.overlay.overlay_floating_text(key, key, targ_region['rect'][0], targ_region['rect'][1], (0, 0, 255))
+        self.overlay.overlay_floating_text(
+            key,
+            self._t('ui.overlay.calibration.region.compass'),
+            targ_region['rect'][0],
+            targ_region['rect'][1],
+            (0, 0, 255)
+        )
         self.overlay.overlay_paint()
 
         # Calibrate compass
