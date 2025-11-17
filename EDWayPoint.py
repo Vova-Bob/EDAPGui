@@ -24,9 +24,11 @@ class EDWayPoint:
     def __init__(self, ed_ap, is_odyssey=True):
         self.ap = ed_ap
         self.is_odyssey = is_odyssey
-        self.filename = './waypoints.json'
+        self.filename = self._get_default_waypoint_path()
         self.stats_log = {'Colonisation': 0, 'Construction': 0, 'Fleet Carrier': 0, 'Station': 0}
         self.waypoints = {}
+        # Автоматично вмикаємо перемикання файлу лише для мовних шаблонів example_*.json
+        self.using_default_file = Path(self.filename).name.startswith('example_')
         #  { "Ninabin": {"DockWithTarget": false, "TradeSeq": None, "Completed": false} }
         # for i, key in enumerate(self.waypoints):
         # self.waypoints[target]['DockWithTarget'] == True ... then go into SC Assist
@@ -34,7 +36,13 @@ class EDWayPoint:
         # if docked and self.waypoints[target]['Completed'] == False
         #    execute_seq(self.waypoints[target]['TradeSeq'])
 
-        ss = self.read_waypoints()
+        ss = self.read_waypoints(self.filename)
+
+        if ss is None and self.filename != './waypoints/waypoints.json':
+            # Якщо мовний шаблон недоступний, повертаємось до базового файлу.
+            self.filename = './waypoints/waypoints.json'
+            self.using_default_file = False
+            ss = self.read_waypoints(self.filename)
 
         # if we read it then point to it, otherwise use the default table above
         if ss is not None:
@@ -75,6 +83,7 @@ class EDWayPoint:
         if ss is not None:
             self.waypoints = ss
             self.filename = filename
+            self.using_default_file = False
             self._log('WAYPOINT_FILE_LOADED', filename=filename)
             logger.debug("EDWayPoint: read json:" + str(ss))
             return True
@@ -85,8 +94,7 @@ class EDWayPoint:
     def read_waypoints(self, filename='./waypoints/waypoints.json'):
         s = None
         try:
-            with open(filename, "r") as fp:
-                s = json.load(fp)
+            s = self._read_json_utf8(filename)
 
             # Perform any checks on the data returned
             # Check if the waypoint data contains the 'GlobalShoppingList' (new requirement)
@@ -160,46 +168,120 @@ class EDWayPoint:
         if data is None:
             data = self.waypoints
         try:
-            with open(filename, "w") as fp:
-                json.dump(data, fp, indent=4)
+            self._write_json_utf8(filename, data)
         except Exception as e:
             logger.warning("EDWayPoint.py write_waypoints error:" + str(e))
 
+    def _get_default_waypoint_path(self, language: str | None = None) -> str:
+        """Повертає типовий файл маршрутів з урахуванням мови OCR.
+
+        Використовуємо окремі шаблони для ru/en, щоб користувач міг одразу
+        працювати зі зрозумілим кодуванням і назвами товарів.
+        """
+        lang = language or getattr(self.ap, 'ocr_language', 'en')
+        base_dir = Path('./waypoints')
+        template_map = {
+            'ru': base_dir / 'example_RU_repeat.json',
+            'en': base_dir / 'example_EN_repeat.json',
+        }
+
+        user_primary = base_dir / 'waypoints.json'
+        preferred = template_map.get(lang, user_primary)
+
+        if user_primary.exists():
+            return str(user_primary)
+
+        if preferred.exists():
+            return str(preferred)
+
+        return str(preferred)
+
+    def update_default_file_for_language(self, language: str) -> None:
+        """Оновлює типовий файл маршрутів, якщо користувач ще не вибрав свій."""
+        if not self.using_default_file:
+            return
+
+        new_default = self._get_default_waypoint_path(language)
+        if new_default == self.filename:
+            return
+
+        ss = self.read_waypoints(new_default)
+        if ss is None:
+            return
+
+        self.filename = new_default
+        self.waypoints = ss
+        self._log('WAYPOINT_FILE_LOADED', filename=new_default)
+        logger.debug("EDWayPoint: read json:" + str(ss))
+
+    @staticmethod
+    def _read_json_utf8(filename: str):
+        """Читаємо JSON у кодуванні UTF-8 без ручних перекодувань."""
+        with open(filename, "r", encoding="utf-8") as fp:
+            return json.load(fp)
+
+    @staticmethod
+    def _write_json_utf8(filename: str, data) -> None:
+        """Зберігаємо JSON як UTF-8, не екранізуючи не-ASCII символи."""
+        with open(filename, "w", encoding="utf-8") as fp:
+            json.dump(data, fp, indent=4, ensure_ascii=False)
+
+    @staticmethod
+    def _safe_int(value, default: int = 0) -> int:
+        """Бережно перетворюємо значення на int для полів закладок."""
+        try:
+            return int(value)
+        except (TypeError, ValueError):
+            return default
+
+    @staticmethod
+    def _is_repeat_record(waypoint: dict) -> bool:
+        """Визначає, чи є записом-маркерами повтору (SystemName == REPEAT)."""
+        return waypoint.get('SystemName', "").upper() == "REPEAT"
+
     def mark_waypoint_complete(self, key):
-        self.waypoints[key]['Completed'] = True
-        self.write_waypoints(data=None, filename='./waypoints/' + Path(self.filename).name)
+        if key not in self.waypoints:
+            logger.warning(f"Waypoint {key} not found when marking complete.")
+            return
+
+        waypoint = self.waypoints.get(key, {})
+        waypoint['Completed'] = True
+        self.write_waypoints(data=None, filename=self.filename)
+        self._log(
+            'WAYPOINT_MARKED_COMPLETE',
+            waypoint=key,
+            station=waypoint.get('StationName', ''),
+            system=waypoint.get('SystemName', ''),
+            filename=str(Path(self.filename)),
+        )
 
     def get_waypoint(self) -> tuple[str, dict] | tuple[None, None]:
         """ Returns the next waypoint list or None if we are at the end of the waypoints.
         """
-        dest_key = "-1"
+        for i, key in enumerate(self.waypoints):
+            # skip records we already processed
+            if i < self.step:
+                continue
 
-        # loop back to beginning if last record is "REPEAT"
-        while dest_key == "-1":
-            for i, key in enumerate(self.waypoints):
-                # skip records we already processed
-                if i < self.step:
-                    continue
+            if key == "GlobalShoppingList":
+                continue
 
-                # if this entry is REPEAT (and not skipped), mark them all as Completed = False
-                if ((self.waypoints[key].get('SystemName', "").upper() == "REPEAT")
-                        and not self.waypoints[key]['Skip']):
-                    self.mark_all_waypoints_not_complete()
-                    break
+            waypoint = self.waypoints[key]
 
-                # if this step is marked to skip... i.e. completed, go to next step
-                if (key == "GlobalShoppingList" or self.waypoints[key]['Completed']
-                        or self.waypoints[key]['Skip']):
-                    continue
-
-                # This is the next uncompleted step
-                self.step = i
-                dest_key = key
-                break
-            else:
+            if self._is_repeat_record(waypoint):
+                # Уникаємо автоматичного повтору без явного скидання Completed/Skip.
+                self._log('WAYPOINT_REPEAT_REACHED', filename=str(Path(self.filename)))
                 return None, None
 
-        return dest_key, self.waypoints[dest_key]
+            # if this step is marked to skip... i.e. completed, go to next step
+            if waypoint['Completed'] or waypoint['Skip']:
+                continue
+
+            # This is the next uncompleted step
+            self.step = i
+            return key, waypoint
+
+        return None, None
 
     def mark_all_waypoints_not_complete(self):
         for j, tkey in enumerate(self.waypoints):
@@ -210,9 +292,24 @@ class EDWayPoint:
                 # Handle legacy format where 'Completed' might be missing
                 # Or log a warning if the structure is unexpected
                 logger.warning(f"Waypoint {tkey} missing 'Completed' key during reset.")
-            self.step = 0
-        self.write_waypoints(data=None, filename='./waypoints/' + Path(self.filename).name)
+        self.step = 0
+        self.write_waypoints(data=None, filename=self.filename)
         self.log_stats()
+
+    def log_waypoint_summary(self):
+        """Коротка зведена інформація про стан маршрутів."""
+        self._log('WAYPOINT_SUMMARY_HEADER', filename=str(Path(self.filename).name))
+        for key, waypoint in self.waypoints.items():
+            if key == 'GlobalShoppingList':
+                continue
+            self._log(
+                'WAYPOINT_SUMMARY_ENTRY',
+                waypoint=key,
+                system=waypoint.get('SystemName', ''),
+                station=waypoint.get('StationName', ''),
+                skip=waypoint.get('Skip'),
+                completed=waypoint.get('Completed'),
+            )
 
     def log_stats(self):
         calc1 = 1.5 ** self.stats_log['Colonisation']
@@ -224,9 +321,11 @@ class EDWayPoint:
         sell_commodities = self.waypoints[dest_key]['SellCommodities']
         buy_commodities = self.waypoints[dest_key]['BuyCommodities']
         fleetcarrier_transfer = self.waypoints[dest_key]['FleetCarrierTransfer']
-        global_buy_commodities = self.waypoints['GlobalShoppingList']['BuyCommodities']
+        global_cfg = self.waypoints.get('GlobalShoppingList', {})
+        global_buy_commodities = global_cfg.get('BuyCommodities', {})
+        global_list_active = bool(global_buy_commodities) and not global_cfg.get('Skip', False)
 
-        if len(sell_commodities) == 0 and len(buy_commodities) == 0 and len(global_buy_commodities) == 0:
+        if len(sell_commodities) == 0 and len(buy_commodities) == 0 and not global_list_active:
             return
 
         # Does this place have commodities service?
@@ -348,12 +447,13 @@ class EDWayPoint:
                         sell_commodities[key] = sell_commodities[key] - qty
 
                 # Save changes
-                self.write_waypoints(data=None, filename='./waypoints/' + Path(self.filename).name)
+                self.write_waypoints(data=None, filename=self.filename)
 
             sleep(1)
 
             # --------- BUY ----------
-            if len(buy_commodities) > 0 or len(global_buy_commodities) > 0:
+            leg_had_buy_attempts = False
+            if len(buy_commodities) > 0 or global_list_active:
                 # Select the BUY option
                 self.ap.stn_svcs_in_ship.select_buy(ap.keys)
 
@@ -376,6 +476,10 @@ class EDWayPoint:
                     result, qty = self.ap.stn_svcs_in_ship.buy_commodity(ap.keys, key, qty_to_buy, free_cargo)
                     logger.info(f"Execute trade: Bought {qty} units of {key}")
 
+                    # Будь-яка спроба купівлі для цього waypoint вважається завершенням локального плану,
+                    # щоб уникнути повторних покупок на цій самій станції.
+                    leg_had_buy_attempts = True
+
                     # If we bought any goods, wait for status file to update with
                     # new cargo count for next commodity
                     if qty > 0:
@@ -385,36 +489,47 @@ class EDWayPoint:
                     if qty > 0 and self.waypoints[dest_key]['UpdateCommodityCount']:
                         buy_commodities[key] = qty_to_buy - qty
 
-                # Go through global buy commodities list
-                for i, key in enumerate(global_buy_commodities):
-                    curr_cargo_qty = int(ap.status.get_cleaned_data()['Cargo'])
-                    cargo_timestamp = ap.status.current_data['timestamp']
+                # Якщо ми вже виконали покупки для цього waypoint, глобальний список пропускаємо,
+                # щоб уникнути повторного входу в меню купівлі на тій самій станції.
+                if leg_had_buy_attempts and global_list_active:
+                    self._log(
+                        'WAYPOINT_GLOBAL_SKIP_AFTER_LEG',
+                        station=self.waypoints[dest_key].get('StationName', ''),
+                        system=self.waypoints[dest_key].get('SystemName', ''),
+                    )
+                    global_list_active = False
 
-                    free_cargo = cargo_capacity - curr_cargo_qty
-                    logger.info(f"Execute trade: Free cargo space: {free_cargo}")
+                # Go through global buy commodities list, якщо він активний
+                if global_list_active:
+                    for i, key in enumerate(global_buy_commodities):
+                        curr_cargo_qty = int(ap.status.get_cleaned_data()['Cargo'])
+                        cargo_timestamp = ap.status.current_data['timestamp']
 
-                    if free_cargo == 0:
-                        logger.info(f"Execute trade: No space for additional cargo")
-                        break
+                        free_cargo = cargo_capacity - curr_cargo_qty
+                        logger.info(f"Execute trade: Free cargo space: {free_cargo}")
 
-                    qty_to_buy = global_buy_commodities[key]
-                    logger.info(f"Execute trade: Global shopping list requests {qty_to_buy} units of {key}")
+                        if free_cargo == 0:
+                            logger.info(f"Execute trade: No space for additional cargo")
+                            break
 
-                    # Attempt to buy the commodity
-                    result, qty = self.ap.stn_svcs_in_ship.buy_commodity(ap.keys, key, qty_to_buy, free_cargo)
-                    logger.info(f"Execute trade: Bought {qty} units of {key}")
+                        qty_to_buy = global_buy_commodities[key]
+                        logger.info(f"Execute trade: Global shopping list requests {qty_to_buy} units of {key}")
 
-                    # If we bought any goods, wait for status file to update with
-                    # new cargo count for next commodity
-                    if qty > 0:
-                        ap.status.wait_for_file_change(cargo_timestamp, 5)
+                        # Attempt to buy the commodity
+                        result, qty = self.ap.stn_svcs_in_ship.buy_commodity(ap.keys, key, qty_to_buy, free_cargo)
+                        logger.info(f"Execute trade: Bought {qty} units of {key}")
 
-                    # Update counts if necessary
-                    if qty > 0 and self.waypoints['GlobalShoppingList']['UpdateCommodityCount']:
-                        global_buy_commodities[key] = qty_to_buy - qty
+                        # If we bought any goods, wait for status file to update with
+                        # new cargo count for next commodity
+                        if qty > 0:
+                            ap.status.wait_for_file_change(cargo_timestamp, 5)
+
+                        # Update counts if necessary
+                        if qty > 0 and self.waypoints['GlobalShoppingList']['UpdateCommodityCount']:
+                            global_buy_commodities[key] = qty_to_buy - qty
 
                 # Save changes
-                self.write_waypoints(data=None, filename='./waypoints/' + Path(self.filename).name)
+                self.write_waypoints(data=None, filename=self.filename)
 
             sleep(1.5)  # give time to popdown
             # Go to ship view
@@ -450,6 +565,7 @@ class EDWayPoint:
 
         self.step = 0  # start at first waypoint
         self._log('WAYPOINT_FILE_SELECTED', filename=str(Path(self.filename).name))
+        self.log_waypoint_summary()
         self.reset_stats()
 
         # Loop until complete, or error
@@ -484,12 +600,12 @@ class EDWayPoint:
                 new_waypoint = False
 
             # Flag if we are using bookmarks
-            gal_bookmark = next_waypoint.get('GalaxyBookmarkNumber', -1) > 0
-            sys_bookmark = next_waypoint.get('SystemBookmarkNumber', -1) > 0
-            gal_bookmark_type = next_waypoint.get('GalaxyBookmarkType', '')
-            gal_bookmark_num = next_waypoint.get('GalaxyBookmarkNumber', 0)
-            sys_bookmark_type = next_waypoint.get('SystemBookmarkType', '')
-            sys_bookmark_num = next_waypoint.get('SystemBookmarkNumber', 0)
+            gal_bookmark_num = self._safe_int(next_waypoint.get('GalaxyBookmarkNumber'), 0)
+            sys_bookmark_num = self._safe_int(next_waypoint.get('SystemBookmarkNumber'), 0)
+            gal_bookmark_type = (next_waypoint.get('GalaxyBookmarkType', '') or '').strip()
+            sys_bookmark_type = (next_waypoint.get('SystemBookmarkType', '') or '').strip()
+            gal_bookmark = gal_bookmark_num > 0
+            sys_bookmark = sys_bookmark_num > 0
 
             next_wp_system = next_waypoint.get('SystemName', '').upper()
             next_wp_station = next_waypoint.get('StationName', '').upper()
