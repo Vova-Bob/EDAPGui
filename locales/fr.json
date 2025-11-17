@@ -357,6 +357,7 @@
     "log.waypoint.system_arrived": "Arrivé dans le système cible : {system}.",
     "log.waypoint.execute_trade": "Exécution de l'échange à la station : {station}.",
     "log.waypoint.marked_complete": "Point d’étape {waypoint} ({station} / {system}) marqué comme terminé et enregistré dans {filename}; il sera ignoré lors des prochains passages.",
+    "log.waypoint.global_skip_after_leg": "Ignorer la liste d’achats globale après les achats spécifiques au waypoint à {station} / {system} pour éviter les achats en double.",
     "log.waypoint.repeat_reached": "Marqueur REPEAT atteint dans {filename}. Itinéraire en pause jusqu'à réinitialisation des points.",
     "log.waypoint.summary_header": "Résumé des points de route pour {filename} :",
     "log.waypoint.summary_entry": "{waypoint} : {system} / {station} | Sauter : {skip} | Terminé : {completed}",

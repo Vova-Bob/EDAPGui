@@ -232,6 +232,7 @@ LOG_MESSAGE_KEYS = {
     'WAYPOINT_SYSTEM_ARRIVED': 'log.waypoint.system_arrived',
     'WAYPOINT_EXECUTE_TRADE': 'log.waypoint.execute_trade',
     'WAYPOINT_MARKED_COMPLETE': 'log.waypoint.marked_complete',
+    'WAYPOINT_GLOBAL_SKIP_AFTER_LEG': 'log.waypoint.global_skip_after_leg',
     'WAYPOINT_REPEAT_REACHED': 'log.waypoint.repeat_reached',
     'WAYPOINT_SUMMARY_HEADER': 'log.waypoint.summary_header',
     'WAYPOINT_SUMMARY_ENTRY': 'log.waypoint.summary_entry',

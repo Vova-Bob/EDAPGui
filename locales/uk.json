@@ -385,6 +385,7 @@
     "log.waypoint.system_arrived": "Прибули в цільову систему: {system}.",
     "log.waypoint.execute_trade": "Виконуємо торгівлю на станції: {station}.",
     "log.waypoint.marked_complete": "Точка маршруту {waypoint} ({station} / {system}) позначена виконаною та збережена у {filename}; у наступних запусках буде пропущена.",
+    "log.waypoint.global_skip_after_leg": "Пропускаємо глобальний список покупок після виконання покупок для цього waypoint на {station} / {system}, щоб уникнути повторних закупівель.",
     "log.waypoint.repeat_reached": "Досягнуто маркер REPEAT у {filename}. Маршрут призупинено до скидання точок.",
     "log.waypoint.summary_header": "Зведення маршрутів для {filename}:",
     "log.waypoint.summary_entry": "{waypoint}: {system} / {station} | Пропуск: {skip} | Виконано: {completed}",

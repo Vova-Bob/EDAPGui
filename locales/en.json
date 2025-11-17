@@ -385,6 +385,7 @@
     "log.waypoint.system_arrived": "Arrived at target system: {system}.",
     "log.waypoint.execute_trade": "Execute trade at station: {station}.",
     "log.waypoint.marked_complete": "Waypoint {waypoint} ({station} / {system}) marked completed and saved to {filename}; will be skipped on next runs.",
+    "log.waypoint.global_skip_after_leg": "Skipping global shopping list after waypoint-specific purchases at {station} / {system} to avoid duplicate buys.",
     "log.waypoint.repeat_reached": "Reached REPEAT marker in {filename}. Route paused until waypoints are reset.",
     "log.waypoint.summary_header": "Waypoint summary for {filename}:",
     "log.waypoint.summary_entry": "{waypoint}: {system} / {station} | Skip: {skip} | Completed: {completed}",

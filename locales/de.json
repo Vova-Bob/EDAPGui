@@ -357,6 +357,7 @@
     "log.waypoint.system_arrived": "Zielsystem erreicht: {system}.",
     "log.waypoint.execute_trade": "Handel an Station {station} wird ausgeführt.",
     "log.waypoint.marked_complete": "Waypoint {waypoint} ({station} / {system}) als abgeschlossen markiert und in {filename} gespeichert; wird bei zukünftigen Läufen übersprungen.",
+    "log.waypoint.global_skip_after_leg": "Überspringe globale Einkaufsliste nach waypoint-spezifischen Käufen bei {station} / {system}, um doppelte Käufe zu vermeiden.",
     "log.waypoint.repeat_reached": "REPEAT-Markierung in {filename} erreicht. Route pausiert, bis Wegpunkte zurückgesetzt werden.",
     "log.waypoint.summary_header": "Waypoint-Übersicht für {filename}:",
     "log.waypoint.summary_entry": "{waypoint}: {system} / {station} | Überspringen: {skip} | Abgeschlossen: {completed}",

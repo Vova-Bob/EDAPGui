@@ -321,9 +321,11 @@ class EDWayPoint:
         sell_commodities = self.waypoints[dest_key]['SellCommodities']
         buy_commodities = self.waypoints[dest_key]['BuyCommodities']
         fleetcarrier_transfer = self.waypoints[dest_key]['FleetCarrierTransfer']
-        global_buy_commodities = self.waypoints['GlobalShoppingList']['BuyCommodities']
+        global_cfg = self.waypoints.get('GlobalShoppingList', {})
+        global_buy_commodities = global_cfg.get('BuyCommodities', {})
+        global_list_active = bool(global_buy_commodities) and not global_cfg.get('Skip', False)
 
-        if len(sell_commodities) == 0 and len(buy_commodities) == 0 and len(global_buy_commodities) == 0:
+        if len(sell_commodities) == 0 and len(buy_commodities) == 0 and not global_list_active:
             return
 
         # Does this place have commodities service?
@@ -450,7 +452,8 @@ class EDWayPoint:
             sleep(1)
 
             # --------- BUY ----------
-            if len(buy_commodities) > 0 or len(global_buy_commodities) > 0:
+            leg_had_buy_attempts = False
+            if len(buy_commodities) > 0 or global_list_active:
                 # Select the BUY option
                 self.ap.stn_svcs_in_ship.select_buy(ap.keys)
 
@@ -473,6 +476,10 @@ class EDWayPoint:
                     result, qty = self.ap.stn_svcs_in_ship.buy_commodity(ap.keys, key, qty_to_buy, free_cargo)
                     logger.info(f"Execute trade: Bought {qty} units of {key}")
 
+                    # Будь-яка спроба купівлі для цього waypoint вважається завершенням локального плану,
+                    # щоб уникнути повторних покупок на цій самій станції.
+                    leg_had_buy_attempts = True
+
                     # If we bought any goods, wait for status file to update with
                     # new cargo count for next commodity
                     if qty > 0:
@@ -482,33 +489,44 @@ class EDWayPoint:
                     if qty > 0 and self.waypoints[dest_key]['UpdateCommodityCount']:
                         buy_commodities[key] = qty_to_buy - qty
 
-                # Go through global buy commodities list
-                for i, key in enumerate(global_buy_commodities):
-                    curr_cargo_qty = int(ap.status.get_cleaned_data()['Cargo'])
-                    cargo_timestamp = ap.status.current_data['timestamp']
+                # Якщо ми вже виконали покупки для цього waypoint, глобальний список пропускаємо,
+                # щоб уникнути повторного входу в меню купівлі на тій самій станції.
+                if leg_had_buy_attempts and global_list_active:
+                    self._log(
+                        'WAYPOINT_GLOBAL_SKIP_AFTER_LEG',
+                        station=self.waypoints[dest_key].get('StationName', ''),
+                        system=self.waypoints[dest_key].get('SystemName', ''),
+                    )
+                    global_list_active = False
 
-                    free_cargo = cargo_capacity - curr_cargo_qty
-                    logger.info(f"Execute trade: Free cargo space: {free_cargo}")
+                # Go through global buy commodities list, якщо він активний
+                if global_list_active:
+                    for i, key in enumerate(global_buy_commodities):
+                        curr_cargo_qty = int(ap.status.get_cleaned_data()['Cargo'])
+                        cargo_timestamp = ap.status.current_data['timestamp']
 
-                    if free_cargo == 0:
-                        logger.info(f"Execute trade: No space for additional cargo")
-                        break
+                        free_cargo = cargo_capacity - curr_cargo_qty
+                        logger.info(f"Execute trade: Free cargo space: {free_cargo}")
 
-                    qty_to_buy = global_buy_commodities[key]
-                    logger.info(f"Execute trade: Global shopping list requests {qty_to_buy} units of {key}")
+                        if free_cargo == 0:
+                            logger.info(f"Execute trade: No space for additional cargo")
+                            break
 
-                    # Attempt to buy the commodity
-                    result, qty = self.ap.stn_svcs_in_ship.buy_commodity(ap.keys, key, qty_to_buy, free_cargo)
-                    logger.info(f"Execute trade: Bought {qty} units of {key}")
+                        qty_to_buy = global_buy_commodities[key]
+                        logger.info(f"Execute trade: Global shopping list requests {qty_to_buy} units of {key}")
 
-                    # If we bought any goods, wait for status file to update with
-                    # new cargo count for next commodity
-                    if qty > 0:
-                        ap.status.wait_for_file_change(cargo_timestamp, 5)
+                        # Attempt to buy the commodity
+                        result, qty = self.ap.stn_svcs_in_ship.buy_commodity(ap.keys, key, qty_to_buy, free_cargo)
+                        logger.info(f"Execute trade: Bought {qty} units of {key}")
 
-                    # Update counts if necessary
-                    if qty > 0 and self.waypoints['GlobalShoppingList']['UpdateCommodityCount']:
-                        global_buy_commodities[key] = qty_to_buy - qty
+                        # If we bought any goods, wait for status file to update with
+                        # new cargo count for next commodity
+                        if qty > 0:
+                            ap.status.wait_for_file_change(cargo_timestamp, 5)
+
+                        # Update counts if necessary
+                        if qty > 0 and self.waypoints['GlobalShoppingList']['UpdateCommodityCount']:
+                            global_buy_commodities[key] = qty_to_buy - qty
 
                 # Save changes
                 self.write_waypoints(data=None, filename=self.filename)
