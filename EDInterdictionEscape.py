@@ -34,7 +34,13 @@ class EDInterdictionEscape:
         interdicted_flags = (
             ship_state.get('interdicted')
             or self.status.get_flag(FlagsBeingInterdicted)
-            or self.status.get_flag(FlagsIsInDanger)
+        )
+
+        self.logger.debug(
+            f"Interdiction check: status={ship_state.get('status')} "
+            f"interdicted={ship_state.get('interdicted')} "
+            f"being_interdicted={self.status.get_flag(FlagsBeingInterdicted)} "
+            f"is_in_danger={self.status.get_flag(FlagsIsInDanger)}"
         )
 
         if not in_supercruise or not interdicted_flags:
