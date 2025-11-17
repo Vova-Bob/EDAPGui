@@ -269,9 +269,13 @@ class EDWayPoint:
             waypoint = self.waypoints[key]
 
             if self._is_repeat_record(waypoint):
-                # Уникаємо автоматичного повтору без явного скидання Completed/Skip.
-                self._log('WAYPOINT_REPEAT_REACHED', filename=str(Path(self.filename)))
-                return None, None
+                # When REPEAT is reached, reset completion flags and start again so
+                # circular routes continue automatically without manual JSON edits.
+                if not waypoint.get('Skip', False):
+                    self._log('WAYPOINT_REPEAT_REACHED', filename=str(Path(self.filename)))
+                    self.mark_all_waypoints_not_complete()
+                    return self.get_waypoint()
+                continue
 
             # if this step is marked to skip... i.e. completed, go to next step
             if waypoint['Completed'] or waypoint['Skip']:
@@ -457,6 +461,10 @@ class EDWayPoint:
                 # Select the BUY option
                 self.ap.stn_svcs_in_ship.select_buy(ap.keys)
 
+                # Track commodities purchased in this leg to avoid buying the same
+                # item twice when the global list is processed on the same station visit.
+                leg_buy_names = {name for name, qty in buy_commodities.items() if qty > 0}
+
                 # Go through buy commodities list
                 for i, key in enumerate(buy_commodities):
                     curr_cargo_qty = int(ap.status.get_cleaned_data()['Cargo'])
@@ -502,6 +510,10 @@ class EDWayPoint:
                 # Go through global buy commodities list, якщо він активний
                 if global_list_active:
                     for i, key in enumerate(global_buy_commodities):
+                        if key in leg_buy_names:
+                            logger.debug(f"Skipping global purchase for {key} already handled in leg list")
+                            continue
+
                         curr_cargo_qty = int(ap.status.get_cleaned_data()['Cargo'])
                         cargo_timestamp = ap.status.current_data['timestamp']
 
