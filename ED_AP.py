@@ -23,6 +23,7 @@ from EDWayPoint import *
 from EDJournal import *
 from EDKeys import *
 from EDafk_combat import AFK_Combat
+from EDInterdictionEscape import EDInterdictionEscape
 from EDInternalStatusPanel import EDInternalStatusPanel
 from NavRouteParser import NavRouteParser
 from OCR import OCR, normalize_ocr_text, ru_contains_disengage_keywords
@@ -453,6 +454,16 @@ class EDAutopilot:
         self.robigo = Robigo(self)
         self.status = StatusParser()
         self.nav_route = NavRouteParser(log_func=self.log_ui)
+        self.interdiction_escape = EDInterdictionEscape(
+            self.jn,
+            self.keys,
+            self.status,
+            self.nav_route,
+            self,
+            self.scrReg,
+            logger,
+            self.vce
+        )
         self.ship_control = EDShipControl(self, self.scr, self.keys, cb)
         self.internal_panel = EDInternalStatusPanel(self, self.scr, self.keys, cb)
         self.galaxy_map = EDGalaxyMap(self, self.scr, self.keys, cb, self.jn.ship_state()['odyssey'])
@@ -1146,6 +1157,16 @@ class EDAutopilot:
         (needs to be verified). Returns False if not interdicted, True after interdiction is detected and we
         get away. Use return result to determine the next action (continue, or do something else).
         """
+        if self.interdiction_escape.check_and_arm(
+                sc_assist_enabled=self.sc_assist_enabled,
+                waypoint_assist_enabled=self.waypoint_assist_enabled,
+                afk_combat_enabled=self.afk_combat_assist_enabled):
+            try:
+                self.interdiction_escape.run_escape_loop(callback=self.resume_mode_after_interdiction)
+            except EDAP_Interrupt:
+                logger.debug("Interdiction escape interrupted")
+            return True
+
         # Return if we are not being interdicted.
         if not self.status.get_flag(FlagsBeingInterdicted):
             return False
@@ -2829,6 +2850,12 @@ class EDAutopilot:
         self.config["LogINFO"] = True
         logger.setLevel(logging.INFO)
 
+    def resume_mode_after_interdiction(self, mode_name: str):
+        if mode_name == 'sc_assist':
+            self.sc_assist_enabled = True
+        elif mode_name == 'waypoint':
+            self.waypoint_assist_enabled = True
+
     # quit() is important to call to clean up, if we don't terminate the threads we created the AP will hang on exit
     # have then then kill python exec
     def quit(self):
@@ -2884,91 +2911,103 @@ class EDAutopilot:
                 #cv2.destroyAllWindows()
                 #cv2.waitKey(10)
 
-            elif self.sc_assist_enabled == True:
-                logger.debug("Running sc_assist")
-                set_focus_elite_window()
-                self.update_overlay()
-                try:
-                    self.update_ap_status(self.STATUS_KEYS['SC_TO_TARGET'])
-                    self.sc_assist(self.scrReg)
-                except EDAP_Interrupt:
-                    logger.debug("Caught stop exception")
-                except Exception as e:
-                    print("Trapped generic:"+str(e))
-                    traceback.print_exc()
+            else:
+                self.interdiction_escape.check_and_arm(
+                    sc_assist_enabled=self.sc_assist_enabled,
+                    waypoint_assist_enabled=self.waypoint_assist_enabled,
+                    afk_combat_enabled=self.afk_combat_assist_enabled
+                )
 
-                logger.debug("Completed sc_assist")
-                self.sc_assist_enabled = False
-                self.ap_ckb('sc_stop')
-                self.update_overlay()
+                if self.interdiction_escape.is_active():
+                    logger.debug("Running interdiction escape")
+                    try:
+                        self.interdiction_escape.run_escape_loop(callback=self.resume_mode_after_interdiction)
+                    except EDAP_Interrupt:
+                        logger.debug("Interdiction escape interrupted")
+                    self.update_overlay()
+                    continue
 
-            elif self.waypoint_assist_enabled == True:
-                logger.debug("Running waypoint_assist")
+                if self.sc_assist_enabled == True:
+                    logger.debug("Running sc_assist")
+                    set_focus_elite_window()
+                    self.update_overlay()
+                    try:
+                        self.update_ap_status(self.STATUS_KEYS['SC_TO_TARGET'])
+                        self.sc_assist(self.scrReg)
+                    except EDAP_Interrupt:
+                        logger.debug("Caught stop exception")
+                    except Exception as e:
+                        print("Trapped generic:"+str(e))
+                        traceback.print_exc()
 
-                set_focus_elite_window()
-                self.update_overlay()
-                self.jump_cnt = 0
-                self.refuel_cnt = 0
-                self.total_dist_jumped = 0
-                self.total_jumps = 0
-                try:
-                    self.waypoint_assist(self.keys, self.scrReg)
-                except EDAP_Interrupt:
-                    logger.debug("Caught stop exception")
-                except Exception as e:
-                    print("Trapped generic:"+str(e))
-                    traceback.print_exc()
+                    logger.debug("Completed sc_assist")
+                    self.sc_assist_enabled = False
+                    self.ap_ckb('sc_stop')
+                    self.update_overlay()
 
-                self.waypoint_assist_enabled = False
-                self.ap_ckb('waypoint_stop')
-                self.update_overlay()
+                elif self.waypoint_assist_enabled == True:
+                    logger.debug("Running waypoint_assist")
 
-            elif self.robigo_assist_enabled == True:
-                logger.debug("Running robigo_assist")
-                set_focus_elite_window()
-                self.update_overlay()
-                try:
-                    self.robigo_assist()
-                except EDAP_Interrupt:
-                    logger.debug("Caught stop exception")
-                except Exception as e:
-                    print("Trapped generic:"+str(e))
-                    traceback.print_exc()
+                    set_focus_elite_window()
+                    self.update_overlay()
+                    self.jump_cnt = 0
+                    self.refuel_cnt = 0
+                    self.total_dist_jumped = 0
+                    self.total_jumps = 0
+                    try:
+                        self.waypoint_assist(self.keys, self.scrReg)
+                    except EDAP_Interrupt:
+                        logger.debug("Caught stop exception")
+                    except Exception as e:
+                        print("Trapped generic:"+str(e))
+                        traceback.print_exc()
 
-                self.robigo_assist_enabled = False
-                self.ap_ckb('robigo_stop')
-                self.update_overlay()
+                    self.waypoint_assist_enabled = False
+                    self.ap_ckb('waypoint_stop')
 
-            elif self.afk_combat_assist_enabled == True:
-                self.update_overlay()
-                try:
-                    self.afk_combat_loop()
-                except EDAP_Interrupt:
-                    logger.debug("Stopping afk_combat")
-                self.afk_combat_assist_enabled = False
-                self.ap_ckb('afk_stop')
-                self.update_overlay()
+                elif self.robigo_assist_enabled == True:
+                    logger.debug("Running robigo_assist")
+                    set_focus_elite_window()
+                    self.update_overlay()
+                    try:
+                        self.robigo_assist()
+                    except EDAP_Interrupt:
+                        logger.debug("Caught stop exception")
+                    except Exception as e:
+                        print("Trapped generic:"+str(e))
+                        traceback.print_exc()
 
-            elif self.dss_assist_enabled == True:
-                logger.debug("Running dss_assist")
-                set_focus_elite_window()
-                self.update_overlay()
-                try:
-                    self.dss_assist()
-                except EDAP_Interrupt:
-                    logger.debug("Stopping DSS Assist")
-                self.dss_assist_enabled = False
-                self.ap_ckb('dss_stop')
-                self.update_overlay()
+                    self.robigo_assist_enabled = False
+                    self.ap_ckb('robigo_stop')
 
-            elif self.single_waypoint_enabled:
-                self.update_overlay()
-                try:
-                    self.single_waypoint_assist()
-                except EDAP_Interrupt:
-                    logger.debug("Stopping Single Waypoint Assist")
-                self.single_waypoint_enabled = False
-                self.ap_ckb('single_waypoint_stop')
+                elif self.afk_combat_assist_enabled == True:
+                    self.update_overlay()
+                    try:
+                        self.afk_combat_loop()
+                    except EDAP_Interrupt:
+                        logger.debug("Stopping afk_combat")
+                    self.afk_combat_assist_enabled = False
+                    self.ap_ckb('afk_stop')
+
+                elif self.dss_assist_enabled == True:
+                    logger.debug("Running dss_assist")
+                    set_focus_elite_window()
+                    self.update_overlay()
+                    try:
+                        self.dss_assist()
+                    except EDAP_Interrupt:
+                        logger.debug("Stopping DSS Assist")
+                    self.dss_assist_enabled = False
+                    self.ap_ckb('dss_stop')
+
+                elif self.single_waypoint_enabled:
+                    self.update_overlay()
+                    try:
+                        self.single_waypoint_assist()
+                    except EDAP_Interrupt:
+                        logger.debug("Stopping Single Waypoint Assist")
+                    self.single_waypoint_enabled = False
+                    self.ap_ckb('single_waypoint_stop')
                 self.update_overlay()
 
             # Check once EDAPGUI loaded to prevent errors logging to the listbox before loaded
