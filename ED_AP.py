@@ -2566,6 +2566,8 @@ class EDAutopilot:
 
         self.jn.ship_state()['interdicted'] = False
         recovering_from_interdiction = False
+        interdiction_recovery_until = 0
+        interdiction_recovery_buffer = 8
 
         # Loop forever keeping tight align to target, until we get SC Disengage popup
         self.log_ui(self.STATUS_KEYS['ALIGN'], voice=True)
@@ -2574,13 +2576,25 @@ class EDAutopilot:
             ship_state = self.jn.ship_state()
             ship_status = ship_state['status']
             interdicted_state = ship_state.get('interdicted')
+            now = time.time()
+
+            if interdicted_state:
+                recovering_from_interdiction = True
+                interdiction_recovery_until = max(interdiction_recovery_until, now + interdiction_recovery_buffer)
+
+            in_interdiction_recovery = now < interdiction_recovery_until
 
             if ship_status == 'in_supercruise':
-                if recovering_from_interdiction and not interdicted_state:
+                if recovering_from_interdiction and not interdicted_state and not in_interdiction_recovery:
                     recovering_from_interdiction = False
+                    interdiction_recovery_until = 0
                 # Align and stay on target. If false is returned, we have lost the target behind us.
                 align_res = self.sc_target_align(scr_reg)
                 if align_res == ScTargetAlignReturn.Lost:
+                    if in_interdiction_recovery:
+                        self.nav_align(scr_reg)
+                        sleep(0.5)
+                        continue
                     # Continue ahead before aligning to prevent us circling the target
                     # self.keys.send('SetSpeed100')
                     sleep(10)
@@ -2606,8 +2620,11 @@ class EDAutopilot:
                     self.keys.send('SetSpeed50')
                     continue
                 if interdicted_state or recovering_from_interdiction:
-                    logger.debug("No longer in supercruise during interdiction, waiting for escape to finish")
-                    continue
+                    interdiction_recovery_until = max(interdiction_recovery_until, now + interdiction_recovery_buffer)
+                    if now < interdiction_recovery_until:
+                        logger.debug("No longer in supercruise during interdiction, waiting for escape to finish")
+                        sleep(0.1)
+                        continue
                 logger.debug("No longer in supercruise")
                 align_failed = True
                 break
@@ -2616,6 +2633,7 @@ class EDAutopilot:
             interdicted = self.interdiction_check()
             if interdicted:
                 recovering_from_interdiction = True
+                interdiction_recovery_until = max(interdiction_recovery_until, time.time() + interdiction_recovery_buffer)
                 # Continue journey after interdiction
                 self.keys.send('SetSpeed50')
                 ship_status = self.jn.ship_state()['status']
