@@ -3,6 +3,7 @@ import traceback
 from enum import Enum
 from math import atan, degrees
 import random
+import time
 from tkinter import messagebox
 
 import cv2
@@ -274,6 +275,15 @@ class EDAutopilot:
     STATUS_KEYS = STATUS_MESSAGE_KEYS
     VOICE_KEYS = VOICE_MESSAGE_KEYS
     LOG_KEYS = LOG_MESSAGE_KEYS
+    MODE_FLAGS = {
+        'fsd_assist': 'fsd_assist_enabled',
+        'sc_assist': 'sc_assist_enabled',
+        'waypoint_assist': 'waypoint_assist_enabled',
+        'robigo_assist': 'robigo_assist_enabled',
+        'afk_combat_assist': 'afk_combat_assist_enabled',
+        'dss_assist': 'dss_assist_enabled',
+        'single_waypoint': 'single_waypoint_enabled',
+    }
 
     def __init__(self, cb, doThread=True):
 
@@ -325,6 +335,11 @@ class EDAutopilot:
             "EDMesgEventsPort": 15571,
             "DebugOverlay": False,
             "InterdictionEscapeEnabled": False,
+            "InterdictionResumeAttempts": 1,
+            "InterdictionResumeTimeout": 30,
+            "ScCompassGraceSeconds": 5,
+            "ScTargetLostMaxRetries": 3,
+            "ScInterdictionRecoveryBuffer": 8,
         }
         self.supported_ocr_languages = ('en', 'ru')
         self.ap_ckb = cb
@@ -379,6 +394,16 @@ class EDAutopilot:
                 cnf['DebugOverlay'] = False
             if 'InterdictionEscapeEnabled' not in cnf:
                 cnf['InterdictionEscapeEnabled'] = False
+            if 'InterdictionResumeAttempts' not in cnf:
+                cnf['InterdictionResumeAttempts'] = 1
+            if 'InterdictionResumeTimeout' not in cnf:
+                cnf['InterdictionResumeTimeout'] = 30
+            if 'ScCompassGraceSeconds' not in cnf:
+                cnf['ScCompassGraceSeconds'] = 5
+            if 'ScTargetLostMaxRetries' not in cnf:
+                cnf['ScTargetLostMaxRetries'] = 3
+            if 'ScInterdictionRecoveryBuffer' not in cnf:
+                cnf['ScInterdictionRecoveryBuffer'] = 8
             self.config = cnf
             logger.debug("read AP json:"+str(cnf))
         else:
@@ -439,6 +464,10 @@ class EDAutopilot:
         self.dss_assist_enabled = False
         self.single_waypoint_enabled = False
         self._interdiction_resume_mode = None
+        self.active_mode = None
+        self._pending_resume_mode = None
+        self._pending_resume_attempts = 0
+        self._pending_resume_deadline = 0
 
         # Create instance of each of the needed Classes
         self.gfx_settings = EDGraphicsSettings()
@@ -585,6 +614,104 @@ class EDAutopilot:
         text = self.log_ui(key, level=level, voice=False, **kwargs)
         self.speak_ui(key, **kwargs)
         return text
+
+    def _set_mode_active(self, mode_name: str) -> None:
+        """Взаємовиключне вмикання верхньорівневих режимів."""
+        if mode_name not in self.MODE_FLAGS:
+            return
+        for name, flag_attr in self.MODE_FLAGS.items():
+            if name != mode_name and getattr(self, flag_attr):
+                setattr(self, flag_attr, False)
+        setattr(self, self.MODE_FLAGS[mode_name], True)
+        self.active_mode = mode_name
+        self._pending_resume_mode = None
+        self._pending_resume_attempts = 0
+        self._pending_resume_deadline = 0
+
+    def _deactivate_mode(self, mode_name: str, interrupt: bool = False) -> None:
+        """Коректно вимикає режим та оновлює активний стейт."""
+        if mode_name not in self.MODE_FLAGS:
+            return
+        flag_attr = self.MODE_FLAGS[mode_name]
+        if interrupt and getattr(self, flag_attr):
+            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+        setattr(self, flag_attr, False)
+        if self.active_mode == mode_name:
+            self.active_mode = None
+
+    def _has_active_mode(self) -> bool:
+        """Перевіряє, чи увімкнений будь-який верхньорівневий режим."""
+        return any(getattr(self, flag_attr) for flag_attr in self.MODE_FLAGS.values())
+
+    def _sync_mode_start_with_gui(self, mode_name: str) -> bool:
+        """Синхронізує автозапуск режиму з GUI, щоб гарячі клавіші коректно його вимикали."""
+        if not hasattr(self, 'ap_ckb') or self.ap_ckb is None:
+            return False
+
+        callback_map = {
+            'fsd_assist': 'fsd_start',
+            'sc_assist': 'sc_start',
+            'waypoint_assist': 'waypoint_start',
+            'robigo_assist': 'robigo_start',
+            'afk_combat_assist': 'afk_start',
+            'dss_assist': 'dss_start',
+            'single_waypoint': 'single_waypoint_start',
+        }
+
+        msg = callback_map.get(mode_name)
+        if not msg:
+            return False
+
+        try:
+            self.ap_ckb(msg)
+        except Exception:
+            logger.debug(f"Не вдалося надіслати GUI сигнал запуску для режиму {mode_name}")
+            return False
+
+        return True
+
+    def _handle_pending_interdiction_resume(self) -> None:
+        """Робить контрольовану спробу відновити режим після інтердикції."""
+        if not self._pending_resume_mode:
+            return
+        if self._pending_resume_attempts <= 0:
+            self._pending_resume_mode = None
+            return
+        if time.time() > self._pending_resume_deadline:
+            self._pending_resume_mode = None
+            return
+        if self._has_active_mode():
+            return
+        ship_status = self.jn.ship_state().get('status')
+        if ship_status != 'in_supercruise':
+            return
+
+        mode = self._pending_resume_mode
+        attempts_left = self._pending_resume_attempts
+        started = False
+        started = self._sync_mode_start_with_gui(mode)
+        if not started:
+            if mode == 'sc_assist':
+                self.set_sc_assist(True)
+                started = True
+            elif mode == 'fsd_assist':
+                self.set_fsd_assist(True)
+                started = True
+            elif mode == 'waypoint_assist':
+                self.set_waypoint_assist(True)
+                started = True
+
+        if not started:
+            return
+
+        attempts_left -= 1
+        if attempts_left > 0:
+            self._pending_resume_mode = mode
+            self._pending_resume_attempts = attempts_left
+        else:
+            self._pending_resume_mode = None
+            self._pending_resume_attempts = 0
+            self._pending_resume_deadline = 0
 
     def _get_overlay_mode_key(self) -> str:
         if self.fsd_assist_enabled:
@@ -1172,6 +1299,12 @@ class EDAutopilot:
                 handled = self.interdiction_escape.run_escape_sequence()
                 if handled:
                     self._interdiction_resume_mode = resume_mode
+                    if resume_mode:
+                        self._pending_resume_mode = resume_mode
+                        self._pending_resume_attempts = max(
+                            0, int(self.config.get('InterdictionResumeAttempts', 1)))
+                        timeout = max(1, int(self.config.get('InterdictionResumeTimeout', 30)))
+                        self._pending_resume_deadline = time.time() + timeout
                     return True
 
         # Return if we are not being interdicted.
@@ -2543,8 +2676,14 @@ class EDAutopilot:
         self.ship_control.goto_cockpit_view()
 
         align_failed = False
+        compass_grace = max(0.0, float(self.config.get('ScCompassGraceSeconds', 5)))
+        compass_wait_until = time.time() + compass_grace
+        compass_available = self.have_destination(scr_reg)
+        while not compass_available and time.time() <= compass_wait_until:
+            sleep(0.3)
+            compass_available = self.have_destination(scr_reg)
         # see if we have a compass up, if so then we have a target
-        if not self.have_destination(scr_reg):
+        if not compass_available:
             self.log_ui(self.LOG_KEYS['SC_COMPASS_MISSING'], level='warning')
             logger.debug("Quiting sc_assist - compass not found")
             return
@@ -2567,7 +2706,9 @@ class EDAutopilot:
         self.jn.ship_state()['interdicted'] = False
         recovering_from_interdiction = False
         interdiction_recovery_until = 0
-        interdiction_recovery_buffer = 8
+        interdiction_recovery_buffer = max(0, int(self.config.get('ScInterdictionRecoveryBuffer', 8)))
+        target_loss_limit = max(1, int(self.config.get('ScTargetLostMaxRetries', 3)))
+        target_loss_streak = 0
 
         # Loop forever keeping tight align to target, until we get SC Disengage popup
         self.log_ui(self.STATUS_KEYS['ALIGN'], voice=True)
@@ -2591,20 +2732,29 @@ class EDAutopilot:
                 # Align and stay on target. If false is returned, we have lost the target behind us.
                 align_res = self.sc_target_align(scr_reg)
                 if align_res == ScTargetAlignReturn.Lost:
+                    target_loss_streak += 1
                     if in_interdiction_recovery:
                         self.nav_align(scr_reg)
                         sleep(0.5)
+                        continue
+                    if target_loss_streak < target_loss_limit:
+                        sleep(0.5)
+                        self.nav_align(scr_reg)
                         continue
                     # Continue ahead before aligning to prevent us circling the target
                     # self.keys.send('SetSpeed100')
                     sleep(10)
                     self.keys.send('SetSpeed50')
                     self.nav_align(scr_reg)  # Compass Align
+                    if target_loss_streak >= target_loss_limit:
+                        align_failed = True
+                        break
 
                 elif align_res == ScTargetAlignReturn.Found:
-                    pass
+                    target_loss_streak = 0
 
                 elif align_res == ScTargetAlignReturn.Disengage:
+                    target_loss_streak = 0
                     break
 
             elif self.status.get_flag2(Flags2GlideMode):
@@ -2807,41 +2957,48 @@ class EDAutopilot:
     # Setter routines for state variables
     #
     def set_fsd_assist(self, enable=True):
-        if enable == False and self.fsd_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
-        self.fsd_assist_enabled = enable
+        if enable == False:
+            self._deactivate_mode('fsd_assist', interrupt=self.fsd_assist_enabled)
+            return
+        self._set_mode_active('fsd_assist')
 
     def set_sc_assist(self, enable=True):
-        if enable == False and self.sc_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
-        self.sc_assist_enabled = enable
+        if enable == False:
+            self._deactivate_mode('sc_assist', interrupt=self.sc_assist_enabled)
+            return
+        self._set_mode_active('sc_assist')
 
     def set_waypoint_assist(self, enable=True):
-        if enable == False and self.waypoint_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
-        self.waypoint_assist_enabled = enable
+        if enable == False:
+            self._deactivate_mode('waypoint_assist', interrupt=self.waypoint_assist_enabled)
+            return
+        self._set_mode_active('waypoint_assist')
 
     def set_robigo_assist(self, enable=True):
-        if enable == False and self.robigo_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
-        self.robigo_assist_enabled = enable
+        if enable == False:
+            self._deactivate_mode('robigo_assist', interrupt=self.robigo_assist_enabled)
+            return
+        self._set_mode_active('robigo_assist')
 
     def set_afk_combat_assist(self, enable=True):
-        if enable == False and self.afk_combat_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
-        self.afk_combat_assist_enabled = enable
+        if enable == False:
+            self._deactivate_mode('afk_combat_assist', interrupt=self.afk_combat_assist_enabled)
+            return
+        self._set_mode_active('afk_combat_assist')
 
     def set_dss_assist(self, enable=True):
-        if enable == False and self.dss_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
-        self.dss_assist_enabled = enable
+        if enable == False:
+            self._deactivate_mode('dss_assist', interrupt=self.dss_assist_enabled)
+            return
+        self._set_mode_active('dss_assist')
 
     def set_single_waypoint_assist(self, system: str, station: str, enable=True):
-        if enable == False and self.single_waypoint_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+        if enable == False:
+            self._deactivate_mode('single_waypoint', interrupt=self.single_waypoint_enabled)
+            return
         self._single_waypoint_system = system
         self._single_waypoint_station = station
-        self.single_waypoint_enabled = enable
+        self._set_mode_active('single_waypoint')
 
     def set_cv_view(self, enable=True, x=0, y=0):
         self.cv_view = enable
@@ -2917,6 +3074,8 @@ class EDAutopilot:
                     self._sc_sco_active_loop_thread = threading.Thread(target=self._sc_sco_active_loop, daemon=True)
                     self._sc_sco_active_loop_thread.start()
 
+            self._handle_pending_interdiction_resume()
+
             if self.fsd_assist_enabled == True:
                 logger.debug("Running fsd_assist")
                 set_focus_elite_window()
@@ -2935,7 +3094,7 @@ class EDAutopilot:
                     print("Trapped generic:"+str(e))
                     traceback.print_exc()
 
-                self.fsd_assist_enabled = False
+                self._deactivate_mode('fsd_assist')
                 self.ap_ckb('fsd_stop')
                 self.update_overlay()
 
@@ -2964,7 +3123,7 @@ class EDAutopilot:
                     traceback.print_exc()
 
                 logger.debug("Completed sc_assist")
-                self.sc_assist_enabled = False
+                self._deactivate_mode('sc_assist')
                 self.ap_ckb('sc_stop')
                 self.update_overlay()
 
@@ -2985,7 +3144,7 @@ class EDAutopilot:
                     print("Trapped generic:"+str(e))
                     traceback.print_exc()
 
-                self.waypoint_assist_enabled = False
+                self._deactivate_mode('waypoint_assist')
                 self.ap_ckb('waypoint_stop')
                 self.update_overlay()
 
@@ -3001,7 +3160,7 @@ class EDAutopilot:
                     print("Trapped generic:"+str(e))
                     traceback.print_exc()
 
-                self.robigo_assist_enabled = False
+                self._deactivate_mode('robigo_assist')
                 self.ap_ckb('robigo_stop')
                 self.update_overlay()
 
@@ -3011,7 +3170,7 @@ class EDAutopilot:
                     self.afk_combat_loop()
                 except EDAP_Interrupt:
                     logger.debug("Stopping afk_combat")
-                self.afk_combat_assist_enabled = False
+                self._deactivate_mode('afk_combat_assist')
                 self.ap_ckb('afk_stop')
                 self.update_overlay()
 
@@ -3023,7 +3182,7 @@ class EDAutopilot:
                     self.dss_assist()
                 except EDAP_Interrupt:
                     logger.debug("Stopping DSS Assist")
-                self.dss_assist_enabled = False
+                self._deactivate_mode('dss_assist')
                 self.ap_ckb('dss_stop')
                 self.update_overlay()
 
@@ -3033,7 +3192,7 @@ class EDAutopilot:
                     self.single_waypoint_assist()
                 except EDAP_Interrupt:
                     logger.debug("Stopping Single Waypoint Assist")
-                self.single_waypoint_enabled = False
+                self._deactivate_mode('single_waypoint')
                 self.ap_ckb('single_waypoint_stop')
                 self.update_overlay()
 
