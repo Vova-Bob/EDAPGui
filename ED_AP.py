@@ -2598,6 +2598,9 @@ class EDAutopilot:
                     self.sc_engage()
                     self.keys.send('SetSpeed50')
                     continue
+                if self.jn.ship_state().get('interdicted'):
+                    logger.debug("No longer in supercruise during interdiction, waiting")
+                    continue
                 logger.debug("No longer in supercruise")
                 align_failed = True
                 break
