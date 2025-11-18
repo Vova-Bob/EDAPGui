@@ -2565,12 +2565,19 @@ class EDAutopilot:
         self.keys.send('SetSpeed50')
 
         self.jn.ship_state()['interdicted'] = False
+        recovering_from_interdiction = False
 
         # Loop forever keeping tight align to target, until we get SC Disengage popup
         self.log_ui(self.STATUS_KEYS['ALIGN'], voice=True)
         while True:
             sleep(0.05)
-            if self.jn.ship_state()['status'] == 'in_supercruise':
+            ship_state = self.jn.ship_state()
+            ship_status = ship_state['status']
+            interdicted_state = ship_state.get('interdicted')
+
+            if ship_status == 'in_supercruise':
+                if recovering_from_interdiction and not interdicted_state:
+                    recovering_from_interdiction = False
                 # Align and stay on target. If false is returned, we have lost the target behind us.
                 align_res = self.sc_target_align(scr_reg)
                 if align_res == ScTargetAlignReturn.Lost:
@@ -2598,7 +2605,7 @@ class EDAutopilot:
                     self.sc_engage()
                     self.keys.send('SetSpeed50')
                     continue
-                if self.jn.ship_state().get('interdicted'):
+                if interdicted_state or recovering_from_interdiction:
                     logger.debug("No longer in supercruise during interdiction, waiting for escape to finish")
                     continue
                 logger.debug("No longer in supercruise")
@@ -2608,6 +2615,7 @@ class EDAutopilot:
             # check if we are being interdicted
             interdicted = self.interdiction_check()
             if interdicted:
+                recovering_from_interdiction = True
                 # Continue journey after interdiction
                 self.keys.send('SetSpeed50')
                 ship_status = self.jn.ship_state()['status']
