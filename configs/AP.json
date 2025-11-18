@@ -43,5 +43,10 @@
     "EDMesgActionsPort": 15570,
     "EDMesgEventsPort": 15571,
     "DebugOverlay": false,
-    "InterdictionEscapeEnabled": false
+    "InterdictionEscapeEnabled": false,
+    "InterdictionResumeAttempts": 1,
+    "InterdictionResumeTimeout": 30,
+    "ScCompassGraceSeconds": 5,
+    "ScTargetLostMaxRetries": 3,
+    "ScInterdictionRecoveryBuffer": 8
 }
