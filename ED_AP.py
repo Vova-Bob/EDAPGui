@@ -643,6 +643,33 @@ class EDAutopilot:
         """Перевіряє, чи увімкнений будь-який верхньорівневий режим."""
         return any(getattr(self, flag_attr) for flag_attr in self.MODE_FLAGS.values())
 
+    def _sync_mode_start_with_gui(self, mode_name: str) -> bool:
+        """Синхронізує автозапуск режиму з GUI, щоб гарячі клавіші коректно його вимикали."""
+        if not hasattr(self, 'ap_ckb') or self.ap_ckb is None:
+            return False
+
+        callback_map = {
+            'fsd_assist': 'fsd_start',
+            'sc_assist': 'sc_start',
+            'waypoint_assist': 'waypoint_start',
+            'robigo_assist': 'robigo_start',
+            'afk_combat_assist': 'afk_start',
+            'dss_assist': 'dss_start',
+            'single_waypoint': 'single_waypoint_start',
+        }
+
+        msg = callback_map.get(mode_name)
+        if not msg:
+            return False
+
+        try:
+            self.ap_ckb(msg)
+        except Exception:
+            logger.debug(f"Не вдалося надіслати GUI сигнал запуску для режиму {mode_name}")
+            return False
+
+        return True
+
     def _handle_pending_interdiction_resume(self) -> None:
         """Робить контрольовану спробу відновити режим після інтердикції."""
         if not self._pending_resume_mode:
@@ -662,15 +689,17 @@ class EDAutopilot:
         mode = self._pending_resume_mode
         attempts_left = self._pending_resume_attempts
         started = False
-        if mode == 'sc_assist':
-            self.set_sc_assist(True)
-            started = True
-        elif mode == 'fsd_assist':
-            self.set_fsd_assist(True)
-            started = True
-        elif mode == 'waypoint_assist':
-            self.set_waypoint_assist(True)
-            started = True
+        started = self._sync_mode_start_with_gui(mode)
+        if not started:
+            if mode == 'sc_assist':
+                self.set_sc_assist(True)
+                started = True
+            elif mode == 'fsd_assist':
+                self.set_fsd_assist(True)
+                started = True
+            elif mode == 'waypoint_assist':
+                self.set_waypoint_assist(True)
+                started = True
 
         if not started:
             return
