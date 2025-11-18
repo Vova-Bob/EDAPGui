@@ -4,6 +4,7 @@ from enum import Enum
 from math import atan, degrees
 import random
 import time
+import threading
 from tkinter import messagebox
 
 import cv2
@@ -468,6 +469,8 @@ class EDAutopilot:
         self._pending_resume_mode = None
         self._pending_resume_attempts = 0
         self._pending_resume_deadline = 0
+        self._stop_request_flag = threading.Event()
+        self._stop_request_reason = ''
 
         # Create instance of each of the needed Classes
         self.gfx_settings = EDGraphicsSettings()
@@ -712,6 +715,56 @@ class EDAutopilot:
             self._pending_resume_mode = None
             self._pending_resume_attempts = 0
             self._pending_resume_deadline = 0
+
+    def _clear_resume_requests(self) -> None:
+        """Очищає будь-які відкладені відновлення після інтердикції."""
+        self._pending_resume_mode = None
+        self._pending_resume_attempts = 0
+        self._pending_resume_deadline = 0
+        self._interdiction_resume_mode = None
+        if hasattr(self, 'interdiction_escape') and self.interdiction_escape:
+            self.interdiction_escape.escape_active = False
+            self.interdiction_escape.previous_mode = None
+
+    def _interrupt_active_modes(self) -> None:
+        """Надсилає асинхронний сигнал переривання до робочого потоку автопілота."""
+        if not hasattr(self, 'ap_thread') or self.ap_thread is None:
+            return
+        if threading.current_thread() is self.ap_thread:
+            return
+        if not self.ap_thread.is_alive():
+            return
+        if not self._has_active_mode():
+            return
+        try:
+            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+        except Exception:
+            logger.debug("Не вдалося надіслати переривання робочому потоку автопілота", exc_info=True)
+
+    def request_stop_all_assists(self, reason: str = '') -> None:
+        """Публічний вхід для гарячих клавіш/GUI, що позначає запит зупинки всіх режимів."""
+        self._stop_request_reason = reason or ''
+        self._stop_request_flag.set()
+        self.stop_all_assists(reason=reason)
+
+    def stop_all_assists(self, reason: str = '') -> None:
+        """Зупиняє всі активні режими та синхронізує стан із GUI."""
+        self._interrupt_active_modes()
+        self._stop_request_flag.clear()
+        for mode_name in self.MODE_FLAGS:
+            self._deactivate_mode(mode_name, interrupt=False)
+        self._clear_resume_requests()
+        idle_text = self._t(self.STATUS_KEYS['IDLE'])
+        if hasattr(self, 'ap_ckb') and self.ap_ckb is not None:
+            try:
+                self.ap_ckb('stop_all_assists')
+                self.ap_ckb('statusline', idle_text)
+            except Exception:
+                logger.debug("Не вдалося оновити GUI після зупинки всіх режимів", exc_info=True)
+        self.ap_state = "Idle"
+        self.update_overlay()
+        self._stop_request_reason = ''
+        logger.info(f"Усі режими вимкнено за запитом: {reason if reason else 'ручний виклик'}")
 
     def _get_overlay_mode_key(self) -> str:
         if self.fsd_assist_enabled:
@@ -3075,6 +3128,10 @@ class EDAutopilot:
                     self._sc_sco_active_loop_thread.start()
 
             self._handle_pending_interdiction_resume()
+
+            if self._stop_request_flag.is_set():
+                self.stop_all_assists(reason=self._stop_request_reason)
+                continue
 
             if self.fsd_assist_enabled == True:
                 logger.debug("Running fsd_assist")

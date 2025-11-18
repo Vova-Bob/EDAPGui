@@ -362,27 +362,7 @@ class APGui():
 
         elif msg == 'stop_all_assists':
             logger.debug("Detected 'stop_all_assists' callback msg")
-
-            self.checkboxvar['FSD Route Assist'].set(0)
-            self.check_cb('FSD Route Assist')
-
-            self.checkboxvar['Supercruise Assist'].set(0)
-            self.check_cb('Supercruise Assist')
-
-            self.checkboxvar['Waypoint Assist'].set(0)
-            self.check_cb('Waypoint Assist')
-
-            self.checkboxvar['Robigo Assist'].set(0)
-            self.check_cb('Robigo Assist')
-
-            self.checkboxvar['AFK Combat Assist'].set(0)
-            self.check_cb('AFK Combat Assist')
-
-            self.checkboxvar['DSS Assist'].set(0)
-            self.check_cb('DSS Assist')
-
-            self.checkboxvar['Single Waypoint Assist'].set(0)
-            self.check_cb('Single Waypoint Assist')
+            self.root.after(0, self._reset_all_assists_ui)
 
         elif msg == 'jumpcount':
             self.update_jumpcount(body)
@@ -421,8 +401,43 @@ class APGui():
 
     # this routine is to stop any current autopilot activity
     def stop_all_assists(self):
-        logger.debug("Entered: stop_all_assists")
-        self.callback('stop_all_assists')
+        logger.info(
+            f"Гаряча клавіша стоп ({self.ed_ap.config.get('HotKey_StopAllAssists', 'end')}) натиснута – зупиняю всі режими"
+        )
+        self.ed_ap.request_stop_all_assists(reason='hotkey')
+
+    def _reset_all_assists_ui(self):
+        """Скидає стан усіх чекбоксів та внутрішніх прапорців на режим очікування."""
+        logger.debug("Синхронізація GUI після зупинки всіх режимів")
+        for field in (
+            'FSD Route Assist',
+            'Supercruise Assist',
+            'Waypoint Assist',
+            'Robigo Assist',
+            'AFK Combat Assist',
+            'DSS Assist',
+            'Single Waypoint Assist',
+        ):
+            self.checkboxvar[field].set(0)
+
+        self.FSD_A_running = False
+        self.SC_A_running = False
+        self.WP_A_running = False
+        self.RO_A_running = False
+        self.DSS_A_running = False
+        self.SWP_A_running = False
+
+        for field in (
+            'FSD Route Assist',
+            'Supercruise Assist',
+            'Waypoint Assist',
+            'Robigo Assist',
+            'AFK Combat Assist',
+            'DSS Assist',
+        ):
+            self.lab_ck[field].config(state='active')
+
+        self.update_statusline(self._t('ui.status.idle'))
 
     def start_fsd(self):
         logger.debug("Entered: start_fsd")
