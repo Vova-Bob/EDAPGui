@@ -2607,7 +2607,9 @@ class EDAutopilot:
             if interdicted:
                 # Continue journey after interdiction
                 self.keys.send('SetSpeed50')
-                self.nav_align(scr_reg)  # realign with station
+                ship_status = self.jn.ship_state()['status']
+                if ship_status == 'in_supercruise' or ship_status == 'in_space':
+                    self.nav_align(scr_reg)  # realign with station
 
             # check for SC Disengage
             if self.sc_disengage_label_up(scr_reg):
