@@ -438,6 +438,7 @@ class EDAutopilot:
         self.robigo_assist_enabled = False
         self.dss_assist_enabled = False
         self.single_waypoint_enabled = False
+        self._interdiction_resume_mode = None
 
         # Create instance of each of the needed Classes
         self.gfx_settings = EDGraphicsSettings()
@@ -1167,8 +1168,10 @@ class EDAutopilot:
                 waypoint_assist_enabled=self.waypoint_assist_enabled,
             )
             if armed:
+                resume_mode = self.interdiction_escape.previous_mode
                 handled = self.interdiction_escape.run_escape_sequence()
                 if handled:
+                    self._interdiction_resume_mode = resume_mode
                     return True
 
         # Return if we are not being interdicted.
@@ -2590,6 +2593,11 @@ class EDAutopilot:
                 break
             else:
                 # if we dropped from SC, then we rammed into planet
+                if self._interdiction_resume_mode == 'sc_assist':
+                    self._interdiction_resume_mode = None
+                    self.sc_engage()
+                    self.keys.send('SetSpeed50')
+                    continue
                 logger.debug("No longer in supercruise")
                 align_failed = True
                 break
@@ -2615,6 +2623,8 @@ class EDAutopilot:
             self.overlay.overlay_remove_rect('sc_disengage_active')
             self.overlay.overlay_remove_floating_text('sc_disengage_active')
             self.overlay.overlay_paint()
+
+        self._interdiction_resume_mode = None
 
         # if no error, we must have gotten disengage
         if not align_failed and do_docking:
