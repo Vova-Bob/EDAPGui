@@ -31,6 +31,7 @@ from Overlay import *
 from StatusParser import StatusParser
 from Voice import *
 from Robigo import *
+from EDInterdictionEscape import EDInterdictionEscape
 from TCE_Integration import TceIntegration
 
 """
@@ -323,6 +324,7 @@ class EDAutopilot:
             "EDMesgActionsPort": 15570,
             "EDMesgEventsPort": 15571,
             "DebugOverlay": False,
+            "InterdictionEscapeEnabled": False,
         }
         self.supported_ocr_languages = ('en', 'ru')
         self.ap_ckb = cb
@@ -375,6 +377,8 @@ class EDAutopilot:
                 cnf['EDMesgEventsPort'] = 15571
             if 'DebugOverlay' not in cnf:
                 cnf['DebugOverlay'] = False
+            if 'InterdictionEscapeEnabled' not in cnf:
+                cnf['InterdictionEscapeEnabled'] = False
             self.config = cnf
             logger.debug("read AP json:"+str(cnf))
         else:
@@ -434,6 +438,7 @@ class EDAutopilot:
         self.robigo_assist_enabled = False
         self.dss_assist_enabled = False
         self.single_waypoint_enabled = False
+        self._interdiction_resume_mode = None
 
         # Create instance of each of the needed Classes
         self.gfx_settings = EDGraphicsSettings()
@@ -453,6 +458,16 @@ class EDAutopilot:
         self.robigo = Robigo(self)
         self.status = StatusParser()
         self.nav_route = NavRouteParser(log_func=self.log_ui)
+        self.interdiction_escape = EDInterdictionEscape(
+            self.jn,
+            self.status,
+            self.keys,
+            nav_route=self.nav_route,
+            scr_reg=self.scrReg,
+            log_func=self.log_ui,
+            speak_func=self.speak_ui,
+            enabled=self.config.get('InterdictionEscapeEnabled', False),
+        )
         self.ship_control = EDShipControl(self, self.scr, self.keys, cb)
         self.internal_panel = EDInternalStatusPanel(self, self.scr, self.keys, cb)
         self.galaxy_map = EDGalaxyMap(self, self.scr, self.keys, cb, self.jn.ship_state()['odyssey'])
@@ -1146,6 +1161,19 @@ class EDAutopilot:
         (needs to be verified). Returns False if not interdicted, True after interdiction is detected and we
         get away. Use return result to determine the next action (continue, or do something else).
         """
+        if self.interdiction_escape and self.interdiction_escape.enabled:
+            armed = self.interdiction_escape.check_and_arm(
+                sc_assist_enabled=self.sc_assist_enabled,
+                fsd_assist_enabled=self.fsd_assist_enabled,
+                waypoint_assist_enabled=self.waypoint_assist_enabled,
+            )
+            if armed:
+                resume_mode = self.interdiction_escape.previous_mode
+                handled = self.interdiction_escape.run_escape_sequence()
+                if handled:
+                    self._interdiction_resume_mode = resume_mode
+                    return True
+
         # Return if we are not being interdicted.
         if not self.status.get_flag(FlagsBeingInterdicted):
             return False
@@ -2537,15 +2565,36 @@ class EDAutopilot:
         self.keys.send('SetSpeed50')
 
         self.jn.ship_state()['interdicted'] = False
+        recovering_from_interdiction = False
+        interdiction_recovery_until = 0
+        interdiction_recovery_buffer = 8
 
         # Loop forever keeping tight align to target, until we get SC Disengage popup
         self.log_ui(self.STATUS_KEYS['ALIGN'], voice=True)
         while True:
             sleep(0.05)
-            if self.jn.ship_state()['status'] == 'in_supercruise':
+            ship_state = self.jn.ship_state()
+            ship_status = ship_state['status']
+            interdicted_state = ship_state.get('interdicted')
+            now = time.time()
+
+            if interdicted_state:
+                recovering_from_interdiction = True
+                interdiction_recovery_until = max(interdiction_recovery_until, now + interdiction_recovery_buffer)
+
+            in_interdiction_recovery = now < interdiction_recovery_until
+
+            if ship_status == 'in_supercruise':
+                if recovering_from_interdiction and not interdicted_state and not in_interdiction_recovery:
+                    recovering_from_interdiction = False
+                    interdiction_recovery_until = 0
                 # Align and stay on target. If false is returned, we have lost the target behind us.
                 align_res = self.sc_target_align(scr_reg)
                 if align_res == ScTargetAlignReturn.Lost:
+                    if in_interdiction_recovery:
+                        self.nav_align(scr_reg)
+                        sleep(0.5)
+                        continue
                     # Continue ahead before aligning to prevent us circling the target
                     # self.keys.send('SetSpeed100')
                     sleep(10)
@@ -2565,6 +2614,17 @@ class EDAutopilot:
                 break
             else:
                 # if we dropped from SC, then we rammed into planet
+                if self._interdiction_resume_mode == 'sc_assist':
+                    self._interdiction_resume_mode = None
+                    self.sc_engage()
+                    self.keys.send('SetSpeed50')
+                    continue
+                if interdicted_state or recovering_from_interdiction:
+                    interdiction_recovery_until = max(interdiction_recovery_until, now + interdiction_recovery_buffer)
+                    if now < interdiction_recovery_until:
+                        logger.debug("No longer in supercruise during interdiction, waiting for escape to finish")
+                        sleep(0.1)
+                        continue
                 logger.debug("No longer in supercruise")
                 align_failed = True
                 break
@@ -2572,9 +2632,13 @@ class EDAutopilot:
             # check if we are being interdicted
             interdicted = self.interdiction_check()
             if interdicted:
+                recovering_from_interdiction = True
+                interdiction_recovery_until = max(interdiction_recovery_until, time.time() + interdiction_recovery_buffer)
                 # Continue journey after interdiction
                 self.keys.send('SetSpeed50')
-                self.nav_align(scr_reg)  # realign with station
+                ship_status = self.jn.ship_state()['status']
+                if ship_status == 'in_supercruise' or ship_status == 'in_space':
+                    self.nav_align(scr_reg)  # realign with station
 
             # check for SC Disengage
             if self.sc_disengage_label_up(scr_reg):
@@ -2590,6 +2654,8 @@ class EDAutopilot:
             self.overlay.overlay_remove_rect('sc_disengage_active')
             self.overlay.overlay_remove_floating_text('sc_disengage_active')
             self.overlay.overlay_paint()
+
+        self._interdiction_resume_mode = None
 
         # if no error, we must have gotten disengage
         if not align_failed and do_docking:
