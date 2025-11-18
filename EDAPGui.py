@@ -295,16 +295,47 @@ class APGui():
     def _register_global_hotkeys(self) -> None:
         """Реєструє глобальні гарячі клавіші та гарантує виконання у потоці Tk."""
 
-        def bind(combo: str, target, *args) -> None:
+        def bind(combo: str, action: str) -> None:
+            combo = str(combo).strip()
+
             def handler() -> None:
-                self.root.after(0, lambda: target(*args))
+                logger.debug(f"Спрацьовування гарячої клавіші '{combo}' для події '{action}'")
+                self.root.after(0, lambda: self._dispatch_hotkey_action(action, combo))
 
             keyboard.add_hotkey(combo, handler)
+            logger.debug(f"Зареєстровано гарячу клавішу '{combo}' для події '{action}'")
 
-        bind(self.ed_ap.config['HotKey_StopAllAssists'], self.stop_all_assists)
-        bind(self.ed_ap.config['HotKey_StartFSD'], self.callback, 'fsd_start', None)
-        bind(self.ed_ap.config['HotKey_StartSC'], self.callback, 'sc_start', None)
-        bind(self.ed_ap.config['HotKey_StartRobigo'], self.callback, 'robigo_start', None)
+        bind(self.ed_ap.config['HotKey_StopAllAssists'], 'stop_all_assists')
+        bind(self.ed_ap.config['HotKey_StartFSD'], 'fsd_start')
+        bind(self.ed_ap.config['HotKey_StartSC'], 'sc_start')
+        bind(self.ed_ap.config['HotKey_StartRobigo'], 'robigo_start')
+
+    def _dispatch_hotkey_action(self, action: str, combo: str) -> None:
+        """Централізований обробник гарячих клавіш із синхронізацією GUI."""
+        if action == 'stop_all_assists':
+            logger.info(
+                f"Гаряча клавіша стоп ({combo}) натиснута – зупиняю всі режими"
+            )
+            self.stop_all_assists(reason='hotkey')
+            return
+
+        if action == 'fsd_start':
+            logger.debug(f"Гаряча клавіша ({combo}) – запуск FSD Assist")
+            self.checkboxvar['FSD Route Assist'].set(1)
+            self.check_cb('FSD Route Assist')
+            return
+
+        if action == 'sc_start':
+            logger.debug(f"Гаряча клавіша ({combo}) – запуск SC Assist")
+            self.checkboxvar['Supercruise Assist'].set(1)
+            self.check_cb('Supercruise Assist')
+            return
+
+        if action == 'robigo_start':
+            logger.debug(f"Гаряча клавіша ({combo}) – запуск Robigo Assist")
+            self.checkboxvar['Robigo Assist'].set(1)
+            self.check_cb('Robigo Assist')
+            return
 
     # callback from the EDAP, to configure GUI items
     def callback(self, msg, body=None):
@@ -362,27 +393,7 @@ class APGui():
 
         elif msg == 'stop_all_assists':
             logger.debug("Detected 'stop_all_assists' callback msg")
-
-            self.checkboxvar['FSD Route Assist'].set(0)
-            self.check_cb('FSD Route Assist')
-
-            self.checkboxvar['Supercruise Assist'].set(0)
-            self.check_cb('Supercruise Assist')
-
-            self.checkboxvar['Waypoint Assist'].set(0)
-            self.check_cb('Waypoint Assist')
-
-            self.checkboxvar['Robigo Assist'].set(0)
-            self.check_cb('Robigo Assist')
-
-            self.checkboxvar['AFK Combat Assist'].set(0)
-            self.check_cb('AFK Combat Assist')
-
-            self.checkboxvar['DSS Assist'].set(0)
-            self.check_cb('DSS Assist')
-
-            self.checkboxvar['Single Waypoint Assist'].set(0)
-            self.check_cb('Single Waypoint Assist')
+            self.root.after(0, self._reset_all_assists_ui)
 
         elif msg == 'jumpcount':
             self.update_jumpcount(body)
@@ -420,9 +431,46 @@ class APGui():
         self.root.destroy()
 
     # this routine is to stop any current autopilot activity
-    def stop_all_assists(self):
-        logger.debug("Entered: stop_all_assists")
-        self.callback('stop_all_assists')
+    def stop_all_assists(self, reason: str = ''):
+        if reason and reason != 'hotkey':
+            logger.info(f"Зупиняю всі режими автопілота: {reason}")
+        elif not reason:
+            logger.info("Зупиняю всі режими автопілота")
+
+        self.ed_ap.request_stop_all_assists(reason=reason or 'manual')
+
+    def _reset_all_assists_ui(self):
+        """Скидає стан усіх чекбоксів та внутрішніх прапорців на режим очікування."""
+        logger.debug("Синхронізація GUI після зупинки всіх режимів")
+        for field in (
+            'FSD Route Assist',
+            'Supercruise Assist',
+            'Waypoint Assist',
+            'Robigo Assist',
+            'AFK Combat Assist',
+            'DSS Assist',
+            'Single Waypoint Assist',
+        ):
+            self.checkboxvar[field].set(0)
+
+        self.FSD_A_running = False
+        self.SC_A_running = False
+        self.WP_A_running = False
+        self.RO_A_running = False
+        self.DSS_A_running = False
+        self.SWP_A_running = False
+
+        for field in (
+            'FSD Route Assist',
+            'Supercruise Assist',
+            'Waypoint Assist',
+            'Robigo Assist',
+            'AFK Combat Assist',
+            'DSS Assist',
+        ):
+            self.lab_ck[field].config(state='active')
+
+        self.update_statusline(self._t('ui.status.idle'))
 
     def start_fsd(self):
         logger.debug("Entered: start_fsd")
