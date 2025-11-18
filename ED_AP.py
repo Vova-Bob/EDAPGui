@@ -744,6 +744,9 @@ class EDAutopilot:
     def request_stop_all_assists(self, reason: str = '') -> None:
         """Публічний вхід для гарячих клавіш/GUI, що позначає запит зупинки всіх режимів."""
         self._stop_request_reason = reason or ''
+        logger.debug(
+            f"Отримано запит на зупинку всіх режимів (причина: {self._stop_request_reason or 'невказана'})"
+        )
         self._stop_request_flag.set()
         self.stop_all_assists(reason=reason)
 
@@ -753,6 +756,7 @@ class EDAutopilot:
         self._stop_request_flag.clear()
         for mode_name in self.MODE_FLAGS:
             self._deactivate_mode(mode_name, interrupt=False)
+        self.active_mode = None
         self._clear_resume_requests()
         idle_text = self._t(self.STATUS_KEYS['IDLE'])
         if hasattr(self, 'ap_ckb') and self.ap_ckb is not None:
