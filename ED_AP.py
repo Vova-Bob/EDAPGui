@@ -3,6 +3,7 @@ import traceback
 from enum import Enum
 from math import atan, degrees
 import random
+from typing import Optional
 from tkinter import messagebox
 
 import cv2
@@ -55,6 +56,135 @@ class ScTargetAlignReturn(Enum):
     Lost = 1
     Found = 2
     Disengage = 3
+
+
+class ModeName(Enum):
+    FSD = 'fsd'
+    SC = 'sc'
+    WAYPOINT = 'waypoint'
+    ROBIGO = 'robigo'
+    AFK = 'afk'
+    DSS = 'dss'
+    SINGLE_WAYPOINT = 'single_waypoint'
+
+
+class ModeState(Enum):
+    IDLE = 'idle'
+    RUNNING = 'running'
+    STOPPING = 'stopping'
+
+
+class ModeManager:
+    """Centralized manager that serializes autopilot mode transitions.
+
+    This class ensures only one primary mode is running at a time and that any
+    transition requests from background threads are funneled through a single
+    decision point. All UI updates are delegated via ``ap_ckb`` so they can be
+    dispatched safely on the Tkinter thread by the GUI layer.
+    """
+
+    def __init__(self, autopilot: "EDAutopilot"):
+        self._ap = autopilot
+        self._lock = threading.Lock()
+        self._current_mode: Optional[ModeName] = None
+        self._user_enabled: dict[ModeName, bool] = {mode: False for mode in ModeName}
+        self._states: dict[ModeName, ModeState] = {mode: ModeState.IDLE for mode in ModeName}
+
+    def _notify_ui(self, event: str, mode: ModeName) -> None:
+        if self._ap.ap_ckb:
+            self._ap.ap_ckb(event, mode)
+
+    def _activate_mode(self, mode: ModeName) -> None:
+        """Turn on the target mode flag and update UI state."""
+        if mode == ModeName.FSD:
+            self._ap.set_fsd_assist(True)
+        elif mode == ModeName.SC:
+            self._ap.set_sc_assist(True)
+        elif mode == ModeName.WAYPOINT:
+            self._ap.set_waypoint_assist(True)
+        elif mode == ModeName.ROBIGO:
+            self._ap.set_robigo_assist(True)
+        elif mode == ModeName.AFK:
+            self._ap.set_afk_combat_assist(True)
+        elif mode == ModeName.DSS:
+            self._ap.set_dss_assist(True)
+        elif mode == ModeName.SINGLE_WAYPOINT:
+            self._ap.set_single_waypoint_assist(
+                self._ap._single_waypoint_system,
+                self._ap._single_waypoint_station,
+                True,
+            )
+
+    def _deactivate_mode(self, mode: ModeName) -> None:
+        if mode == ModeName.FSD:
+            self._ap.set_fsd_assist(False)
+        elif mode == ModeName.SC:
+            self._ap.set_sc_assist(False)
+        elif mode == ModeName.WAYPOINT:
+            self._ap.set_waypoint_assist(False)
+        elif mode == ModeName.ROBIGO:
+            self._ap.set_robigo_assist(False)
+        elif mode == ModeName.AFK:
+            self._ap.set_afk_combat_assist(False)
+        elif mode == ModeName.DSS:
+            self._ap.set_dss_assist(False)
+        elif mode == ModeName.SINGLE_WAYPOINT:
+            self._ap.set_single_waypoint_assist("", "", False)
+
+    def start_mode(self, mode: ModeName) -> None:
+        with self._lock:
+            self._user_enabled[mode] = True
+            if self._current_mode == mode and self._states[mode] == ModeState.RUNNING:
+                return
+
+            if self._current_mode and self._current_mode != mode:
+                self._deactivate_mode(self._current_mode)
+                self._states[self._current_mode] = ModeState.IDLE
+                self._notify_ui('mode_stopped', self._current_mode)
+
+            self._current_mode = mode
+            self._states[mode] = ModeState.RUNNING
+            self._activate_mode(mode)
+            self._notify_ui('mode_started', mode)
+
+    def stop_mode(self, mode: Optional[ModeName] = None) -> None:
+        with self._lock:
+            target_modes = [mode] if mode else list(ModeName)
+            for target in target_modes:
+                self._user_enabled[target] = False
+                if self._states[target] != ModeState.IDLE:
+                    self._states[target] = ModeState.STOPPING
+                    self._deactivate_mode(target)
+                    self._states[target] = ModeState.IDLE
+                    if self._current_mode == target:
+                        self._current_mode = None
+                    self._notify_ui('mode_stopped', target)
+
+    def request_transition(self, from_mode: ModeName, to_mode: Optional[ModeName], reason: str | None = None) -> None:
+        with self._lock:
+            if to_mode is None or not self._user_enabled.get(to_mode, False):
+                return
+        self.start_mode(to_mode)
+
+    def get_state(self) -> dict:
+        with self._lock:
+            return {
+                'current_mode': self._current_mode.name if self._current_mode else None,
+                'states': {mode.name: state.value for mode, state in self._states.items()},
+                'user_enabled': {mode.name: enabled for mode, enabled in self._user_enabled.items()},
+            }
+
+    def active_mode(self) -> Optional[ModeName]:
+        with self._lock:
+            return self._current_mode
+
+    def on_mode_finished(self, mode: ModeName, *, success: bool = True) -> None:
+        with self._lock:
+            if self._current_mode == mode:
+                self._current_mode = None
+            self._states[mode] = ModeState.IDLE
+        self._deactivate_mode(mode)
+        self._notify_ui('mode_stopped', mode)
 
 
 STATUS_MESSAGE_KEYS = {
@@ -439,6 +569,8 @@ class EDAutopilot:
         self.dss_assist_enabled = False
         self.single_waypoint_enabled = False
         self._interdiction_resume_mode = None
+        self.mode_manager = ModeManager(self)
+        self._destination_miss_count = 0
 
         # Create instance of each of the needed Classes
         self.gfx_settings = EDGraphicsSettings()
@@ -1152,9 +1284,11 @@ class EDAutopilot:
 
         # need > x in the match to say we do have a destination
         if maxVal < scr_reg.compass_match_thresh:
-            return False
+            self._destination_miss_count += 1
         else:
-            return True
+            self._destination_miss_count = 0
+
+        return self._destination_miss_count < 3
 
     def interdiction_check(self) -> bool:
         """ Checks if we are being interdicted. This can occur in SC and maybe in system jump by Thargoids
@@ -2917,7 +3051,12 @@ class EDAutopilot:
                     self._sc_sco_active_loop_thread = threading.Thread(target=self._sc_sco_active_loop, daemon=True)
                     self._sc_sco_active_loop_thread.start()
 
-            if self.fsd_assist_enabled == True:
+            active_mode = self.mode_manager.active_mode()
+            if active_mode is None:
+                sleep(0.1)
+                continue
+
+            if active_mode == ModeName.FSD:
                 logger.debug("Running fsd_assist")
                 set_focus_elite_window()
                 self.update_overlay()
@@ -2926,7 +3065,6 @@ class EDAutopilot:
                 self.total_dist_jumped = 0
                 self.total_jumps = 0
                 fin = True
-                # could be deep in call tree when user disables FSD, so need to trap that exception
                 try:
                     fin = self.fsd_assist(self.scrReg)
                 except EDAP_Interrupt:
@@ -2935,22 +3073,11 @@ class EDAutopilot:
                     print("Trapped generic:"+str(e))
                     traceback.print_exc()
 
-                self.fsd_assist_enabled = False
-                self.ap_ckb('fsd_stop')
-                self.update_overlay()
+                self.mode_manager.on_mode_finished(ModeName.FSD, success=fin)
+                if fin is False:
+                    self.mode_manager.request_transition(ModeName.FSD, ModeName.SC, "fsd_incomplete")
 
-                # if fsd_assist returned false then we are not finished, meaning we have an in system target
-                # defined.  So lets enable Supercruise assist to get us there
-                # Note: this is tricky, in normal FSD jumps the target is pretty much on the other side of Sun
-                #  when we arrive, but not so when we are in the final system
-                if fin == False:
-                    self.ap_ckb("sc_start")
-
-                # drop all out debug windows
-                #cv2.destroyAllWindows()
-                #cv2.waitKey(10)
-
-            elif self.sc_assist_enabled == True:
+            elif active_mode == ModeName.SC:
                 logger.debug("Running sc_assist")
                 set_focus_elite_window()
                 self.update_overlay()
@@ -2964,11 +3091,9 @@ class EDAutopilot:
                     traceback.print_exc()
 
                 logger.debug("Completed sc_assist")
-                self.sc_assist_enabled = False
-                self.ap_ckb('sc_stop')
-                self.update_overlay()
+                self.mode_manager.on_mode_finished(ModeName.SC)
 
-            elif self.waypoint_assist_enabled == True:
+            elif active_mode == ModeName.WAYPOINT:
                 logger.debug("Running waypoint_assist")
 
                 set_focus_elite_window()
@@ -2985,11 +3110,9 @@ class EDAutopilot:
                     print("Trapped generic:"+str(e))
                     traceback.print_exc()
 
-                self.waypoint_assist_enabled = False
-                self.ap_ckb('waypoint_stop')
-                self.update_overlay()
+                self.mode_manager.on_mode_finished(ModeName.WAYPOINT)
 
-            elif self.robigo_assist_enabled == True:
+            elif active_mode == ModeName.ROBIGO:
                 logger.debug("Running robigo_assist")
                 set_focus_elite_window()
                 self.update_overlay()
@@ -3001,21 +3124,17 @@ class EDAutopilot:
                     print("Trapped generic:"+str(e))
                     traceback.print_exc()
 
-                self.robigo_assist_enabled = False
-                self.ap_ckb('robigo_stop')
-                self.update_overlay()
+                self.mode_manager.on_mode_finished(ModeName.ROBIGO)
 
-            elif self.afk_combat_assist_enabled == True:
+            elif active_mode == ModeName.AFK:
                 self.update_overlay()
                 try:
                     self.afk_combat_loop()
                 except EDAP_Interrupt:
                     logger.debug("Stopping afk_combat")
-                self.afk_combat_assist_enabled = False
-                self.ap_ckb('afk_stop')
-                self.update_overlay()
+                self.mode_manager.on_mode_finished(ModeName.AFK)
 
-            elif self.dss_assist_enabled == True:
+            elif active_mode == ModeName.DSS:
                 logger.debug("Running dss_assist")
                 set_focus_elite_window()
                 self.update_overlay()
@@ -3023,19 +3142,15 @@ class EDAutopilot:
                     self.dss_assist()
                 except EDAP_Interrupt:
                     logger.debug("Stopping DSS Assist")
-                self.dss_assist_enabled = False
-                self.ap_ckb('dss_stop')
-                self.update_overlay()
+                self.mode_manager.on_mode_finished(ModeName.DSS)
 
-            elif self.single_waypoint_enabled:
+            elif active_mode == ModeName.SINGLE_WAYPOINT:
                 self.update_overlay()
                 try:
                     self.single_waypoint_assist()
                 except EDAP_Interrupt:
                     logger.debug("Stopping Single Waypoint Assist")
-                self.single_waypoint_enabled = False
-                self.ap_ckb('single_waypoint_stop')
-                self.update_overlay()
+                self.mode_manager.on_mode_finished(ModeName.SINGLE_WAYPOINT)
 
             # Check once EDAPGUI loaded to prevent errors logging to the listbox before loaded
             if self.gui_loaded:

@@ -73,11 +73,38 @@ def hyperlink_callback(url):
     webbrowser.open_new(url)
 
 
+class UiDispatcher:
+    """Thread-safe dispatcher to marshal UI updates onto the Tk main loop."""
+
+    def __init__(self, root: tk.Tk, handler):
+        self.root = root
+        self.handler = handler
+        self.queue: "queue.Queue[tuple[str, object]]" = queue.Queue()
+        self._pumping = False
+
+    def post(self, event: str, payload=None):
+        self.queue.put((event, payload))
+        if not self._pumping:
+            self._pumping = True
+            self.root.after(10, self._pump)
+
+    def _pump(self):
+        while not self.queue.empty():
+            event, payload = self.queue.get()
+            try:
+                self.handler(event, payload)
+            except Exception:
+                logger.debug("UI dispatch handler failed", exc_info=True)
+        self._pumping = False
+
+
 class APGui():
     def __init__(self, root):
         self.root = root
         self.gui_loaded = False
         self.log_buffer = queue.Queue()
+        self.ui_dispatcher = UiDispatcher(root, self._handle_event)
+        self._syncing_state = False
 
         root.protocol("WM_DELETE_WINDOW", self.close_window)
         root.geometry("1000x820")
@@ -302,12 +329,15 @@ class APGui():
             keyboard.add_hotkey(combo, handler)
 
         bind(self.ed_ap.config['HotKey_StopAllAssists'], self.stop_all_assists)
-        bind(self.ed_ap.config['HotKey_StartFSD'], self.callback, 'fsd_start', None)
-        bind(self.ed_ap.config['HotKey_StartSC'], self.callback, 'sc_start', None)
-        bind(self.ed_ap.config['HotKey_StartRobigo'], self.callback, 'robigo_start', None)
+        bind(self.ed_ap.config['HotKey_StartFSD'], self.start_fsd)
+        bind(self.ed_ap.config['HotKey_StartSC'], self.start_sc)
+        bind(self.ed_ap.config['HotKey_StartRobigo'], self.start_robigo)
 
     # callback from the EDAP, to configure GUI items
     def callback(self, msg, body=None):
+        self.ui_dispatcher.post(msg, body)
+
+    def _handle_event(self, msg, body=None):
         if msg == 'log':
             self.log_msg(body)
         elif msg == 'log+vce':
@@ -315,74 +345,36 @@ class APGui():
             self.ed_ap.vce.say(body)
         elif msg == 'statusline':
             self.update_statusline(body)
-        elif msg == 'fsd_stop':
-            logger.debug("Detected 'fsd_stop' callback msg")
-            self.checkboxvar['FSD Route Assist'].set(0)
-            self.check_cb('FSD Route Assist')
-        elif msg == 'fsd_start':
-            self.checkboxvar['FSD Route Assist'].set(1)
-            self.check_cb('FSD Route Assist')
-        elif msg == 'sc_stop':
-            logger.debug("Detected 'sc_stop' callback msg")
-            self.checkboxvar['Supercruise Assist'].set(0)
-            self.check_cb('Supercruise Assist')
-        elif msg == 'sc_start':
-            self.checkboxvar['Supercruise Assist'].set(1)
-            self.check_cb('Supercruise Assist')
-        elif msg == 'waypoint_stop':
-            logger.debug("Detected 'waypoint_stop' callback msg")
-            self.checkboxvar['Waypoint Assist'].set(0)
-            self.check_cb('Waypoint Assist')
-        elif msg == 'waypoint_start':
-            self.checkboxvar['Waypoint Assist'].set(1)
-            self.check_cb('Waypoint Assist')
-        elif msg == 'robigo_stop':
-            logger.debug("Detected 'robigo_stop' callback msg")
-            self.checkboxvar['Robigo Assist'].set(0)
-            self.check_cb('Robigo Assist')
-        elif msg == 'robigo_start':
-            self.checkboxvar['Robigo Assist'].set(1)
-            self.check_cb('Robigo Assist')
-        elif msg == 'afk_stop':
-            logger.debug("Detected 'afk_stop' callback msg")
-            self.checkboxvar['AFK Combat Assist'].set(0)
-            self.check_cb('AFK Combat Assist')
-        elif msg == 'dss_start':
-            logger.debug("Detected 'dss_start' callback msg")
-            self.checkboxvar['DSS Assist'].set(1)
-            self.check_cb('DSS Assist')
-        elif msg == 'dss_stop':
-            logger.debug("Detected 'dss_stop' callback msg")
-            self.checkboxvar['DSS Assist'].set(0)
-            self.check_cb('DSS Assist')
-        elif msg == 'single_waypoint_stop':
-            logger.debug("Detected 'single_waypoint_stop' callback msg")
-            self.checkboxvar['Single Waypoint Assist'].set(0)
-            self.check_cb('Single Waypoint Assist')
-
+        elif msg == 'mode_started':
+            if isinstance(body, ModeName):
+                self._apply_mode_state(body, True)
+        elif msg == 'mode_stopped':
+            if isinstance(body, ModeName):
+                self._apply_mode_state(body, False)
+        elif msg in ('fsd_start', 'sc_start', 'waypoint_start', 'robigo_start', 'dss_start', 'single_waypoint_start'):
+            mapping = {
+                'fsd_start': self.start_fsd,
+                'sc_start': self.start_sc,
+                'waypoint_start': self.start_waypoint,
+                'robigo_start': self.start_robigo,
+                'dss_start': self.start_dss,
+                'single_waypoint_start': self.start_single_waypoint_assist,
+            }
+            mapping.get(msg, lambda: None)()
+        elif msg in ('fsd_stop', 'sc_stop', 'waypoint_stop', 'robigo_stop', 'afk_stop', 'dss_stop', 'single_waypoint_stop'):
+            stop_mapping = {
+                'fsd_stop': lambda: self._apply_mode_state(ModeName.FSD, False),
+                'sc_stop': lambda: self._apply_mode_state(ModeName.SC, False),
+                'waypoint_stop': lambda: self._apply_mode_state(ModeName.WAYPOINT, False),
+                'robigo_stop': lambda: self._apply_mode_state(ModeName.ROBIGO, False),
+                'afk_stop': lambda: self._apply_mode_state(ModeName.AFK, False),
+                'dss_stop': lambda: self._apply_mode_state(ModeName.DSS, False),
+                'single_waypoint_stop': lambda: self._apply_mode_state(ModeName.SINGLE_WAYPOINT, False),
+            }
+            stop_mapping.get(msg, lambda: None)()
         elif msg == 'stop_all_assists':
             logger.debug("Detected 'stop_all_assists' callback msg")
-
-            self.checkboxvar['FSD Route Assist'].set(0)
-            self.check_cb('FSD Route Assist')
-
-            self.checkboxvar['Supercruise Assist'].set(0)
-            self.check_cb('Supercruise Assist')
-
-            self.checkboxvar['Waypoint Assist'].set(0)
-            self.check_cb('Waypoint Assist')
-
-            self.checkboxvar['Robigo Assist'].set(0)
-            self.check_cb('Robigo Assist')
-
-            self.checkboxvar['AFK Combat Assist'].set(0)
-            self.check_cb('AFK Combat Assist')
-
-            self.checkboxvar['DSS Assist'].set(0)
-            self.check_cb('DSS Assist')
-
-            self.checkboxvar['Single Waypoint Assist'].set(0)
-            self.check_cb('Single Waypoint Assist')
+            self.stop_all_assists()
 
         elif msg == 'jumpcount':
             self.update_jumpcount(body)
@@ -422,82 +414,106 @@ class APGui():
     # this routine is to stop any current autopilot activity
     def stop_all_assists(self):
         logger.debug("Entered: stop_all_assists")
-        self.callback('stop_all_assists')
+        self.ed_ap.mode_manager.stop_mode(None)
+        for mode in (ModeName.FSD, ModeName.SC, ModeName.WAYPOINT, ModeName.ROBIGO, ModeName.AFK, ModeName.DSS, ModeName.SINGLE_WAYPOINT):
+            self._apply_mode_state(mode, False)
 
     def start_fsd(self):
         logger.debug("Entered: start_fsd")
-        self.ed_ap.set_fsd_assist(True)
+        self.ed_ap.mode_manager.start_mode(ModeName.FSD)
         self.FSD_A_running = True
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.fsd_start'))
         self.ed_ap.vce.say(self._t('ui.voice.fsd_on'))
 
     def stop_fsd(self):
         logger.debug("Entered: stop_fsd")
-        self.ed_ap.set_fsd_assist(False)
+        self.ed_ap.mode_manager.stop_mode(ModeName.FSD)
         self.FSD_A_running = False
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.fsd_stop'))
         self.ed_ap.vce.say(self._t('ui.voice.fsd_off'))
         self.update_statusline(self._t('ui.status.idle'))
 
     def start_sc(self):
         logger.debug("Entered: start_sc")
-        self.ed_ap.set_sc_assist(True)
+        self.ed_ap.mode_manager.start_mode(ModeName.SC)
         self.SC_A_running = True
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.sc_start'))
         self.ed_ap.vce.say(self._t('ui.voice.sc_on'))
 
     def stop_sc(self):
         logger.debug("Entered: stop_sc")
-        self.ed_ap.set_sc_assist(False)
+        self.ed_ap.mode_manager.stop_mode(ModeName.SC)
         self.SC_A_running = False
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.sc_stop'))
         self.ed_ap.vce.say(self._t('ui.voice.sc_off'))
         self.update_statusline(self._t('ui.status.idle'))
 
     def start_waypoint(self):
         logger.debug("Entered: start_waypoint")
-        self.ed_ap.set_waypoint_assist(True)
+        self.ed_ap.mode_manager.start_mode(ModeName.WAYPOINT)
         self.WP_A_running = True
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.waypoint_start'))
         self.ed_ap.vce.say(self._t('ui.voice.waypoint_on'))
 
     def stop_waypoint(self):
         logger.debug("Entered: stop_waypoint")
-        self.ed_ap.set_waypoint_assist(False)
+        self.ed_ap.mode_manager.stop_mode(ModeName.WAYPOINT)
         self.WP_A_running = False
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.waypoint_stop'))
         self.ed_ap.vce.say(self._t('ui.voice.waypoint_off'))
         self.update_statusline(self._t('ui.status.idle'))
 
     def start_robigo(self):
         logger.debug("Entered: start_robigo")
-        self.ed_ap.set_robigo_assist(True)
+        self.ed_ap.mode_manager.start_mode(ModeName.ROBIGO)
         self.RO_A_running = True
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.robigo_start'))
         self.ed_ap.vce.say(self._t('ui.voice.robigo_on'))
 
     def stop_robigo(self):
         logger.debug("Entered: stop_robigo")
-        self.ed_ap.set_robigo_assist(False)
+        self.ed_ap.mode_manager.stop_mode(ModeName.ROBIGO)
         self.RO_A_running = False
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.robigo_stop'))
         self.ed_ap.vce.say(self._t('ui.voice.robigo_off'))
         self.update_statusline(self._t('ui.status.idle'))
 
     def start_dss(self):
         logger.debug("Entered: start_dss")
-        self.ed_ap.set_dss_assist(True)
+        self.ed_ap.mode_manager.start_mode(ModeName.DSS)
         self.DSS_A_running = True
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.dss_start'))
         self.ed_ap.vce.say(self._t('ui.voice.dss_on'))
 
     def stop_dss(self):
         logger.debug("Entered: stop_dss")
-        self.ed_ap.set_dss_assist(False)
+        self.ed_ap.mode_manager.stop_mode(ModeName.DSS)
         self.DSS_A_running = False
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.dss_stop'))
         self.ed_ap.vce.say(self._t('ui.voice.dss_off'))
         self.update_statusline(self._t('ui.status.idle'))
+
+    def start_afk_combat(self):
+        logger.debug("Entered: start_afk_combat")
+        self.ed_ap.mode_manager.start_mode(ModeName.AFK)
+        self.log_msg("AFK Combat Assist start")
+        self._update_mode_controls()
+
+    def stop_afk_combat(self):
+        logger.debug("Entered: stop_afk_combat")
+        self.ed_ap.mode_manager.stop_mode(ModeName.AFK)
+        self.log_msg("AFK Combat Assist stop")
+        self._update_mode_controls()
 
     def start_single_waypoint_assist(self):
         """ The debug command to go to a system or station or both."""
@@ -507,15 +523,19 @@ class APGui():
 
         if system != "" or station != "":
             self.ed_ap.set_single_waypoint_assist(system, station, True)
+            self.ed_ap.mode_manager.start_mode(ModeName.SINGLE_WAYPOINT)
             self.SWP_A_running = True
+            self._update_mode_controls()
             self.log_msg(self._t('ui.log.single_waypoint_start'))
             self.ed_ap.vce.say(self._t('ui.voice.single_waypoint_on'))
 
     def stop_single_waypoint_assist(self):
         """ The debug command to go to a system or station or both."""
         logger.debug("Entered: stop_single_waypoint_assist")
+        self.ed_ap.mode_manager.stop_mode(ModeName.SINGLE_WAYPOINT)
         self.ed_ap.set_single_waypoint_assist("", "", False)
         self.SWP_A_running = False
+        self._update_mode_controls()
         self.log_msg(self._t('ui.log.single_waypoint_stop'))
         self.ed_ap.vce.say(self._t('ui.voice.single_waypoint_off'))
         self.update_statusline(self._t('ui.status.idle'))
@@ -655,109 +675,70 @@ class APGui():
             if not has_voices:
                 self.voice_selection_var.set('')
 
+    def _update_mode_controls(self):
+        running_flags = [
+            self.FSD_A_running,
+            self.SC_A_running,
+            self.WP_A_running,
+            self.RO_A_running,
+            self.DSS_A_running,
+            self.SWP_A_running,
+            self.checkboxvar['AFK Combat Assist'].get() if 'AFK Combat Assist' in self.checkboxvar else False,
+        ]
+        any_running = any(running_flags)
+        for name in ('FSD Route Assist', 'Supercruise Assist', 'Waypoint Assist', 'Robigo Assist', 'AFK Combat Assist', 'DSS Assist', 'Single Waypoint Assist'):
+            if name in self.lab_ck:
+                state = 'disabled' if any_running else 'active'
+                self.lab_ck[name].config(state=state)
+
+    def _apply_mode_state(self, mode: ModeName, running: bool):
+        mode_map = {
+            ModeName.FSD: ('FSD Route Assist', 'FSD_A_running'),
+            ModeName.SC: ('Supercruise Assist', 'SC_A_running'),
+            ModeName.WAYPOINT: ('Waypoint Assist', 'WP_A_running'),
+            ModeName.ROBIGO: ('Robigo Assist', 'RO_A_running'),
+            ModeName.AFK: ('AFK Combat Assist', None),
+            ModeName.DSS: ('DSS Assist', 'DSS_A_running'),
+            ModeName.SINGLE_WAYPOINT: ('Single Waypoint Assist', 'SWP_A_running'),
+        }
+        if mode not in mode_map:
+            return
+        checkbox, flag_attr = mode_map[mode]
+        self._syncing_state = True
+        try:
+            if checkbox in self.checkboxvar:
+                self.checkboxvar[checkbox].set(1 if running else 0)
+            if flag_attr:
+                setattr(self, flag_attr, running)
+            if not running:
+                self.update_statusline(self._t('ui.status.idle'))
+        finally:
+            self._syncing_state = False
+        self._update_mode_controls()
+
     # ckbox.state:(ACTIVE | DISABLED)
 
     # ('FSD Route Assist', 'Supercruise Assist', 'Enable Voice', 'Enable CV View')
     def check_cb(self, field):
-        # print("got event:",  checkboxvar['FSD Route Assist'].get(), " ", str(FSD_A_running))
-        if field == 'FSD Route Assist':
-            if self.checkboxvar['FSD Route Assist'].get() == 1 and self.FSD_A_running == False:
-                self.lab_ck['AFK Combat Assist'].config(state='disabled')
-                self.lab_ck['Supercruise Assist'].config(state='disabled')
-                self.lab_ck['Waypoint Assist'].config(state='disabled')
-                self.lab_ck['Robigo Assist'].config(state='disabled')
-                self.lab_ck['DSS Assist'].config(state='disabled')
-                self.start_fsd()
+        if self._syncing_state:
+            return
 
-            elif self.checkboxvar['FSD Route Assist'].get() == 0 and self.FSD_A_running == True:
-                self.stop_fsd()
-                self.lab_ck['Supercruise Assist'].config(state='active')
-                self.lab_ck['AFK Combat Assist'].config(state='active')
-                self.lab_ck['Waypoint Assist'].config(state='active')
-                self.lab_ck['Robigo Assist'].config(state='active')
-                self.lab_ck['DSS Assist'].config(state='active')
+        action_map = {
+            'FSD Route Assist': (ModeName.FSD, self.start_fsd, self.stop_fsd, lambda: self.checkboxvar['FSD Route Assist'].get() == 1),
+            'Supercruise Assist': (ModeName.SC, self.start_sc, self.stop_sc, lambda: self.checkboxvar['Supercruise Assist'].get() == 1),
+            'Waypoint Assist': (ModeName.WAYPOINT, self.start_waypoint, self.stop_waypoint, lambda: self.checkboxvar['Waypoint Assist'].get() == 1),
+            'Robigo Assist': (ModeName.ROBIGO, self.start_robigo, self.stop_robigo, lambda: self.checkboxvar['Robigo Assist'].get() == 1),
+            'AFK Combat Assist': (ModeName.AFK, self.start_afk_combat, self.stop_afk_combat, lambda: self.checkboxvar['AFK Combat Assist'].get() == 1),
+            'DSS Assist': (ModeName.DSS, self.start_dss, self.stop_dss, lambda: self.checkboxvar['DSS Assist'].get() == 1),
+            'Single Waypoint Assist': (ModeName.SINGLE_WAYPOINT, self.start_single_waypoint_assist, self.stop_single_waypoint_assist, lambda: self.checkboxvar['Single Waypoint Assist'].get() == 1),
+        }
 
-        if field == 'Supercruise Assist':
-            if self.checkboxvar['Supercruise Assist'].get() == 1 and self.SC_A_running == False:
-                self.lab_ck['FSD Route Assist'].config(state='disabled')
-                self.lab_ck['AFK Combat Assist'].config(state='disabled')
-                self.lab_ck['Waypoint Assist'].config(state='disabled')
-                self.lab_ck['Robigo Assist'].config(state='disabled')
-                self.lab_ck['DSS Assist'].config(state='disabled')
-                self.start_sc()
-
-            elif self.checkboxvar['Supercruise Assist'].get() == 0 and self.SC_A_running == True:
-                self.stop_sc()
-                self.lab_ck['FSD Route Assist'].config(state='active')
-                self.lab_ck['AFK Combat Assist'].config(state='active')
-                self.lab_ck['Waypoint Assist'].config(state='active')
-                self.lab_ck['Robigo Assist'].config(state='active')
-                self.lab_ck['DSS Assist'].config(state='active')
-
-        if field == 'Waypoint Assist':
-            if self.checkboxvar['Waypoint Assist'].get() == 1 and self.WP_A_running == False:
-                self.lab_ck['FSD Route Assist'].config(state='disabled')
-                self.lab_ck['Supercruise Assist'].config(state='disabled')
-                self.lab_ck['AFK Combat Assist'].config(state='disabled')
-                self.lab_ck['Robigo Assist'].config(state='disabled')
-                self.lab_ck['DSS Assist'].config(state='disabled')
-                self.start_waypoint()
-
-            elif self.checkboxvar['Waypoint Assist'].get() == 0 and self.WP_A_running == True:
-                self.stop_waypoint()
-                self.lab_ck['FSD Route Assist'].config(state='active')
-                self.lab_ck['Supercruise Assist'].config(state='active')
-                self.lab_ck['AFK Combat Assist'].config(state='active')
-                self.lab_ck['Robigo Assist'].config(state='active')
-                self.lab_ck['DSS Assist'].config(state='active')
-
-        if field == 'Robigo Assist':
-            if self.checkboxvar['Robigo Assist'].get() == 1 and self.RO_A_running == False:
-                self.lab_ck['FSD Route Assist'].config(state='disabled')
-                self.lab_ck['Supercruise Assist'].config(state='disabled')
-                self.lab_ck['AFK Combat Assist'].config(state='disabled')
-                self.lab_ck['Waypoint Assist'].config(state='disabled')
-                self.lab_ck['DSS Assist'].config(state='disabled')
-                self.start_robigo()
-
-            elif self.checkboxvar['Robigo Assist'].get() == 0 and self.RO_A_running == True:
-                self.stop_robigo()
-                self.lab_ck['FSD Route Assist'].config(state='active')
-                self.lab_ck['Supercruise Assist'].config(state='active')
-                self.lab_ck['AFK Combat Assist'].config(state='active')
-                self.lab_ck['Waypoint Assist'].config(state='active')
-                self.lab_ck['DSS Assist'].config(state='active')
-
-        if field == 'AFK Combat Assist':
-            if self.checkboxvar['AFK Combat Assist'].get() == 1:
-                self.ed_ap.set_afk_combat_assist(True)
-                self.log_msg("AFK Combat Assist start")
-                self.lab_ck['FSD Route Assist'].config(state='disabled')
-                self.lab_ck['Supercruise Assist'].config(state='disabled')
-                self.lab_ck['Waypoint Assist'].config(state='disabled')
-                self.lab_ck['Robigo Assist'].config(state='disabled')
-                self.lab_ck['DSS Assist'].config(state='disabled')
-
-            elif self.checkboxvar['AFK Combat Assist'].get() == 0:
-                self.ed_ap.set_afk_combat_assist(False)
-                self.log_msg("AFK Combat Assist stop")
-                self.lab_ck['FSD Route Assist'].config(state='active')
-                self.lab_ck['Supercruise Assist'].config(state='active')
-                self.lab_ck['Waypoint Assist'].config(state='active')
-                self.lab_ck['Robigo Assist'].config(state='active')
-                self.lab_ck['DSS Assist'].config(state='active')
-
-        if field == 'DSS Assist':
-            if self.checkboxvar['DSS Assist'].get() == 1:
-                self.lab_ck['FSD Route Assist'].config(state='disabled')
-                self.lab_ck['AFK Combat Assist'].config(state='disabled')
-                self.lab_ck['Supercruise Assist'].config(state='disabled')
-                self.lab_ck['Waypoint Assist'].config(state='disabled')
-                self.lab_ck['Robigo Assist'].config(state='disabled')
-                self.start_dss()
-
-            elif self.checkboxvar['DSS Assist'].get() == 0:
-                self.stop_dss()
+        if field in action_map:
+            mode, start_fn, stop_fn, predicate = action_map[field]
+            if predicate():
+                start_fn()
+            else:
+                stop_fn()
                 self.lab_ck['FSD Route Assist'].config(state='active')
                 self.lab_ck['Supercruise Assist'].config(state='active')
                 self.lab_ck['AFK Combat Assist'].config(state='active')
