@@ -5,6 +5,7 @@ from math import atan, degrees
 import random
 import time
 import threading
+from typing import Optional
 from tkinter import messagebox
 
 import cv2
@@ -630,6 +631,41 @@ class EDAutopilot:
         self._pending_resume_mode = None
         self._pending_resume_attempts = 0
         self._pending_resume_deadline = 0
+
+    def _normalize_mode_flags(self) -> Optional[str]:
+        """Guarantees that лише один верхньорівневий режим увімкнений одночасно."""
+        enabled_modes = [name for name, flag in self.MODE_FLAGS.items() if getattr(self, flag)]
+
+        if self.active_mode and getattr(self, self.MODE_FLAGS.get(self.active_mode, ''), False):
+            if len(enabled_modes) > 1:
+                logger.debug(
+                    f"Виявлено конфлікт режимів {enabled_modes}, залишаю активним {self.active_mode}"
+                )
+            for name in enabled_modes:
+                if name != self.active_mode:
+                    setattr(self, self.MODE_FLAGS[name], False)
+            return self.active_mode
+
+        priority = (
+            'fsd_assist',
+            'sc_assist',
+            'waypoint_assist',
+            'robigo_assist',
+            'afk_combat_assist',
+            'dss_assist',
+            'single_waypoint',
+        )
+
+        for name in priority:
+            if getattr(self, self.MODE_FLAGS[name]):
+                if len(enabled_modes) > 1:
+                    logger.debug(
+                        f"Кілька режимів увімкнено {enabled_modes}, пріоритезую {name}"
+                    )
+                self._set_mode_active(name)
+                return name
+
+        return None
 
     def _deactivate_mode(self, mode_name: str, interrupt: bool = False) -> None:
         """Коректно вимикає режим та оновлює активний стейт."""
@@ -3132,6 +3168,7 @@ class EDAutopilot:
                     self._sc_sco_active_loop_thread.start()
 
             self._handle_pending_interdiction_resume()
+            self._normalize_mode_flags()
 
             if self._stop_request_flag.is_set():
                 self.stop_all_assists(reason=self._stop_request_reason)
