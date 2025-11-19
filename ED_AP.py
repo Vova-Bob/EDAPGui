@@ -70,8 +70,11 @@ class ModeName(Enum):
 
 class ModeState(Enum):
     IDLE = 'idle'
+    STARTING = 'starting'
     RUNNING = 'running'
     STOPPING = 'stopping'
+    STOPPED = 'stopped'
+    USER_FORCED_OFF = 'user_forced_off'
 
 
 class ModeManager:
@@ -88,7 +91,9 @@ class ModeManager:
         self._lock = threading.Lock()
         self._current_mode: Optional[ModeName] = None
         self._user_enabled: dict[ModeName, bool] = {mode: False for mode in ModeName}
-        self._states: dict[ModeName, ModeState] = {mode: ModeState.IDLE for mode in ModeName}
+        # Tracks explicit user stops so internal events cannot restart the mode until re-enabled.
+        self._forced_off: dict[ModeName, bool] = {mode: False for mode in ModeName}
+        self._states: dict[ModeName, ModeState] = {mode: ModeState.STOPPED for mode in ModeName}
 
     def _notify_ui(self, event: str, mode: ModeName) -> None:
         if self._ap.ap_ckb:
@@ -131,40 +136,83 @@ class ModeManager:
         elif mode == ModeName.SINGLE_WAYPOINT:
             self._ap.set_single_waypoint_assist("", "", False)
 
-    def start_mode(self, mode: ModeName) -> None:
+    def _can_start_locked(self, mode: ModeName) -> bool:
+        return self._user_enabled.get(mode, False) and not self._forced_off.get(mode, False)
+
+    def _start_mode(self, mode: ModeName, *, initiated_by_user: bool) -> None:
         with self._lock:
-            self._user_enabled[mode] = True
+            if not self._can_start_locked(mode):
+                return
             if self._current_mode == mode and self._states[mode] == ModeState.RUNNING:
                 return
 
             if self._current_mode and self._current_mode != mode:
+                self._states[self._current_mode] = ModeState.STOPPING
                 self._deactivate_mode(self._current_mode)
-                self._states[self._current_mode] = ModeState.IDLE
+                self._states[self._current_mode] = ModeState.STOPPED
                 self._notify_ui('mode_stopped', self._current_mode)
 
             self._current_mode = mode
+            self._states[mode] = ModeState.STARTING if initiated_by_user else ModeState.RUNNING
+            self._forced_off[mode] = False
+
+        self._activate_mode(mode)
+        with self._lock:
             self._states[mode] = ModeState.RUNNING
-            self._activate_mode(mode)
-            self._notify_ui('mode_started', mode)
+        self._notify_ui('mode_started', mode)
+
+    def _stop_mode(self, mode: ModeName, *, forced: bool) -> None:
+        self._deactivate_mode(mode)
+        with self._lock:
+            if forced:
+                self._forced_off[mode] = True
+                self._user_enabled[mode] = False
+                self._states[mode] = ModeState.USER_FORCED_OFF
+            else:
+                self._states[mode] = ModeState.STOPPED
+            if self._current_mode == mode:
+                self._current_mode = None
+        self._notify_ui('mode_stopped', mode)
+
+    def user_start_mode(self, mode: ModeName) -> None:
+        with self._lock:
+            self._user_enabled[mode] = True
+            self._forced_off[mode] = False
+        self._start_mode(mode, initiated_by_user=True)
+
+    def user_stop_mode(self, mode: Optional[ModeName] = None) -> None:
+        target_modes = [mode] if mode else list(ModeName)
+        for target in target_modes:
+            # Mark the mode as explicitly disabled by the user so internal events cannot restart it.
+            self._stop_mode(target, forced=True)
+
+    def user_stop_all(self) -> None:
+        self.user_stop_mode(None)
+
+    # Backward-compatible aliases to keep older call sites working while enforcing user intent.
+    def start_mode(self, mode: ModeName) -> None:
+        self.user_start_mode(mode)
 
     def stop_mode(self, mode: Optional[ModeName] = None) -> None:
-        with self._lock:
-            target_modes = [mode] if mode else list(ModeName)
-            for target in target_modes:
-                self._user_enabled[target] = False
-                if self._states[target] != ModeState.IDLE:
-                    self._states[target] = ModeState.STOPPING
-                    self._deactivate_mode(target)
-                    self._states[target] = ModeState.IDLE
-                    if self._current_mode == target:
-                        self._current_mode = None
-                    self._notify_ui('mode_stopped', target)
+        self.user_stop_mode(mode)
 
     def request_transition(self, from_mode: ModeName, to_mode: Optional[ModeName], reason: str | None = None) -> None:
+        """Handle internal transition requests without granting auto-start privileges.
+
+        Internal requests can only start a mode if the user previously allowed it
+        and did not explicitly force it off.
+        """
+        if to_mode is None:
+            return
         with self._lock:
-            if to_mode is None or not self._user_enabled.get(to_mode, False):
+            if not self._can_start_locked(to_mode):
                 return
-        self.start_mode(to_mode)
+        self._start_mode(to_mode, initiated_by_user=False)
+
+    def internal_notify(self, event: str, **kwargs) -> None:
+        """Handle internal events in a single place so user intent is enforced."""
+        if event == 'transition':
+            self.request_transition(kwargs.get('from_mode'), kwargs.get('to_mode'), kwargs.get('reason'))
 
     def get_state(self) -> dict:
         with self._lock:
@@ -180,9 +228,13 @@ class ModeManager:
 
     def on_mode_finished(self, mode: ModeName, *, success: bool = True) -> None:
         with self._lock:
+            # Respect user-forced stops so internal completions cannot clear the guard flag.
+            if self._forced_off.get(mode, False):
+                self._current_mode = None
+                return
             if self._current_mode == mode:
                 self._current_mode = None
-            self._states[mode] = ModeState.IDLE
+            self._states[mode] = ModeState.STOPPED
         self._deactivate_mode(mode)
         self._notify_ui('mode_stopped', mode)
 
@@ -3075,7 +3127,8 @@ class EDAutopilot:
 
                 self.mode_manager.on_mode_finished(ModeName.FSD, success=fin)
                 if fin is False:
-                    self.mode_manager.request_transition(ModeName.FSD, ModeName.SC, "fsd_incomplete")
+                    # Internal transition request respects user intent and forced-off guards.
+                    self.mode_manager.internal_notify('transition', from_mode=ModeName.FSD, to_mode=ModeName.SC, reason="fsd_incomplete")
 
             elif active_mode == ModeName.SC:
                 logger.debug("Running sc_assist")

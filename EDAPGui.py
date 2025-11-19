@@ -414,13 +414,13 @@ class APGui():
     # this routine is to stop any current autopilot activity
     def stop_all_assists(self):
         logger.debug("Entered: stop_all_assists")
-        self.ed_ap.mode_manager.stop_mode(None)
+        self.ed_ap.mode_manager.user_stop_all()
         for mode in (ModeName.FSD, ModeName.SC, ModeName.WAYPOINT, ModeName.ROBIGO, ModeName.AFK, ModeName.DSS, ModeName.SINGLE_WAYPOINT):
             self._apply_mode_state(mode, False)
 
     def start_fsd(self):
         logger.debug("Entered: start_fsd")
-        self.ed_ap.mode_manager.start_mode(ModeName.FSD)
+        self.ed_ap.mode_manager.user_start_mode(ModeName.FSD)
         self.FSD_A_running = True
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.fsd_start'))
@@ -428,7 +428,7 @@ class APGui():
 
     def stop_fsd(self):
         logger.debug("Entered: stop_fsd")
-        self.ed_ap.mode_manager.stop_mode(ModeName.FSD)
+        self.ed_ap.mode_manager.user_stop_mode(ModeName.FSD)
         self.FSD_A_running = False
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.fsd_stop'))
@@ -437,7 +437,7 @@ class APGui():
 
     def start_sc(self):
         logger.debug("Entered: start_sc")
-        self.ed_ap.mode_manager.start_mode(ModeName.SC)
+        self.ed_ap.mode_manager.user_start_mode(ModeName.SC)
         self.SC_A_running = True
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.sc_start'))
@@ -445,7 +445,7 @@ class APGui():
 
     def stop_sc(self):
         logger.debug("Entered: stop_sc")
-        self.ed_ap.mode_manager.stop_mode(ModeName.SC)
+        self.ed_ap.mode_manager.user_stop_mode(ModeName.SC)
         self.SC_A_running = False
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.sc_stop'))
@@ -454,7 +454,7 @@ class APGui():
 
     def start_waypoint(self):
         logger.debug("Entered: start_waypoint")
-        self.ed_ap.mode_manager.start_mode(ModeName.WAYPOINT)
+        self.ed_ap.mode_manager.user_start_mode(ModeName.WAYPOINT)
         self.WP_A_running = True
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.waypoint_start'))
@@ -462,7 +462,7 @@ class APGui():
 
     def stop_waypoint(self):
         logger.debug("Entered: stop_waypoint")
-        self.ed_ap.mode_manager.stop_mode(ModeName.WAYPOINT)
+        self.ed_ap.mode_manager.user_stop_mode(ModeName.WAYPOINT)
         self.WP_A_running = False
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.waypoint_stop'))
@@ -471,7 +471,7 @@ class APGui():
 
     def start_robigo(self):
         logger.debug("Entered: start_robigo")
-        self.ed_ap.mode_manager.start_mode(ModeName.ROBIGO)
+        self.ed_ap.mode_manager.user_start_mode(ModeName.ROBIGO)
         self.RO_A_running = True
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.robigo_start'))
@@ -479,7 +479,7 @@ class APGui():
 
     def stop_robigo(self):
         logger.debug("Entered: stop_robigo")
-        self.ed_ap.mode_manager.stop_mode(ModeName.ROBIGO)
+        self.ed_ap.mode_manager.user_stop_mode(ModeName.ROBIGO)
         self.RO_A_running = False
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.robigo_stop'))
@@ -488,7 +488,7 @@ class APGui():
 
     def start_dss(self):
         logger.debug("Entered: start_dss")
-        self.ed_ap.mode_manager.start_mode(ModeName.DSS)
+        self.ed_ap.mode_manager.user_start_mode(ModeName.DSS)
         self.DSS_A_running = True
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.dss_start'))
@@ -496,7 +496,7 @@ class APGui():
 
     def stop_dss(self):
         logger.debug("Entered: stop_dss")
-        self.ed_ap.mode_manager.stop_mode(ModeName.DSS)
+        self.ed_ap.mode_manager.user_stop_mode(ModeName.DSS)
         self.DSS_A_running = False
         self._update_mode_controls()
         self.log_msg(self._t('ui.log.dss_stop'))
@@ -505,13 +505,13 @@ class APGui():
 
     def start_afk_combat(self):
         logger.debug("Entered: start_afk_combat")
-        self.ed_ap.mode_manager.start_mode(ModeName.AFK)
+        self.ed_ap.mode_manager.user_start_mode(ModeName.AFK)
         self.log_msg("AFK Combat Assist start")
         self._update_mode_controls()
 
     def stop_afk_combat(self):
         logger.debug("Entered: stop_afk_combat")
-        self.ed_ap.mode_manager.stop_mode(ModeName.AFK)
+        self.ed_ap.mode_manager.user_stop_mode(ModeName.AFK)
         self.log_msg("AFK Combat Assist stop")
         self._update_mode_controls()
 
@@ -523,7 +523,7 @@ class APGui():
 
         if system != "" or station != "":
             self.ed_ap.set_single_waypoint_assist(system, station, True)
-            self.ed_ap.mode_manager.start_mode(ModeName.SINGLE_WAYPOINT)
+            self.ed_ap.mode_manager.user_start_mode(ModeName.SINGLE_WAYPOINT)
             self.SWP_A_running = True
             self._update_mode_controls()
             self.log_msg(self._t('ui.log.single_waypoint_start'))
@@ -532,7 +532,7 @@ class APGui():
     def stop_single_waypoint_assist(self):
         """ The debug command to go to a system or station or both."""
         logger.debug("Entered: stop_single_waypoint_assist")
-        self.ed_ap.mode_manager.stop_mode(ModeName.SINGLE_WAYPOINT)
+        self.ed_ap.mode_manager.user_stop_mode(ModeName.SINGLE_WAYPOINT)
         self.ed_ap.set_single_waypoint_assist("", "", False)
         self.SWP_A_running = False
         self._update_mode_controls()
