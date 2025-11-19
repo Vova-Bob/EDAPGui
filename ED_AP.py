@@ -3,6 +3,7 @@ import traceback
 from enum import Enum
 from math import atan, degrees
 import random
+import threading
 from typing import Optional
 from tkinter import messagebox
 
@@ -94,6 +95,7 @@ class ModeManager:
         # Tracks explicit user stops so internal events cannot restart the mode until re-enabled.
         self._forced_off: dict[ModeName, bool] = {mode: False for mode in ModeName}
         self._states: dict[ModeName, ModeState] = {mode: ModeState.STOPPED for mode in ModeName}
+        self._escape_resume_mode: Optional[ModeName] = None
 
     def _notify_ui(self, event: str, mode: ModeName) -> None:
         if self._ap.ap_ckb:
@@ -120,6 +122,26 @@ class ModeManager:
                 True,
             )
 
+    def _log_mode_event(
+        self,
+        *,
+        source: str,
+        action: str,
+        from_mode: Optional[ModeName],
+        to_mode: Optional[ModeName],
+        reason: str | None = None,
+        blocked: bool = False,
+    ) -> None:
+        logger.info(
+            "[MODE] source=%s action=%s from=%s to=%s blocked=%s reason=%s",
+            source,
+            action,
+            from_mode.name if isinstance(from_mode, ModeName) else None,
+            to_mode.name if isinstance(to_mode, ModeName) else None,
+            blocked,
+            reason,
+        )
+
     def _deactivate_mode(self, mode: ModeName) -> None:
         if mode == ModeName.FSD:
             self._ap.set_fsd_assist(False)
@@ -139,18 +161,63 @@ class ModeManager:
     def _can_start_locked(self, mode: ModeName) -> bool:
         return self._user_enabled.get(mode, False) and not self._forced_off.get(mode, False)
 
-    def _start_mode(self, mode: ModeName, *, initiated_by_user: bool) -> None:
+    def _start_mode(
+        self,
+        mode: ModeName,
+        *,
+        initiated_by_user: bool,
+        allow_resume: bool = False,
+    ) -> None:
+        if not initiated_by_user:
+            # Never auto-start Robigo or switch modes without explicit user request.
+            if mode == ModeName.ROBIGO:
+                self._log_mode_event(
+                    source="internal",
+                    action="start",
+                    from_mode=self._current_mode,
+                    to_mode=mode,
+                    blocked=True,
+                    reason="robigo_internal_start_blocked",
+                )
+                return
+            if self._current_mode and self._current_mode != mode and not allow_resume:
+                self._log_mode_event(
+                    source="internal",
+                    action="start",
+                    from_mode=self._current_mode,
+                    to_mode=mode,
+                    blocked=True,
+                    reason="auto_transition_disallowed",
+                )
+                return
+
         with self._lock:
             if not self._can_start_locked(mode):
+                self._log_mode_event(
+                    source="user" if initiated_by_user else "internal",
+                    action="start",
+                    from_mode=self._current_mode,
+                    to_mode=mode,
+                    blocked=True,
+                    reason="forced_off_or_disabled",
+                )
                 return
             if self._current_mode == mode and self._states[mode] == ModeState.RUNNING:
                 return
 
             if self._current_mode and self._current_mode != mode:
-                self._states[self._current_mode] = ModeState.STOPPING
-                self._deactivate_mode(self._current_mode)
-                self._states[self._current_mode] = ModeState.STOPPED
-                self._notify_ui('mode_stopped', self._current_mode)
+                prev_mode = self._current_mode
+                self._states[prev_mode] = ModeState.STOPPING
+                self._deactivate_mode(prev_mode)
+                self._states[prev_mode] = ModeState.STOPPED
+                self._notify_ui('mode_stopped', prev_mode)
+                self._log_mode_event(
+                    source="user" if initiated_by_user else "internal",
+                    action="stop",
+                    from_mode=prev_mode,
+                    to_mode=mode,
+                    reason="pre_start_switch",
+                )
 
             self._current_mode = mode
             self._states[mode] = ModeState.STARTING if initiated_by_user else ModeState.RUNNING
@@ -160,6 +227,13 @@ class ModeManager:
         with self._lock:
             self._states[mode] = ModeState.RUNNING
         self._notify_ui('mode_started', mode)
+        self._log_mode_event(
+            source="user" if initiated_by_user else "internal",
+            action="start",
+            from_mode=None,
+            to_mode=mode,
+            reason="resume" if allow_resume else None,
+        )
 
     def _stop_mode(self, mode: ModeName, *, forced: bool) -> None:
         self._deactivate_mode(mode)
@@ -173,6 +247,13 @@ class ModeManager:
             if self._current_mode == mode:
                 self._current_mode = None
         self._notify_ui('mode_stopped', mode)
+        self._log_mode_event(
+            source="user" if forced else "internal",
+            action="stop",
+            from_mode=mode,
+            to_mode=None,
+            reason="user_stop" if forced else "stop_mode",
+        )
 
     def user_start_mode(self, mode: ModeName) -> None:
         with self._lock:
@@ -196,23 +277,70 @@ class ModeManager:
     def stop_mode(self, mode: Optional[ModeName] = None) -> None:
         self.user_stop_mode(mode)
 
-    def request_transition(self, from_mode: ModeName, to_mode: Optional[ModeName], reason: str | None = None) -> None:
-        """Handle internal transition requests without granting auto-start privileges.
-
-        Internal requests can only start a mode if the user previously allowed it
-        and did not explicitly force it off.
-        """
-        if to_mode is None:
-            return
-        with self._lock:
-            if not self._can_start_locked(to_mode):
-                return
-        self._start_mode(to_mode, initiated_by_user=False)
-
     def internal_notify(self, event: str, **kwargs) -> None:
         """Handle internal events in a single place so user intent is enforced."""
         if event == 'transition':
-            self.request_transition(kwargs.get('from_mode'), kwargs.get('to_mode'), kwargs.get('reason'))
+            self._log_mode_event(
+                source="internal",
+                action="transition_request",
+                from_mode=kwargs.get('from_mode'),
+                to_mode=kwargs.get('to_mode'),
+                blocked=True,
+                reason=kwargs.get('reason'),
+            )
+            return
+        if event == 'escape_started':
+            resume_mode = kwargs.get('resume_mode')
+            with self._lock:
+                self._escape_resume_mode = resume_mode if isinstance(resume_mode, ModeName) else None
+            self._log_mode_event(
+                source="internal",
+                action="escape_started",
+                from_mode=resume_mode,
+                to_mode=resume_mode,
+                reason="interdiction_escape",
+            )
+            return
+        if event == 'escape_finished':
+            success = kwargs.get('success', False)
+            resume_mode = kwargs.get('resume_mode') if isinstance(kwargs.get('resume_mode'), ModeName) else None
+            with self._lock:
+                resume_target = resume_mode or self._escape_resume_mode
+                self._escape_resume_mode = None
+            if not resume_target:
+                self._log_mode_event(
+                    source="internal",
+                    action="escape_finished",
+                    from_mode=None,
+                    to_mode=None,
+                    blocked=True,
+                    reason="no_resume_mode",
+                )
+                return
+            if not success:
+                self._log_mode_event(
+                    source="internal",
+                    action="escape_finished",
+                    from_mode=resume_target,
+                    to_mode=resume_target,
+                    blocked=True,
+                    reason="escape_failed",
+                )
+                return
+            with self._lock:
+                can_resume = self._can_start_locked(resume_target)
+            if not can_resume:
+                self._log_mode_event(
+                    source="internal",
+                    action="escape_finished",
+                    from_mode=resume_target,
+                    to_mode=resume_target,
+                    blocked=True,
+                    reason="forced_off_or_disabled",
+                )
+                return
+            # Resume the same mode without permitting any mode change.
+            self._start_mode(resume_target, initiated_by_user=False, allow_resume=True)
 
     def get_state(self) -> dict:
         with self._lock:
@@ -1348,17 +1476,34 @@ class EDAutopilot:
         get away. Use return result to determine the next action (continue, or do something else).
         """
         if self.interdiction_escape and self.interdiction_escape.enabled:
+            active_mode = self.mode_manager.active_mode()
             armed = self.interdiction_escape.check_and_arm(
                 sc_assist_enabled=self.sc_assist_enabled,
                 fsd_assist_enabled=self.fsd_assist_enabled,
                 waypoint_assist_enabled=self.waypoint_assist_enabled,
+                active_mode=active_mode.name if isinstance(active_mode, ModeName) else None,
             )
             if armed:
-                resume_mode = self.interdiction_escape.previous_mode
+                resume_mode = active_mode if isinstance(active_mode, ModeName) else None
+                self.mode_manager.internal_notify('escape_started', resume_mode=resume_mode)
+                logger.info(
+                    "Interdiction escape started while mode=%s",
+                    resume_mode.name if resume_mode else None,
+                )
                 handled = self.interdiction_escape.run_escape_sequence()
+                self.mode_manager.internal_notify('escape_finished', resume_mode=resume_mode, success=handled)
                 if handled:
                     self._interdiction_resume_mode = resume_mode
+                    logger.info(
+                        "Interdiction escape finished, returning to mode=%s",
+                        resume_mode.name if resume_mode else None,
+                    )
                     return True
+                logger.info(
+                    "Interdiction escape finished, no active mode (success=%s, mode=%s)",
+                    handled,
+                    resume_mode.name if resume_mode else None,
+                )
 
         # Return if we are not being interdicted.
         if not self.status.get_flag(FlagsBeingInterdicted):
@@ -2800,7 +2945,7 @@ class EDAutopilot:
                 break
             else:
                 # if we dropped from SC, then we rammed into planet
-                if self._interdiction_resume_mode == 'sc_assist':
+                if self._interdiction_resume_mode == ModeName.SC:
                     self._interdiction_resume_mode = None
                     self.sc_engage()
                     self.keys.send('SetSpeed50')
