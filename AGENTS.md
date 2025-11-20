@@ -63,37 +63,6 @@ Agents must not introduce new arbitrary external dependencies. Only these packag
 - `pynput`  
 - `pydantic`  
 
-#### 3.3.2 Explicit Exception: Ukrainian Neural TTS
-
-A single **explicit exception** is allowed for high-quality Ukrainian TTS:
-
-- `ukrainian-tts` — GitHub: `https://github.com/robinhad/ukrainian-tts`
-
-Rules for using this dependency:
-
-1. It may be used **only** inside the voice subsystem (`Voice.py` or a dedicated TTS adapter module used by `Voice.py`).  
-2. It is part of **TASK 3 — Ukrainian Voice System** (see below).  
-3. Integration must be strictly optional:
-   - If `ukrainian_tts` cannot be imported, the system must fall back to **pyttsx3** without breaking.  
-   - All fallback messages must be localized.  
-4. Agents may:
-   - Add it to documentation / README as an optional dependency.  
-   - Add it to a requirements file if such file already exists (e.g. `requirements.txt`), clearly marked as optional.  
-5. Agents must **never** use `!pip` calls or notebook-only patterns in project source code.
-
-Example reference usage (for agents, not to be pasted literally):
-
-from ukrainian_tts.tts import TTS, Voices, Stress
-
-tts = TTS(device="cpu")
-with open("test.wav", mode="wb") as f:
-    _, accented = tts.tts(
-        "Привіт, як у тебе справи?",
-        Voices.Dmytro.value,
-        Stress.Dictionary.value,
-        f,
-    )
-Any other new dependency (not listed above) remains forbidden.
 
 3.4 DRY + KISS Across All Contributions
 Avoid repetition of UI/log/TTS strings.
@@ -119,7 +88,6 @@ Extract all UI text from EDAPGui.py into JSON locale files.
 
 Integrate LocalizationManager everywhere in the GUI.
 
-Implement EN/UA/RU language switch.
 
 Patch layout for long strings.
 
@@ -152,89 +120,6 @@ No adding alternative OCR engines.
 
 No changing OCR scanning timings.
 
-TASK 3 — Ukrainian Voice System
-This task has two layers.
-
-3.1 Baseline pyttsx3 Voice System
-Required actions:
-
-Add full uk.json coverage for all TTS messages.
-
-Move all voice templates (phrases sent to TTS) into locale JSON.
-
-Add VoiceLanguage and VoiceID selection logic.
-
-Auto-select appropriate pyttsx3 voice for each language.
-
-Ensure all voice-related errors, warnings and test phrases are localized.
-
-Non-goals:
-
-No replacement of pyttsx3 backend.
-
-No new audio engines other than the explicit exception below.
-
-3.2 Optional Neural Ukrainian TTS (ukrainian-tts)
-Goal: Provide a high-quality neural Ukrainian TTS while keeping pyttsx3 as a safe fallback.
-
-Library:
-
-ukrainian-tts (GitHub: https://github.com/robinhad/ukrainian-tts)
-
-3.2.1 Integration Constraints
-Do not break existing Voice API.
-
-The public interface (e.g. Voice.say(text_key, **params)) must stay the same.
-
-Callers must not know which engine (pyttsx3 / ukrainian-tts) is used.
-
-Engine Selection & Config
-
-Add a configuration flag in existing config structures (e.g. configs/AP.json), such as:
-
-"UkrainianNeuralTTS": true/false
-
-Use this flag only when VoiceLanguage is Ukrainian.
-
-If the flag is off or import fails, always fall back to pyttsx3.
-
-Lazy Initialization
-
-The ukrainian-tts engine must be initialized lazily to avoid slow startup:
-
-create a small internal adapter (e.g. _UkrainianNeuralEngine),
-
-instantiate TTS only on first Ukrainian utterance when the feature is enabled.
-
-Error Handling (Localized)
-
-If initialization fails (import error, missing models, CUDA issues, etc.), log a localized error via log_ui() and continue with pyttsx3.
-
-All error messages must use keys such as:
-
-log.voice.ua_tts_import_error
-
-log.voice.ua_tts_init_failed
-
-log.voice.ua_tts_synthesis_failed
-
-Audio Handling
-
-Respect current audio pipeline: if the project expects in-memory playback, write to a temporary WAV file or buffer in a way that does not break existing playback.
-
-Ensure paths are OS-safe and cleaned up where needed.
-
-Voices & Stress Controls
-
-Map voice selection in config (e.g. "UAVoice": "Dmytro") to Voices.* from ukrainian-tts in one central place.
-
-Stress mode (Stress.Dictionary, etc.) must be chosen in one function and must not be duplicated.
-
-Licensing & Attribution
-
-The library is MIT-licensed. The code must not embed large parts of the library itself.
-
-A short note may be added in README to credit ukrainian-tts and its author.
 
 3.2.2 Non-goals
 Do not modify ukrainian-tts library code.
