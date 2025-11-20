@@ -27,6 +27,8 @@
     "ui.voice.single_waypoint_on": "Single Waypoint Assist On",
     "ui.log.single_waypoint_stop": "Single Waypoint Assist stop",
     "ui.voice.single_waypoint_off": "Single Waypoint Assist Off",
+    "ui.log.stop_all_assists": "Stopping all assists",
+    "ui.voice.all_assists_off": "All assists stopped",
     "ui.voice.section_title": "Voice",
     "ui.voice.language.label": "Voice language",
     "ui.voice.language.english": "English",

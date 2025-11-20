@@ -27,6 +27,8 @@
     "ui.voice.single_waypoint_on": "Одиночная путевая точка активирована",
     "ui.log.single_waypoint_stop": "Остановка одиночного ассистента точки",
     "ui.voice.single_waypoint_off": "Одиночная путевая точка отключена",
+    "ui.log.stop_all_assists": "Остановка всех ассистентов",
+    "ui.voice.all_assists_off": "Все ассистенты отключены",
     "ui.voice.section_title": "Голос",
     "ui.voice.language.label": "Язык озвучки",
     "ui.voice.language.english": "Английский",

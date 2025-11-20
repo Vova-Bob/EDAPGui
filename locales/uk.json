@@ -27,6 +27,8 @@
     "ui.voice.single_waypoint_on": "Одиночну маршрутну точку активовано",
     "ui.log.single_waypoint_stop": "Зупинка одиночного асистента точки",
     "ui.voice.single_waypoint_off": "Одиночну маршрутну точку вимкнено",
+    "ui.log.stop_all_assists": "Зупинка всіх асистентів",
+    "ui.voice.all_assists_off": "Всі асистенти вимкнені",
     "ui.voice.section_title": "Голос",
     "ui.voice.language.label": "Мова озвучення",
     "ui.voice.language.english": "Англійська",
