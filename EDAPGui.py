@@ -309,6 +309,82 @@ class APGui():
         bind(self.ed_ap.config['HotKey_StartSC'], self.callback, 'sc_start', None)
         bind(self.ed_ap.config['HotKey_StartRobigo'], self.callback, 'robigo_start', None)
 
+        # Завантаження останнього файлу waypoint при старті програми
+        self._load_last_waypoint_file()
+
+    def _get_gui_config_path(self):
+        """Повертає шлях до конфігураційного файлу GUI"""
+        return os.path.join(os.path.dirname(__file__), 'gui_config.json')
+
+    def _save_last_waypoint_file(self, filepath):
+        """Зберігає шлях до останнього завантаженого файлу waypoint"""
+        try:
+            config_path = self._get_gui_config_path()
+            config_data = {}
+
+            # Завантажуємо існуючу конфігурацію, якщо вона є
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+
+            # Оновлюємо шлях до файлу waypoint
+            config_data['last_waypoint_file'] = filepath
+            config_data['app_version'] = EDAP_VERSION
+
+            # Зберігаємо конфігурацію
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+
+            logger.debug(f"Збережено шлях до waypoint файлу: {filepath}")
+        except Exception as e:
+            logger.error(f"Помилка збереження конфігурації GUI: {e}")
+
+    def _get_last_waypoint_file(self):
+        """Повертає шлях до останнього завантаженого файлу waypoint"""
+        try:
+            config_path = self._get_gui_config_path()
+            if not os.path.exists(config_path):
+                return None
+
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+
+            return config_data.get('last_waypoint_file')
+        except Exception as e:
+            logger.error(f"Помилка завантаження конфігурації GUI: {e}")
+            return None
+
+    def _load_last_waypoint_file(self):
+        """Завантажує останній файл waypoint, якщо він існує"""
+        last_file = self._get_last_waypoint_file()
+
+        if last_file and os.path.exists(last_file):
+            try:
+                # Завантажуємо waypoint файл
+                res = self.ed_ap.waypoint.load_waypoint_file(last_file)
+                if res:
+                    self.current_wp_filename = last_file
+                    logger.info(f"Автоматично завантажено waypoint файл: {last_file}")
+                    # Оновлюємо відображення в GUI
+                    self._refresh_waypoint_label()
+                else:
+                    logger.warning(f"Не вдалося завантажити waypoint файл: {last_file}")
+                    self.current_wp_filename = None
+                    # Оновлюємо відображення в GUI
+                    self._refresh_waypoint_label()
+            except Exception as e:
+                logger.error(f"Помилка автоматичного завантаження waypoint файлу {last_file}: {e}")
+                self.current_wp_filename = None
+                # Оновлюємо відображення в GUI
+                self._refresh_waypoint_label()
+        elif last_file:
+            logger.warning(f"Останній waypoint файл не знайдено: {last_file}")
+            self.current_wp_filename = None
+            # Оновлюємо відображення в GUI
+            self._refresh_waypoint_label()
+            # Очищуємо невірний шлях з конфігурації
+            self._save_last_waypoint_file(None)
+
     # callback from the EDAP, to configure GUI items
     def callback(self, msg, body=None):
         if msg == 'log':
@@ -635,8 +711,12 @@ class APGui():
             res = self.ed_ap.waypoint.load_waypoint_file(filename)
             if res:
                 self.current_wp_filename = filename
+                # Зберігаємо шлях до останнього завантаженого файлу
+                self._save_last_waypoint_file(filename)
             else:
                 self.current_wp_filename = None
+                # Очищуємо конфігурацію, якщо файл не завантажено
+                self._save_last_waypoint_file(None)
             self._refresh_waypoint_label()
 
     def reset_wp_file(self):
@@ -1025,10 +1105,13 @@ class APGui():
             return code
 
     def _refresh_waypoint_label(self):
+        """Оновлює напис з назвою завантаженого файлу waypoint"""
         if not hasattr(self, 'wp_filelabel'):
             return
         if self.current_wp_filename:
-            text = self._t('ui.waypoint.loaded', filename=Path(self.current_wp_filename).name)
+            # Відображаємо назву файлу без шляху
+            filename = Path(self.current_wp_filename).name
+            text = self._t('ui.waypoint.loaded', filename=filename)
         else:
             text = self._t('ui.waypoint.no_list_loaded')
         self.wp_filelabel.set(text)
