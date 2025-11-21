@@ -11,10 +11,10 @@ from strsimpy.jaro_winkler import JaroWinkler
 from EDlogger import logger
 
 """
-File:OCR.py    
+File:OCR.py
 
 Description:
-  Class for OCR processing using PaddleOCR. 
+  Class for OCR processing using PaddleOCR.
 
 Author: Stumpii
 """
@@ -201,6 +201,26 @@ class OCR:
         #return self.jarowinkler.similarity(s1, s2)
         return self.sorensendice.similarity(s1, s2)
 
+    def _fuzzy_contains(self, normalized_target: str, normalized_ocr: str, threshold: float = 0.8) -> bool:
+        """Проста фаззі-перевірка: чи є у тексті токен, схожий на цільовий вище порога."""
+        if not normalized_target or not normalized_ocr:
+            return False
+
+        tokens = normalized_ocr.split()
+        for token in tokens:
+            # пропускаємо занадто короткі шматки шуму
+            if len(token) < 4:
+                continue
+
+            score = self.string_similarity(normalized_target, token)
+            if score >= threshold:
+                logger.debug(
+                    f"Fuzzy match '{normalized_target}' ~ '{token}' (score={score:.2f})"
+                )
+                return True
+
+        return False
+
     def image_ocr(self, image):
         """ Perform OCR with no filtering. Returns the full OCR data and a simplified list of strings.
         This routine is the slower than the simplified OCR.
@@ -358,14 +378,22 @@ class OCR:
 
         normalized_target = normalize_ocr_text(text, self.language)
         normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
-        logger.debug(f"Selected item OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'")
+        logger.debug(
+            f"Selected item OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'"
+        )
 
+        # спочатку пробуємо точне входження нормалізованого рядка
         if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True
-        else:
-            logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
-            return False
+
+        # якщо точного збігу немає — пробуємо фаззі-порівняння (важливо для помилок типу SARTOGRAPHICS vs CARTOGRAPHICS)
+        if normalized_target and self._fuzzy_contains(normalized_target, normalized_ocr):
+            logger.debug(f"Fuzzy-found '{text}' text in item text '{str(ocr_textlist)}'.")
+            return True
+
+        logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
+        return False
 
     def is_text_in_region(self, text, region) -> (bool, str):
         """ Does the region include the text being checked for. The region does not need
@@ -383,12 +411,16 @@ class OCR:
 
         normalized_target = normalize_ocr_text(text, self.language)
         normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
-        logger.debug(f"Region OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'")
+        logger.debug(
+            f"Region OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'"
+        )
 
+        # 1) спочатку пробуємо звичайне входження підрядка
         if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True, str(ocr_textlist)
 
+        # 2) спеціальний випадок для російського "Пристыкован к ..."
         if self.language == 'ru' and normalized_target == 'пристыкован к':
             # Російський HUD показує статус докування як "Пристыкован к <станція>".
             # OCR інколи втрачає початкову літеру або плутає регістр, тому допускаємо
@@ -398,8 +430,15 @@ class OCR:
                 or "ристыкован к" in normalized_ocr
                 or "стыкован к" in normalized_ocr
             ):
-                logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}' (tolerant match).")
+                logger.debug(
+                    f"Found '{text}' text in item text '{str(ocr_textlist)}' (tolerant match)."
+                )
                 return True, str(ocr_textlist)
+
+        # 3) якщо ні точного збігу, ні докувального спец-випадку — пробуємо фаззі-пошук
+        if normalized_target and self._fuzzy_contains(normalized_target, normalized_ocr):
+            logger.debug(f"Fuzzy-found '{text}' text in item text '{str(ocr_textlist)}'.")
+            return True, str(ocr_textlist)
 
         logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
         return False, str(ocr_textlist)

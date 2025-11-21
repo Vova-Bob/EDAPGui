@@ -301,10 +301,10 @@ class EDAutopilot:
             "SunBrightThreshold": 125,     # The low level for brightness detection, range 0-255, want to mask out darker items
             "FuelScoopTimeOut": 35,        # number of second to wait for full tank, might mean we are not scooping well or got a small scooper
             "DockingRetries": 30,          # number of time to attempt docking
-            "HotKey_StartFSD": "home",     # if going to use other keys, need to look at the python keyboard package
-            "HotKey_StartSC": "ins",       # to determine other keynames, make sure these keys are not used in ED bindings
-            "HotKey_StartRobigo": "pgup",  #
-            "HotKey_StopAllAssists": "end",
+            "HotKey_StartFSD": "f1",       # if going to use other keys, need to look at the python keyboard package
+            "HotKey_StartSC": "f2",       # to determine other keynames, make sure these keys are not used in ED bindings
+            "HotKey_StartRobigo": "f3",   #
+            "HotKey_StopAllAssists": "f4",
             "Robigo_Single_Loop": False,   # True means only 1 loop will executed and then terminate the Robigo, will not perform mission processing
             "EnableRandomness": False,     # add some additional random sleep times to avoid AP detection (0-3sec at specific locations)
             "ActivateEliteEachKey": False, # Activate Elite window before each key or group of keys

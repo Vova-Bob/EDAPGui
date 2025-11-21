@@ -199,7 +199,9 @@ class APGui():
         self.radiobuttonvar['voice_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('VoiceLanguage', 'en'))
         self.voice_selection_var = tk.StringVar(master=self.root)
         self.voice_options = self._load_voice_options()
-        self._set_voice_selection(self.ed_ap.config.get('VoiceID', 0))
+        voice_id_from_config = self.ed_ap.config.get('VoiceID', 0)
+        logger.debug(f"Voice initialization: voice_id_from_config={voice_id_from_config}")
+        self._set_voice_selection(voice_id_from_config)
         self._auto_select_voice_for_language()
 
         self.FSD_A_running = False
@@ -208,6 +210,7 @@ class APGui():
         self.RO_A_running = False
         self.DSS_A_running = False
         self.SWP_A_running = False
+        self.AFK_A_running = False
 
         self.cv_view = False
 
@@ -337,6 +340,82 @@ class APGui():
             self.check_cb('Robigo Assist')
             return
 
+        # Завантаження останнього файлу waypoint при старті програми
+        self._load_last_waypoint_file()
+
+    def _get_gui_config_path(self):
+        """Повертає шлях до конфігураційного файлу GUI"""
+        return os.path.join(os.path.dirname(__file__), 'gui_config.json')
+
+    def _save_last_waypoint_file(self, filepath):
+        """Зберігає шлях до останнього завантаженого файлу waypoint"""
+        try:
+            config_path = self._get_gui_config_path()
+            config_data = {}
+
+            # Завантажуємо існуючу конфігурацію, якщо вона є
+            if os.path.exists(config_path):
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    config_data = json.load(f)
+
+            # Оновлюємо шлях до файлу waypoint
+            config_data['last_waypoint_file'] = filepath
+            config_data['app_version'] = EDAP_VERSION
+
+            # Зберігаємо конфігурацію
+            with open(config_path, 'w', encoding='utf-8') as f:
+                json.dump(config_data, f, indent=4, ensure_ascii=False)
+
+            logger.debug(f"Збережено шлях до waypoint файлу: {filepath}")
+        except Exception as e:
+            logger.error(f"Помилка збереження конфігурації GUI: {e}")
+
+    def _get_last_waypoint_file(self):
+        """Повертає шлях до останнього завантаженого файлу waypoint"""
+        try:
+            config_path = self._get_gui_config_path()
+            if not os.path.exists(config_path):
+                return None
+
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config_data = json.load(f)
+
+            return config_data.get('last_waypoint_file')
+        except Exception as e:
+            logger.error(f"Помилка завантаження конфігурації GUI: {e}")
+            return None
+
+    def _load_last_waypoint_file(self):
+        """Завантажує останній файл waypoint, якщо він існує"""
+        last_file = self._get_last_waypoint_file()
+
+        if last_file and os.path.exists(last_file):
+            try:
+                # Завантажуємо waypoint файл
+                res = self.ed_ap.waypoint.load_waypoint_file(last_file)
+                if res:
+                    self.current_wp_filename = last_file
+                    logger.info(f"Автоматично завантажено waypoint файл: {last_file}")
+                    # Оновлюємо відображення в GUI
+                    self._refresh_waypoint_label()
+                else:
+                    logger.warning(f"Не вдалося завантажити waypoint файл: {last_file}")
+                    self.current_wp_filename = None
+                    # Оновлюємо відображення в GUI
+                    self._refresh_waypoint_label()
+            except Exception as e:
+                logger.error(f"Помилка автоматичного завантаження waypoint файлу {last_file}: {e}")
+                self.current_wp_filename = None
+                # Оновлюємо відображення в GUI
+                self._refresh_waypoint_label()
+        elif last_file:
+            logger.warning(f"Останній waypoint файл не знайдено: {last_file}")
+            self.current_wp_filename = None
+            # Оновлюємо відображення в GUI
+            self._refresh_waypoint_label()
+            # Очищуємо невірний шлях з конфігурації
+            self._save_last_waypoint_file(None)
+
     # callback from the EDAP, to configure GUI items
     def callback(self, msg, body=None):
         if msg == 'log':
@@ -393,7 +472,28 @@ class APGui():
 
         elif msg == 'stop_all_assists':
             logger.debug("Detected 'stop_all_assists' callback msg")
-            self.root.after(0, self._reset_all_assists_ui)
+
+            self.checkboxvar['FSD Route Assist'].set(0)
+            self.check_cb('FSD Route Assist')
+
+            self.checkboxvar['Supercruise Assist'].set(0)
+            self.check_cb('Supercruise Assist')
+
+            logger.debug(f"Stopping Waypoint Assist - WP_A_running: {self.WP_A_running}")
+            self.checkboxvar['Waypoint Assist'].set(0)
+            self.check_cb('Waypoint Assist')
+
+            self.checkboxvar['Robigo Assist'].set(0)
+            self.check_cb('Robigo Assist')
+
+            self.checkboxvar['AFK Combat Assist'].set(0)
+            self.check_cb('AFK Combat Assist')
+
+            self.checkboxvar['DSS Assist'].set(0)
+            self.check_cb('DSS Assist')
+
+            self.checkboxvar['Single Waypoint Assist'].set(0)
+            self.check_cb('Single Waypoint Assist')
 
         elif msg == 'jumpcount':
             self.update_jumpcount(body)
@@ -431,46 +531,29 @@ class APGui():
         self.root.destroy()
 
     # this routine is to stop any current autopilot activity
-    def stop_all_assists(self, reason: str = ''):
-        if reason and reason != 'hotkey':
-            logger.info(f"Зупиняю всі режими автопілота: {reason}")
-        elif not reason:
-            logger.info("Зупиняю всі режими автопілота")
+    def stop_all_assists(self):
+        logger.debug("Entered: stop_all_assists")
 
-        self.ed_ap.request_stop_all_assists(reason=reason or 'manual')
+        # Перевіряємо чи є активні режими
+        active_modes = []
+        if self.FSD_A_running: active_modes.append("FSD")
+        if self.SC_A_running: active_modes.append("SC")
+        if self.WP_A_running: active_modes.append("Waypoint")
+        if self.RO_A_running: active_modes.append("Robigo")
+        if self.DSS_A_running: active_modes.append("DSS")
+        if self.SWP_A_running: active_modes.append("Single Waypoint")
+        if self.AFK_A_running: active_modes.append("AFK")
 
-    def _reset_all_assists_ui(self):
-        """Скидає стан усіх чекбоксів та внутрішніх прапорців на режим очікування."""
-        logger.debug("Синхронізація GUI після зупинки всіх режимів")
-        for field in (
-            'FSD Route Assist',
-            'Supercruise Assist',
-            'Waypoint Assist',
-            'Robigo Assist',
-            'AFK Combat Assist',
-            'DSS Assist',
-            'Single Waypoint Assist',
-        ):
-            self.checkboxvar[field].set(0)
+        # Якщо є активні режими - вивести одне повідомлення
+        if active_modes:
+            logger.debug(f"Stopping active assists: {', '.join(active_modes)}")
+            self.log_msg(self._t('ui.log.stop_all_assists'))
+            if self.ed_ap.config.get('VoiceEnable', False):
+                self.ed_ap.vce.say(self._t('ui.voice.all_assists_off'))
+        else:
+            logger.debug("No active assists to stop")
 
-        self.FSD_A_running = False
-        self.SC_A_running = False
-        self.WP_A_running = False
-        self.RO_A_running = False
-        self.DSS_A_running = False
-        self.SWP_A_running = False
-
-        for field in (
-            'FSD Route Assist',
-            'Supercruise Assist',
-            'Waypoint Assist',
-            'Robigo Assist',
-            'AFK Combat Assist',
-            'DSS Assist',
-        ):
-            self.lab_ck[field].config(state='active')
-
-        self.update_statusline(self._t('ui.status.idle'))
+        self.callback('stop_all_assists')
 
     def start_fsd(self):
         logger.debug("Entered: start_fsd")
@@ -481,6 +564,10 @@ class APGui():
 
     def stop_fsd(self):
         logger.debug("Entered: stop_fsd")
+        if not self.FSD_A_running:
+            logger.debug("FSD Assist already stopped, skipping")
+            return
+
         self.ed_ap.set_fsd_assist(False)
         self.FSD_A_running = False
         self.log_msg(self._t('ui.log.fsd_stop'))
@@ -496,6 +583,10 @@ class APGui():
 
     def stop_sc(self):
         logger.debug("Entered: stop_sc")
+        if not self.SC_A_running:
+            logger.debug("SC Assist already stopped, skipping")
+            return
+
         self.ed_ap.set_sc_assist(False)
         self.SC_A_running = False
         self.log_msg(self._t('ui.log.sc_stop'))
@@ -511,6 +602,10 @@ class APGui():
 
     def stop_waypoint(self):
         logger.debug("Entered: stop_waypoint")
+        if not self.WP_A_running:
+            logger.debug("Waypoint Assist already stopped, skipping")
+            return
+
         self.ed_ap.set_waypoint_assist(False)
         self.WP_A_running = False
         self.log_msg(self._t('ui.log.waypoint_stop'))
@@ -526,6 +621,10 @@ class APGui():
 
     def stop_robigo(self):
         logger.debug("Entered: stop_robigo")
+        if not self.RO_A_running:
+            logger.debug("Robigo Assist already stopped, skipping")
+            return
+
         self.ed_ap.set_robigo_assist(False)
         self.RO_A_running = False
         self.log_msg(self._t('ui.log.robigo_stop'))
@@ -541,6 +640,10 @@ class APGui():
 
     def stop_dss(self):
         logger.debug("Entered: stop_dss")
+        if not self.DSS_A_running:
+            logger.debug("DSS Assist already stopped, skipping")
+            return
+
         self.ed_ap.set_dss_assist(False)
         self.DSS_A_running = False
         self.log_msg(self._t('ui.log.dss_stop'))
@@ -562,6 +665,10 @@ class APGui():
     def stop_single_waypoint_assist(self):
         """ The debug command to go to a system or station or both."""
         logger.debug("Entered: stop_single_waypoint_assist")
+        if not self.SWP_A_running:
+            logger.debug("Single Waypoint Assist already stopped, skipping")
+            return
+
         self.ed_ap.set_single_waypoint_assist("", "", False)
         self.SWP_A_running = False
         self.log_msg(self._t('ui.log.single_waypoint_stop'))
@@ -635,8 +742,12 @@ class APGui():
             res = self.ed_ap.waypoint.load_waypoint_file(filename)
             if res:
                 self.current_wp_filename = filename
+                # Зберігаємо шлях до останнього завантаженого файлу
+                self._save_last_waypoint_file(filename)
             else:
                 self.current_wp_filename = None
+                # Очищуємо конфігурацію, якщо файл не завантажено
+                self._save_last_waypoint_file(None)
             self._refresh_waypoint_label()
 
     def reset_wp_file(self):
@@ -698,8 +809,13 @@ class APGui():
     def update_voice_controls_state(self):
         has_voices = bool(self.voice_options)
         voice_state = 'readonly' if has_voices else 'disabled'
+        logger.debug(f"Voice controls state: has_voices={has_voices}, voice_options_count={len(self.voice_options)}, state={voice_state}")
+
         if hasattr(self, 'voice_combo'):
-            self.voice_combo.config(state=voice_state, values=[option.get('label', '') for option in self.voice_options])
+            voice_values = [option.get('label', '') for option in self.voice_options]
+            logger.debug(f"Voice combo values: {voice_values}")
+
+            self.voice_combo.config(state=voice_state, values=voice_values)
             if not has_voices:
                 self.voice_selection_var.set('')
 
@@ -752,7 +868,10 @@ class APGui():
                 self.start_waypoint()
 
             elif self.checkboxvar['Waypoint Assist'].get() == 0 and self.WP_A_running == True:
+                logger.debug("check_cb: Calling stop_waypoint()")
                 self.stop_waypoint()
+            elif self.checkboxvar['Waypoint Assist'].get() == 0 and self.WP_A_running == False:
+                logger.debug("check_cb: Waypoint checkbox is 0 but WP_A_running is False - already stopped")
                 self.lab_ck['FSD Route Assist'].config(state='active')
                 self.lab_ck['Supercruise Assist'].config(state='active')
                 self.lab_ck['AFK Combat Assist'].config(state='active')
@@ -777,8 +896,9 @@ class APGui():
                 self.lab_ck['DSS Assist'].config(state='active')
 
         if field == 'AFK Combat Assist':
-            if self.checkboxvar['AFK Combat Assist'].get() == 1:
+            if self.checkboxvar['AFK Combat Assist'].get() == 1 and self.AFK_A_running == False:
                 self.ed_ap.set_afk_combat_assist(True)
+                self.AFK_A_running = True
                 self.log_msg("AFK Combat Assist start")
                 self.lab_ck['FSD Route Assist'].config(state='disabled')
                 self.lab_ck['Supercruise Assist'].config(state='disabled')
@@ -786,8 +906,9 @@ class APGui():
                 self.lab_ck['Robigo Assist'].config(state='disabled')
                 self.lab_ck['DSS Assist'].config(state='disabled')
 
-            elif self.checkboxvar['AFK Combat Assist'].get() == 0:
+            elif self.checkboxvar['AFK Combat Assist'].get() == 0 and self.AFK_A_running == True:
                 self.ed_ap.set_afk_combat_assist(False)
+                self.AFK_A_running = False
                 self.log_msg("AFK Combat Assist stop")
                 self.lab_ck['FSD Route Assist'].config(state='active')
                 self.lab_ck['Supercruise Assist'].config(state='active')
@@ -1015,10 +1136,13 @@ class APGui():
             return code
 
     def _refresh_waypoint_label(self):
+        """Оновлює напис з назвою завантаженого файлу waypoint"""
         if not hasattr(self, 'wp_filelabel'):
             return
         if self.current_wp_filename:
-            text = self._t('ui.waypoint.loaded', filename=Path(self.current_wp_filename).name)
+            # Відображаємо назву файлу без шляху
+            filename = Path(self.current_wp_filename).name
+            text = self._t('ui.waypoint.loaded', filename=filename)
         else:
             text = self._t('ui.waypoint.no_list_loaded')
         self.wp_filelabel.set(text)
@@ -1083,7 +1207,10 @@ class APGui():
     def _load_voice_options(self):
         options = []
         try:
-            for voice in self.ed_ap.vce.get_voice_options():
+            voice_options_raw = self.ed_ap.vce.get_voice_options()
+            logger.debug(f"Found {len(voice_options_raw)} total voice options")
+
+            for voice in voice_options_raw:
                 languages = [str(lang).lower() for lang in voice.get('languages', []) if lang]
                 option = {
                     'id': voice.get('index', 0),
@@ -1091,8 +1218,13 @@ class APGui():
                     'languages': languages,
                 }
                 option['label'] = self._format_voice_option_label(option)
+                logger.debug(f"Voice option: {option}")
                 options.append(option)
+
+            logger.debug(f"Loaded {len(options)} voice options")
+
         except Exception as error:
+            logger.error(f"Error loading voice options: {error}")
             self.log_msg(self._t('log.voice.tts_error', error=str(error)))
         return options
 
@@ -1103,13 +1235,18 @@ class APGui():
         return f"{option.get('id', 0)}: {option.get('name', '')}{suffix}"
 
     def _set_voice_selection(self, voice_id):
+        logger.debug(f"Setting voice selection: requested_id={voice_id}, available_options={len(self.voice_options)}")
+
         for option in self.voice_options:
             if option.get('id') == voice_id:
+                logger.debug(f"Found matching voice: {option.get('label', '')}")
                 self.voice_selection_var.set(option.get('label', ''))
                 return
         if self.voice_options:
+            logger.debug(f"Voice ID {voice_id} not found, using first option: {self.voice_options[0].get('label', '')}")
             self.voice_selection_var.set(self.voice_options[0].get('label', ''))
         else:
+            logger.debug("No voice options available, clearing selection")
             self.voice_selection_var.set('')
 
     def _find_voice_option_for_language(self, language):
@@ -1127,10 +1264,17 @@ class APGui():
         return None
 
     def _auto_select_voice_for_language(self):
-        option = self._find_voice_option_for_language(self.radiobuttonvar['voice_language'].get())
-        if option:
-            self.voice_selection_var.set(option.get('label', ''))
-            self.on_voice_selection_change()
+        # Only auto-select if user hasn't already made a choice
+        if not self.voice_selection_var.get():
+            option = self._find_voice_option_for_language(self.radiobuttonvar['voice_language'].get())
+            if option:
+                logger.debug(f"Auto-selecting voice for language: {option.get('label', '')}")
+                self.voice_selection_var.set(option.get('label', ''))
+                self.on_voice_selection_change()
+            else:
+                logger.debug("No voice found for language auto-selection")
+        else:
+            logger.debug("Voice already selected, skipping auto-selection")
 
     def _get_selected_voice_id(self):
         value = str(self.voice_selection_var.get())

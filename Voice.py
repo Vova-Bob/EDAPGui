@@ -8,7 +8,11 @@ from time import sleep
 
 import kthread
 import pyttsx3
+import pythoncom
 from simple_localization.localization import LocalizationManager
+
+# Initialize COM for pyttsx3
+pythoncom.CoInitialize()
 
 #rate = voiceEngine.getProperty('rate')
 #volume = voiceEngine.getProperty('volume')
@@ -308,52 +312,64 @@ class Voice:
             )
 
     def get_voice_options(self):
-        engine = pyttsx3.init()
-        voices = engine.getProperty('voices') or []
-        options = []
-        for idx, voice in enumerate(voices):
-            languages = self._voice_languages(voice)
-            options.append({
-                'index': idx,
-                'name': voice.name,
-                'id': voice.id,
-                'languages': languages,
-            })
-        return options
+        try:
+            pythoncom.CoInitialize()  # Initialize COM for this thread
+            engine = pyttsx3.init()
+            voices = engine.getProperty('voices') or []
+            options = []
+            for idx, voice in enumerate(voices):
+                languages = self._voice_languages(voice)
+                options.append({
+                    'index': idx,
+                    'name': voice.name,
+                    'id': voice.id,
+                    'languages': languages,
+                })
+            return options
+        finally:
+            pythoncom.CoUninitialize()  # Clean up COM
 
     def list_voices(self):
-        engine = pyttsx3.init()
-        voices = engine.getProperty('voices') or []
-        self._log_available_voices(voices)
+        try:
+            pythoncom.CoInitialize()
+            engine = pyttsx3.init()
+            voices = engine.getProperty('voices') or []
+            self._log_available_voices(voices)
+        finally:
+            pythoncom.CoUninitialize()
 
     def voice_exec(self):
-        engine = pyttsx3.init()
-        voices = engine.getProperty('voices') or []
-        self._log_available_voices(voices)
-        v_id_current = self._select_voice_id(voices)
-        self._apply_voice(engine, voices, v_id_current)
-        engine.setProperty('rate', 160)
-        current_language = self.voice_language
-        while not self.v_quit:
-            desired_id = self._select_voice_id(voices, previous_id=v_id_current)
-            if desired_id != v_id_current or self.voice_language != current_language:
-                current_language = self.voice_language
-                if desired_id != v_id_current:
-                    v_id_current = desired_id
-                    self._apply_voice(engine, voices, v_id_current)
+        try:
+            pythoncom.CoInitialize()
+            engine = pyttsx3.init()
+            voices = engine.getProperty('voices') or []
+            self._log_available_voices(voices)
+            v_id_current = self._select_voice_id(voices)
+            self._apply_voice(engine, voices, v_id_current)
+            engine.setProperty('rate', 160)
+            current_language = self.voice_language
+            while not self.v_quit:
+                desired_id = self._select_voice_id(voices, previous_id=v_id_current)
+                if desired_id != v_id_current or self.voice_language != current_language:
+                    current_language = self.voice_language
+                    if desired_id != v_id_current:
+                        v_id_current = desired_id
+                        self._apply_voice(engine, voices, v_id_current)
 
-            try:
-                words = self.q.get(timeout=1)
-            except queue.Empty:
-                continue
-            self.q.task_done()
-            if words is None:
-                continue
-            try:
-                engine.say(words)
-                engine.runAndWait()
-            except Exception as error:
-                self._log_tts_warning(error)
+                try:
+                    words = self.q.get(timeout=1)
+                except queue.Empty:
+                    continue
+                self.q.task_done()
+                if words is None:
+                    continue
+                try:
+                    engine.say(words)
+                    engine.runAndWait()
+                except Exception as error:
+                    self._log_tts_warning(error)
+        finally:
+            pythoncom.CoUninitialize()
 
 
 def main():

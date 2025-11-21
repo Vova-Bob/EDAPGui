@@ -53,6 +53,7 @@ class EDInterdictionEscape:
         sc_assist_enabled: bool,
         fsd_assist_enabled: bool,
         waypoint_assist_enabled: bool,
+        active_mode: Optional[str] = None,
     ) -> bool:
         if not self.enabled:
             return False
@@ -67,7 +68,9 @@ class EDInterdictionEscape:
         if not self.status.get_flag(FlagsBeingInterdicted):
             return False
 
-        if sc_assist_enabled:
+        if active_mode:
+            self.previous_mode = active_mode
+        elif sc_assist_enabled:
             self.previous_mode = 'sc_assist'
         elif fsd_assist_enabled:
             self.previous_mode = 'fsd_assist'

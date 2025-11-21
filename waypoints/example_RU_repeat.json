@@ -4,8 +4,8 @@
     "StationName": "",
     "GalaxyBookmarkType": "",
     "GalaxyBookmarkNumber": 0,
-    "SystemBookmarkType": "Station",
-    "SystemBookmarkNumber": 1,
+    "SystemBookmarkType": "",
+    "SystemBookmarkNumber": 0,
     "SellCommodities": {},
     "BuyCommodities": {},
     "Comment": null,
@@ -15,17 +15,17 @@
     "Completed": false
   },
   "1": {
-    "SystemName": "Scorpii Sector GR-W c1-17",
-    "StationName": "Mugby Station",
+    "SystemName": "Alrai Sector HH-V b2-6",
+    "StationName": "Remek Platform",
     "GalaxyBookmarkType": "",
     "GalaxyBookmarkNumber": 0,
     "SystemBookmarkType": "Station",
     "SystemBookmarkNumber": 1,
     "SellCommodities": {
-      "Боксит": 9999
+      "БокситСистемы обогащения почвы": 9999
     },
     "BuyCommodities": {
-      "Средство очистки почвы": 9999
+      "Боксит": 9999
     },
     "Comment": null,
     "UpdateCommodityCount": false,
@@ -34,17 +34,17 @@
     "Completed": false
   },
   "2": {
-    "SystemName": "Manite",
-    "StationName": "Irens Dock",
+    "SystemName": "Jonai",
+    "StationName": "Pribylov Port",
     "GalaxyBookmarkType": "",
     "GalaxyBookmarkNumber": 0,
     "SystemBookmarkType": "Station",
     "SystemBookmarkNumber": 1,
     "SellCommodities": {
-      "Средство очистки почвы": 9999
+      "Боксит": 9999
     },
     "BuyCommodities": {
-      "Боксит": 9999
+      "Системы обогащения почвы": 9999
     },
     "Comment": null,
     "UpdateCommodityCount": false,
