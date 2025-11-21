@@ -1,0 +1,307 @@
+11:34:01.108 INFO     Reading ED graphics display settings from 'C:\Users\Vova\AppData\Local\Frontier Developments\Elite Dangerous\Options\Graphics\DisplaySettings.xml'.
+11:34:01.108 INFO     Reading ED graphics settings from 'C:\Users\Vova\AppData\Local\Frontier Developments\Elite Dangerous\Options\Graphics\Settings.xml'.
+11:34:01.109 DEBUG    Elite Dangerous Display Config 'ScreenWidth': 2560.
+11:34:01.109 DEBUG    Elite Dangerous Display Config 'ScreenHeight': 1440.
+11:34:01.109 DEBUG    Elite Dangerous Display Config 'Fullscreen': Borderless.
+11:34:01.109 DEBUG    Elite Dangerous Display Config 'Monitor': 0.
+11:34:01.119 DEBUG    Elite Dangerous Graphics Options 'FOV': 56.249001.
+11:34:01.122 DEBUG    Found Elite Dangerous window position: (0, 0, 2560, 1440)
+11:34:01.123 DEBUG    Found monitor 1 with details: {'left': 0, 'top': 0, 'width': 2560, 'height': 1440}
+11:34:01.123 DEBUG    Elite Dangerous is on monitor 1.
+11:34:01.123 DEBUG    read json:{'1024x768': [0.39, 0.39], '1080x1080': [0.5, 0.5], '1280x800': [0.48, 0.48], '1280x1024': [0.5, 0.5], '1600x900': [0.6, 0.6], '1920x1080': [0.75, 0.75], '1920x1200': [0.73, 0.73], '1920x1440': [0.8, 0.8], '2560x1080': [0.75, 0.75], '2560x1440': [1.0, 1.0], '3440x1440': [1.0, 1.0], '3840 x 2160': [1.52, 1.52], 'Calibrated': [-1.0, -1.0]}
+11:34:01.123 DEBUG    screen size: 2560 1440
+11:34:01.123 DEBUG    Default scale X, Y: 1.0, 1.0
+11:34:02.353 INFO     Opening new Journal: C:\Users\Vova\Saved Games\Frontier Developments\Elite Dangerous\Journal.2025-11-21T103924.01.log
+11:34:02.384 DEBUG    Journal*.log: read: 1 ship: {'time': 83, 'odyssey': True, 'status': 'in_space', 'type': None, 'location': None, 'star_class': None, 'target': None, 'fighter_destroyed': False, 'shieldsup': True, 'under_attack': None, 'interdicted': False, 'no_dock_reason': None, 'mission_completed': 0, 'mission_redirected': 0, 'body': None, 'dist_jumped': 0, 'jumps_remains': 0, 'fuel_capacity': None, 'fuel_level': None, 'fuel_percent': 10, 'is_scooping': False, 'cur_star_system': '', 'cur_station': '', 'cur_station_type': '', 'cargo_capacity': None, 'ship_size': None, 'has_fuel_scoop': None, 'SupercruiseDestinationDrop_type': None, 'has_adv_dock_comp': None, 'has_std_dock_comp': None, 'has_sco_fsd': None, 'StationServices': None}
+11:34:02.385 DEBUG    Journal*.log: read: 10 ship: {'time': 83, 'odyssey': True, 'status': 'in_space', 'type': 'panthermkii', 'location': None, 'star_class': None, 'target': None, 'fighter_destroyed': False, 'shieldsup': True, 'under_attack': None, 'interdicted': False, 'no_dock_reason': None, 'mission_completed': 0, 'mission_redirected': 0, 'body': None, 'dist_jumped': 0, 'jumps_remains': 0, 'fuel_capacity': 128.0, 'fuel_level': 128.0, 'fuel_percent': 100, 'is_scooping': False, 'cur_star_system': '', 'cur_station': '', 'cur_station_type': '', 'cargo_capacity': None, 'ship_size': 'L', 'has_fuel_scoop': None, 'SupercruiseDestinationDrop_type': None, 'has_adv_dock_comp': None, 'has_std_dock_comp': None, 'has_sco_fsd': None, 'StationServices': None}
+11:34:02.385 DEBUG    Journal*.log: read: 14 ship: {'time': 83, 'odyssey': True, 'status': 'in_station', 'type': 'panthermkii', 'location': 'Alrai Sector HH-V b2-6', 'star_class': None, 'target': None, 'fighter_destroyed': False, 'shieldsup': True, 'under_attack': None, 'interdicted': False, 'no_dock_reason': None, 'mission_completed': 0, 'mission_redirected': 0, 'body': None, 'dist_jumped': 0, 'jumps_remains': 0, 'fuel_capacity': 128.0, 'fuel_level': 128.0, 'fuel_percent': 100, 'is_scooping': False, 'cur_star_system': 'Alrai Sector HH-V b2-6', 'cur_station': 'Remek Platform', 'cur_station_type': 'Orbis', 'cargo_capacity': None, 'ship_size': 'L', 'has_fuel_scoop': None, 'SupercruiseDestinationDrop_type': None, 'has_adv_dock_comp': None, 'has_std_dock_comp': None, 'has_sco_fsd': None, 'StationServices': None}
+11:34:02.386 DEBUG    Journal*.log: read: 18 ship: {'time': 83, 'odyssey': True, 'status': 'in_station', 'type': 'panthermkii', 'location': 'Alrai Sector HH-V b2-6', 'star_class': None, 'target': None, 'fighter_destroyed': False, 'shieldsup': True, 'under_attack': None, 'interdicted': False, 'no_dock_reason': None, 'mission_completed': 0, 'mission_redirected': 0, 'body': None, 'dist_jumped': 0, 'jumps_remains': 0, 'fuel_capacity': 128.0, 'fuel_level': 128.0, 'fuel_percent': 100, 'is_scooping': False, 'cur_star_system': 'Alrai Sector HH-V b2-6', 'cur_station': 'Remek Platform', 'cur_station_type': 'Orbis', 'cargo_capacity': 1040, 'ship_size': 'L', 'has_fuel_scoop': True, 'SupercruiseDestinationDrop_type': None, 'has_adv_dock_comp': True, 'has_std_dock_comp': False, 'has_sco_fsd': True, 'StationServices': None}
+11:34:02.388 INFO     Latest keybindings file:C:\Users\Vova\AppData\Local\Frontier Developments\Elite Dangerous\Options\Bindings\Avtopilot.4.2.binds
+11:34:02.436 INFO     Latest keybindings file:C:\Users\Vova\AppData\Local\Frontier Developments\Elite Dangerous\Options\Bindings\Avtopilot.4.2.binds
+11:34:02.448 INFO     	get_bindings_<YawLeftButton>={'key': 75, 'mods': []} Key: <Key_Numpad_4> Mod: < >
+11:34:02.448 INFO     	get_bindings_<YawRightButton>={'key': 77, 'mods': []} Key: <Key_Numpad_6> Mod: < >
+11:34:02.448 INFO     	get_bindings_<RollLeftButton>={'key': 71, 'mods': []} Key: <Key_Numpad_7> Mod: < >
+11:34:02.448 INFO     	get_bindings_<RollRightButton>={'key': 73, 'mods': []} Key: <Key_Numpad_9> Mod: < >
+11:34:02.448 INFO     	get_bindings_<PitchUpButton>={'key': 66, 'mods': []} Key: <Key_F8> Mod: < >
+11:34:02.448 INFO     	get_bindings_<PitchDownButton>={'key': 65, 'mods': []} Key: <Key_F7> Mod: < >
+11:34:02.448 INFO     	get_bindings_<SetSpeedZero>={'key': 45, 'mods': []} Key: <Key_X> Mod: < >
+11:34:02.448 INFO     	get_bindings_<SetSpeed50>={'key': 45, 'mods': [29]} Key: <Key_X> Mod: <Key_LeftControl>
+11:34:02.448 INFO     	get_bindings_<SetSpeed100>={'key': 45, 'mods': [42]} Key: <Key_X> Mod: <Key_LeftShift>
+11:34:02.450 INFO     	get_bindings_<HyperSuperCombination>={'key': 35, 'mods': []} Key: <Key_H> Mod: < >
+11:34:02.450 INFO     	get_bindings_<SelectTarget>={'key': 20, 'mods': []} Key: <Key_T> Mod: < >
+11:34:02.450 INFO     	get_bindings_<DeployHeatSink>={'key': 47, 'mods': []} Key: <Key_V> Mod: < >
+11:34:02.450 INFO     	get_bindings_<UIFocus>={'key': 64, 'mods': []} Key: <Key_F6> Mod: < >
+11:34:02.450 INFO     	get_bindings_<UI_Up>={'key': 200, 'mods': []} Key: <Key_UpArrow> Mod: < >
+11:34:02.450 INFO     	get_bindings_<UI_Down>={'key': 208, 'mods': []} Key: <Key_DownArrow> Mod: < >
+11:34:02.450 INFO     	get_bindings_<UI_Left>={'key': 203, 'mods': []} Key: <Key_LeftArrow> Mod: < >
+11:34:02.450 INFO     	get_bindings_<UI_Right>={'key': 205, 'mods': []} Key: <Key_RightArrow> Mod: < >
+11:34:02.450 INFO     	get_bindings_<UI_Select>={'key': 28, 'mods': []} Key: <Key_Enter> Mod: < >
+11:34:02.450 INFO     	get_bindings_<UI_Back>={'key': 12, 'mods': []} Key: <Key_Minus> Mod: < >
+11:34:02.450 INFO     	get_bindings_<CycleNextPanel>={'key': 18, 'mods': []} Key: <Key_E> Mod: < >
+11:34:02.450 INFO     	get_bindings_<HeadLookReset>={'key': 67, 'mods': []} Key: <Key_F9> Mod: < >
+11:34:02.450 INFO     	get_bindings_<PrimaryFire>={'key': 2, 'mods': [29]} Key: <Key_1> Mod: <Key_LeftControl>
+11:34:02.450 INFO     	get_bindings_<SecondaryFire>={'key': 3, 'mods': [29]} Key: <Key_2> Mod: <Key_LeftControl>
+11:34:02.450 INFO     	get_bindings_<ExplorationFSSEnter>={'key': 40, 'mods': []} Key: <Key_Apostrophe> Mod: < >
+11:34:02.450 INFO     	get_bindings_<ExplorationFSSQuit>={'key': 14, 'mods': []} Key: <Key_Backspace> Mod: < >
+11:34:02.450 INFO     	get_bindings_<MouseReset>={'key': 76, 'mods': []} Key: <Key_Numpad_5> Mod: < >
+11:34:02.450 INFO     	get_bindings_<DeployHardpointToggle>={'key': 22, 'mods': []} Key: <Key_U> Mod: < >
+11:34:02.450 INFO     	get_bindings_<IncreaseEnginesPower>={'key': 6, 'mods': []} Key: <Key_5> Mod: < >
+11:34:02.450 INFO     	get_bindings_<IncreaseWeaponsPower>={'key': 7, 'mods': []} Key: <Key_6> Mod: < >
+11:34:02.450 INFO     	get_bindings_<IncreaseSystemsPower>={'key': 8, 'mods': []} Key: <Key_7> Mod: < >
+11:34:02.450 INFO     	get_bindings_<GalaxyMapOpen>={'key': 51, 'mods': []} Key: <Key_Comma> Mod: < >
+11:34:02.450 INFO     	get_bindings_<CamZoomIn>={'key': 44, 'mods': []} Key: <Key_Z> Mod: < >
+11:34:02.450 INFO     	get_bindings_<SystemMapOpen>={'key': 52, 'mods': []} Key: <Key_Period> Mod: < >
+11:34:02.451 INFO     	get_bindings_<UseBoostJuice>={'key': 15, 'mods': []} Key: <Key_Tab> Mod: < >
+11:34:02.452 INFO     	get_bindings_<Supercruise>={'key': 37, 'mods': []} Key: <Key_K> Mod: < >
+11:34:02.452 INFO     	get_bindings_<UpThrustButton>={'key': 19, 'mods': []} Key: <Key_R> Mod: < >
+11:34:02.453 INFO     	get_bindings_<LandingGearToggle>={'key': 38, 'mods': []} Key: <Key_L> Mod: < >
+11:34:02.453 INFO     	get_bindings_<TargetNextRouteSystem>={'key': 43, 'mods': []} Key: <Key_BackSlash> Mod: < >
+11:34:02.453 INFO     	get_bindings_<CamTranslateForward>={'key': 26, 'mods': []} Key: <Key_LeftBracket> Mod: < >
+11:34:02.453 INFO     	get_bindings_<CamTranslateRight>={'key': 27, 'mods': []} Key: <Key_RightBracket> Mod: < >
+11:34:02.462 DEBUG    EDWayPoint: read json:{'GlobalShoppingList': {'SystemName': '', 'StationName': '', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {'Indite': 0, 'Bertrandite': 999, 'Silver': 0, 'Gold': 0}, 'Comment': None, 'UpdateCommodityCount': True, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '1': {'SystemName': 'Orgen', 'StationName': 'Trailblazer Song', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': 'Navigation Panel', 'SystemBookmarkNumber': 2, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': True, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '2': {'SystemName': 'Synuefe LO-G c27-25', 'StationName': 'Cat Colony', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 3, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': True, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '3': {'SystemName': 'Synuefe ZX-M b54-1', 'StationName': 'System Colonisation Ship', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 1, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {'ALL': 0}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': True, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '4': {'SystemName': 'Lambda-1 Tucanae', 'StationName': 'Riess Hub', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': 'Station', 'SystemBookmarkNumber': 1, 'SellCommodities': {'Water Purifiers': 9999}, 'BuyCommodities': {'Gold': 9999}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '5': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. DARK SUN H6H-N8T', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 3, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Bertrandite', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '6': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. GHIBLI BOOKBOX GHB-BKB', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 6, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Gold', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '7': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. TAILS TFX-L3W', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 10, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Silver', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '8': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. THORONDOR TNT-95W', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 11, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Indite', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '9': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. CONSISTENCY G2H-N4Y', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 4, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Silver', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '10': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. PIT OF HERESY G1U-1TX', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 9, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Indite', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '11': {'SystemName': 'Mbutas', 'StationName': 'P.T.N EVEREST T9K-5HQ', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 2, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Gold', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '12': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. BLOSSOM WBG-16Q', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Indite', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '13': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. HADES WNX-33Y', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 7, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '14': {'SystemName': 'Mbutas', 'StationName': 'P.T.N. OLYMPUS WBJ-N1Y', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 8, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Bertrandite', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '15': {'SystemName': 'Mbutas', 'StationName': 'PTN ROSIES BAR GFT-N6V', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 12, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Gold', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '16': {'SystemName': 'Mbutas', 'StationName': 'PTN WARDEN OF NOTHING (T7T-6VX)', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 8, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '17': {'SystemName': 'Mbutas', 'StationName': 'PTN THE LAVISH CHATEAU GFT-NXF', 'GalaxyBookmarkType': 'System', 'GalaxyBookmarkNumber': 13, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': 'Bertrandite', 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': False, 'Completed': False}, '18': {'SystemName': 'Mbutas', 'StationName': 'Burkin Orbital', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': 'Station', 'SystemBookmarkNumber': 1, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': False, 'Completed': False}, '19': {'SystemName': 'Mbutas', 'StationName': 'Dalton', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': 'Station', 'SystemBookmarkNumber': 2, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '20': {'SystemName': 'New System', 'StationName': '', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': False, 'Completed': False}}
+11:34:02.485 INFO     Доступні голоси:
+11:34:02.485 INFO     Доступні голоси:
+11:34:02.485 INFO     Голос 0: Microsoft Zira Desktop - English (United States) (HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\TTS_MS_EN-US_ZIRA_11.0)
+11:34:02.485 INFO     Голос 0: Microsoft Zira Desktop - English (United States) (HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\Tokens\TTS_MS_EN-US_ZIRA_11.0)
+11:34:02.485 INFO     Голос 1: Natalia (HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\TokenEnums\RHVoice\Natalia)
+11:34:02.486 INFO     Голос 1: Natalia (HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\TokenEnums\RHVoice\Natalia)
+11:34:02.486 INFO     Голос 2: Volodymyr (HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\TokenEnums\RHVoice\Volodymyr)
+11:34:02.486 INFO     Голос 2: Volodymyr (HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Speech\Voices\TokenEnums\RHVoice\Volodymyr)
+11:34:02.530 INFO     Запуск ED Autopilot V1.7.0.
+11:34:02.534 DEBUG    Found 3 total voice options
+11:34:02.534 DEBUG    Voice option: {'id': 0, 'name': 'Microsoft Zira Desktop - English (United States)', 'languages': [], 'label': '0: Microsoft Zira Desktop - English (United States)'}
+11:34:02.534 DEBUG    Voice option: {'id': 1, 'name': 'Natalia', 'languages': [], 'label': '1: Natalia'}
+11:34:02.534 DEBUG    Voice option: {'id': 2, 'name': 'Volodymyr', 'languages': [], 'label': '2: Volodymyr'}
+11:34:02.534 DEBUG    Loaded 3 voice options
+11:34:02.534 DEBUG    Voice initialization: voice_id_from_config=2
+11:34:02.535 DEBUG    Setting voice selection: requested_id=2, available_options=3
+11:34:02.535 DEBUG    Found matching voice: 2: Volodymyr
+11:34:02.535 DEBUG    Voice already selected, skipping auto-selection
+11:34:02.575 DEBUG    Voice controls state: has_voices=True, voice_options_count=3, state=readonly
+11:34:02.575 DEBUG    Voice combo values: ['0: Microsoft Zira Desktop - English (United States)', '1: Natalia', '2: Volodymyr']
+11:34:02.729 INFO     Завантажено файл маршрутів: F:/AIAUTOPILOT/waypoints/exemle_RU_repeat_route.json.
+11:34:02.729 INFO     Завантажено файл маршрутів: F:/AIAUTOPILOT/waypoints/exemle_RU_repeat_route.json.
+11:34:02.729 DEBUG    EDWayPoint: read json:{'GlobalShoppingList': {'SystemName': '', 'StationName': '', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': True, 'Completed': False}, '1': {'SystemName': 'Alrai Sector HH-V b2-6', 'StationName': 'Remek Platform', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': 'Station', 'SystemBookmarkNumber': 1, 'SellCommodities': {'БокситСистемы обогащения почвы': 9999}, 'BuyCommodities': {'Боксит': 9999}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': False, 'Completed': False}, '2': {'SystemName': 'Jonai', 'StationName': 'Pribylov Port', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': 'Station', 'SystemBookmarkNumber': 1, 'SellCommodities': {'Боксит': 9999}, 'BuyCommodities': {'Системы обогащения почвы': 9999}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': False, 'Completed': False}, '3': {'SystemName': 'REPEAT', 'StationName': '', 'GalaxyBookmarkType': '', 'GalaxyBookmarkNumber': 0, 'SystemBookmarkType': '', 'SystemBookmarkNumber': 0, 'SellCommodities': {}, 'BuyCommodities': {}, 'Comment': None, 'UpdateCommodityCount': False, 'FleetCarrierTransfer': False, 'Skip': False, 'Completed': False}}
+11:34:02.729 INFO     Автоматично завантажено waypoint файл: F:/AIAUTOPILOT/waypoints/exemle_RU_repeat_route.json
+11:34:02.730 INFO     ED Autopilot успішно завантажено.
+11:34:03.577 INFO     Ласкаво просимо на борт Panther Clipper Mk II.
+11:34:03.580 INFO     Ласкаво просимо на борт Panther Clipper Mk II.
+11:34:03.595 INFO     Завантажено вашу користувацьку конфігурацію panthermkii з ship_configs.json.
+11:34:03.597 INFO     Завантажено вашу користувацьку конфігурацію panthermkii з ship_configs.json.
+11:34:08.580 DEBUG    Entered: start_waypoint
+11:34:08.580 INFO     Старт асистента маршрутних точок
+11:34:08.779 DEBUG    Running waypoint_assist
+11:34:08.795 INFO     Файл маршрутів: exemle_RU_repeat_route.json.
+11:34:08.798 INFO     Файл маршрутів: exemle_RU_repeat_route.json.
+11:34:08.798 INFO     Зведення маршрутів для exemle_RU_repeat_route.json:
+11:34:08.813 INFO     Зведення маршрутів для exemle_RU_repeat_route.json:
+11:34:08.814 INFO     1: Alrai Sector HH-V b2-6 / Remek Platform | Пропуск: False | Виконано: False
+11:34:08.823 INFO     1: Alrai Sector HH-V b2-6 / Remek Platform | Пропуск: False | Виконано: False
+11:34:08.823 INFO     2: Jonai / Pribylov Port | Пропуск: False | Виконано: False
+11:34:08.827 INFO     2: Jonai / Pribylov Port | Пропуск: False | Виконано: False
+11:34:08.827 INFO     3: REPEAT /  | Пропуск: False | Виконано: False
+11:34:08.830 INFO     3: REPEAT /  | Пропуск: False | Виконано: False
+11:34:08.845 INFO     Наступний маршрут: REMEK PLATFORM у ALRAI SECTOR HH-V B2-6.
+11:34:08.848 INFO     Наступний маршрут: REMEK PLATFORM у ALRAI SECTOR HH-V B2-6.
+11:34:08.848 INFO     Вже в цільовій системі.
+11:34:08.850 INFO     Вже в цільовій системі.
+11:34:08.850 INFO     Вже на цільовій станції: REMEK PLATFORM.
+11:34:08.853 INFO     Вже на цільовій станції: REMEK PLATFORM.
+11:34:08.853 INFO     Виконуємо торгівлю на станції: REMEK PLATFORM.
+11:34:08.856 INFO     Виконуємо торгівлю на станції: REMEK PLATFORM.
+11:34:08.860 INFO     На станції не знайдено сервісів.
+11:34:08.861 INFO     На станції не знайдено сервісів.
+11:34:08.863 INFO     Точка маршруту 1 (Remek Platform / Alrai Sector HH-V b2-6) позначена виконаною та збережена у F:\AIAUTOPILOT\waypoints\exemle_RU_repeat_route.json; у наступних запусках буде пропущена.
+11:34:08.867 INFO     Точка маршруту 1 (Remek Platform / Alrai Sector HH-V b2-6) позначена виконаною та збережена у F:\AIAUTOPILOT\waypoints\exemle_RU_repeat_route.json; у наступних запусках буде пропущена.
+11:34:08.867 INFO     Поточний маршрут завершено.
+11:34:08.872 INFO     Поточний маршрут завершено.
+11:34:09.324 INFO     Наступний маршрут: PRIBYLOV PORT у JONAI.
+11:34:09.326 INFO     Наступний маршрут: PRIBYLOV PORT у JONAI.
+11:34:12.516 INFO     Наводимо систему JONAI.
+11:34:12.518 INFO     Наводимо систему JONAI.
+11:34:18.256 DEBUG    Відкриваю карту галактики.
+11:34:18.256 DEBUG    	send=GalaxyMapOpen,key:{'key': 51, 'mods': []},key_name:Key_Comma,hold:None,repeat:1,repeat_delay:None,state:None
+11:34:18.944 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:18.944 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:34:19.259 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:19.259 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:34:19.558 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:19.558 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:34:19.854 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:19.854 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:34:20.471 DEBUG    Region OCR raw='['nNyeIs a.', '934', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т']' normalized='nnуеis а зч sаrтоgrарнiсs nоя зз аnтаnуамаi т' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:20.471 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNyeIs a.', '934', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т']'.
+11:34:20.999 DEBUG    Region OCR raw='['nNy e Is a', '934:', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:20.999 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '934:', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:21.513 DEBUG    Region OCR raw='['nNy e Is a', '934:', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:21.513 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '934:', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:34:21.932 DEBUG    Region OCR raw='['nNy e Is a', '9343', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:21.932 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9343', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:34:22.355 DEBUG    Region OCR raw='['nNy e Is a', '9343', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'RO-r', 'b19-6']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуамаi со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:22.355 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9343', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'RO-r', 'b19-6']'.
+11:34:22.794 DEBUG    Region OCR raw='['nNy e Is a', '344', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', '285', 'Sector', 'RO-r', 'b19-6']' normalized='nnу е is а зчч sаrтоgrарнiсs nоя зз аnтаnуамаi со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:22.794 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '344', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', '285', 'Sector', 'RO-r', 'b19-6']'.
+11:34:23.214 DEBUG    Region OCR raw='['nNy e Is a', '344', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', 'RO-r', 'b19-6']' normalized='nnу е is а зчч sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:23.214 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '344', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', 'RO-r', 'b19-6']'.
+11:34:23.615 DEBUG    Region OCR raw='['nNy e Is a', '345', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:23.615 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '345', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']'.
+11:34:24.015 DEBUG    Region OCR raw='['nNy e Is a', '345', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:24.016 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '345', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']'.
+11:34:24.423 DEBUG    Region OCR raw='['nNy e Is a', '345', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:24.423 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '345', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']'.
+11:34:24.828 DEBUG    Region OCR raw='['nNy e Is a', '934', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:24.828 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '934', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']'.
+11:34:25.234 DEBUG    Region OCR raw='['nNy e Is a', '934', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:25.234 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '934', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:25.638 DEBUG    Region OCR raw='['nNy e Is a', '9341', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:25.639 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9341', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:26.049 DEBUG    Region OCR raw='['nNy e Is a', '9347', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуама т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:26.049 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9347', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:26.464 DEBUG    Region OCR raw='['nNy e Is a', '9347', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуама т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:26.464 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9347', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:26.874 DEBUG    Region OCR raw='['nNy e Is a', '93428', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:26.874 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '93428', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:27.283 DEBUG    Region OCR raw='['nNy e Is a', '93428', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:27.284 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '93428', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:27.693 DEBUG    Region OCR raw='['nNy e Is a', '934:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama!', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуама т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:27.694 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '934:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama!', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:28.108 DEBUG    Region OCR raw='['nNy e Is a', '934:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуама т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:28.108 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '934:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:28.541 DEBUG    Region OCR raw='['nNy e Is a', '934:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а зч sаrтоgrарнiсs nоя зз аnтаnуама т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:28.541 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '934:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:34:28.968 DEBUG    Region OCR raw='['nNy e Is a', '343', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:28.968 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '343', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:34:29.396 DEBUG    Region OCR raw='['nNy e Is a', '343', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:29.396 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '343', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:34:29.808 DEBUG    Region OCR raw='['nNy e Is a', '9343', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуама т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:29.808 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9343', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:30.228 DEBUG    Region OCR raw='['nNy e Is a', '9343', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:30.228 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9343', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:34:30.681 DEBUG    Region OCR raw='['nNy e Is a', '9:343:', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуамаi т со еdаиторilот уz' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:30.681 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:343:', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']'.
+11:34:31.089 DEBUG    Region OCR raw='['nNy e Is a', '9:343:', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуамаi т со еdаиторilот уz' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:31.089 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:343:', 'SARTOGRAPHICS', '21Nоя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']'.
+11:34:31.480 DEBUG    Region OCR raw='['nNy e Is a', '9:343:', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']' normalized='nnу е is а зчз sаrтоgrарнiсs nоя зз аnтаnуамаi т со еdаиторilот уz' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:34:31.481 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:343:', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']'.
+11:34:31.638 DEBUG    check_cb: Calling stop_waypoint()
+11:34:31.638 DEBUG    Entered: stop_waypoint
+11:34:31.638 INFO     Зупинка асистента маршрутних точок
+11:34:31.640 INFO     Оновлення статусу: Очікування
+11:34:31.732 DEBUG    Caught stop exception
+11:34:31.732 DEBUG    Detected 'waypoint_stop' callback msg
+11:34:31.732 DEBUG    check_cb: Waypoint checkbox is 0 but WP_A_running is False - already stopped
+11:35:49.807 DEBUG    Entered: start_waypoint
+11:35:49.807 INFO     Старт асистента маршрутних точок
+11:35:50.658 DEBUG    Running waypoint_assist
+11:35:50.674 INFO     Файл маршрутів: exemle_RU_repeat_route.json.
+11:35:50.677 INFO     Файл маршрутів: exemle_RU_repeat_route.json.
+11:35:50.677 INFO     Зведення маршрутів для exemle_RU_repeat_route.json:
+11:35:50.678 INFO     Зведення маршрутів для exemle_RU_repeat_route.json:
+11:35:50.678 INFO     1: Alrai Sector HH-V b2-6 / Remek Platform | Пропуск: False | Виконано: True
+11:35:50.681 INFO     1: Alrai Sector HH-V b2-6 / Remek Platform | Пропуск: False | Виконано: True
+11:35:50.681 INFO     2: Jonai / Pribylov Port | Пропуск: False | Виконано: False
+11:35:50.682 INFO     2: Jonai / Pribylov Port | Пропуск: False | Виконано: False
+11:35:50.682 INFO     3: REPEAT /  | Пропуск: False | Виконано: False
+11:35:50.683 INFO     3: REPEAT /  | Пропуск: False | Виконано: False
+11:35:50.703 INFO     Наступний маршрут: PRIBYLOV PORT у JONAI.
+11:35:50.707 INFO     Наступний маршрут: PRIBYLOV PORT у JONAI.
+11:35:50.707 INFO     Наводимо систему JONAI.
+11:35:50.710 INFO     Наводимо систему JONAI.
+11:35:50.712 DEBUG    Відкриваю карту галактики.
+11:35:50.712 DEBUG    	send=GalaxyMapOpen,key:{'key': 51, 'mods': []},key_name:Key_Comma,hold:None,repeat:1,repeat_delay:None,state:None
+11:35:51.098 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:51.098 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:35:51.411 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:51.411 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:35:51.731 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:51.731 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:35:52.035 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:52.035 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:35:52.444 DEBUG    Region OCR raw='None' normalized='' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:52.444 DEBUG    Did not find 'CARTOGRAPHICS' text in item text 'None'.
+11:35:53.089 DEBUG    Region OCR raw='['nNy e Is a', 'з5', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'г', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi г со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:53.089 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з5', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'г', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:35:53.538 DEBUG    Region OCR raw='['nNy e Is a', 'з5', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:53.538 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з5', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:35:53.995 DEBUG    Region OCR raw='['nNy e Is a', 'з55ђ', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а зђ sаrтоgrарнiсs nоя зз аnтаnуамаi со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:53.996 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з55ђ', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:35:54.435 DEBUG    Region OCR raw='['nNy e Is a', 'з55ђ', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'RO-r', 'b19-6']' normalized='nnу е is а зђ sаrтоgrарнiсs nоя зз аnтаnуамаi со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:54.435 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з55ђ', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'RO-r', 'b19-6']'.
+11:35:54.877 DEBUG    Region OCR raw='['nNy e Is a', 'з5', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'RO-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:54.877 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з5', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', '285', 'Sector', 'RO-r', 'b19-6']'.
+11:35:55.297 DEBUG    Region OCR raw='['nNy e Is a', 'з55', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', 'RO-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:55.297 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з55', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', 'RO-r', 'b19-6']'.
+11:35:55.714 DEBUG    Region OCR raw='['nNy e Is a', 'з', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', 'RO-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:55.714 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'Co', 'RO-r', 'b19-6']'.
+11:35:56.123 DEBUG    Region OCR raw='['nNy e Is a', 'з', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:56.123 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']'.
+11:35:56.535 DEBUG    Region OCR raw='['nNy e Is a', 'з', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:56.536 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']'.
+11:35:56.960 DEBUG    Region OCR raw='['nNy e Is a', '9:355:', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:56.960 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:355:', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']'.
+11:35:57.361 DEBUG    Region OCR raw='['nNy e Is a', '9:355:', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:57.361 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:355:', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'Co', 'Ro-r', 'b19-6']'.
+11:35:57.780 DEBUG    Region OCR raw='['nNy e Is a', 'з55', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:57.781 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з55', 'SARTOGRAPHICS', '21Nоя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:35:58.236 DEBUG    Region OCR raw='['nNy e Is a', 'з55', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а з sаrтоgrарнiсs nоя зз аnтаnуама т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:58.236 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', 'з55', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:35:58.651 DEBUG    Region OCR raw='['nNy e Is a', '936:0', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:58.652 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '936:0', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:35:59.067 DEBUG    Region OCR raw='['nNy e Is a', '936:0', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:59.067 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '936:0', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:35:59.472 DEBUG    Region OCR raw='['nNy e Is a', '936:0', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:59.473 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '936:0', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:35:59.888 DEBUG    Region OCR raw='['nNy e Is a', '9:36:0', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama!', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуама т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:35:59.888 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:0', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama!', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:36:00.292 DEBUG    Region OCR raw='['nNy e Is a', '9:36:0', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama!', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуама т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:00.292 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:0', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama!', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:36:00.738 DEBUG    Region OCR raw='['nNy e Is a', '9:36:0:', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:00.740 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:0:', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:01.183 DEBUG    Region OCR raw='['nNy e Is a', '9:36:0:', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуама т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:01.183 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:0:', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyama', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:01.613 DEBUG    Region OCR raw='['nNy e Is a', '9:36:03', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збоз sаrтоgrарнiсs nоя зз аnтаnуама т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:01.613 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:03', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:02.051 DEBUG    Region OCR raw='['nNy e Is a', '9:36:03', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збоз sаrтоgrарнiсs nоя зз аnтаnуама т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:02.051 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:03', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyama', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:02.451 DEBUG    Region OCR raw='['nNy e Is a', '9:36:03', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']' normalized='nnу е is а збоз sаrтоgrарнiсs nоя зз аnтаnуамаi т со rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:02.452 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:03', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyamai', 'т', 'Co', 'Ro-r', 'b19-6']'.
+11:36:02.884 DEBUG    Region OCR raw='['nNy e Is a', '9:36:94', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збч sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:02.884 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:94', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:03.318 DEBUG    Region OCR raw='['nNy e Is a', '9:36:94', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збч sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:03.318 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:94', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:03.752 DEBUG    Region OCR raw='['nNy e Is a', '9:36:05', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:03.752 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:05', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:04.185 DEBUG    Region OCR raw='['nNy e Is a', '9:36:05', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:04.185 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:05', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:04.617 DEBUG    Region OCR raw='['nNy e Is a', '9:36:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а зб sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:04.617 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:05.054 DEBUG    Region OCR raw='['nNy e Is a', '9:36:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', '9-о']' normalized='nnу е is а зб sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r о' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:05.054 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', '9-о']'.
+11:36:05.504 DEBUG    Region OCR raw='['nNy e Is a', '9:36:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а зб sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:05.504 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:9', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:05.953 DEBUG    Region OCR raw='['nNy e Is a', ':36:07', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:05.953 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', ':36:07', 'SARTOGRAPHICS', '21Noя', 'зз', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:06.382 DEBUG    Region OCR raw='['nNy e Is a', ':36:07', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:06.382 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', ':36:07', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:06.841 DEBUG    Region OCR raw='['nNy e Is a', '9:36:08', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со sестоr rо r в б' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:06.841 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:08', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'Sector', 'Ro-r', 'b19-6']'.
+11:36:07.256 DEBUG    Region OCR raw='['nNy e Is a', '9:36:08', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со еdаиторilот уz' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:07.256 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:08', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']'.
+11:36:07.655 DEBUG    Region OCR raw='['nNy e Is a', '9:36:09', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со еdаиторilот уz' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:07.656 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:09', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']'.
+11:36:08.057 DEBUG    Region OCR raw='['nNy e Is a', '9:36:09', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со еdаиторilот уz' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:08.057 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:09', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']'.
+11:36:08.448 DEBUG    Region OCR raw='['nNy e Is a', '9:36:09', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']' normalized='nnу е is а збо sаrтоgrарнiсs nоя зз аnтаnуамаi т со еdаиторilот уz' target='CARTOGRAPHICS' normalized_target='саrтоgrарнiсs'
+11:36:08.448 DEBUG    Did not find 'CARTOGRAPHICS' text in item text '['nNy e Is a', '9:36:09', 'SARTOGRAPHICS', '21Noя', '3з', 'Antanyamai', 'т', 'Co', '285', 'EDAutopilot y1.Z..']'.
+11:36:08.735 DEBUG    check_cb: Calling stop_waypoint()
+11:36:08.735 DEBUG    Entered: stop_waypoint
+11:36:08.736 DEBUG    Caught stop exception
+11:36:08.736 DEBUG    Detected 'waypoint_stop' callback msg
+11:36:08.736 INFO     Зупинка асистента маршрутних точок
+11:36:08.736 INFO     Оновлення статусу: Очікування
+11:36:08.801 DEBUG    check_cb: Waypoint checkbox is 0 but WP_A_running is False - already stopped
+11:37:17.059 DEBUG    Entered: close_window
+11:37:17.059 DEBUG    Entered: stop_fsd
+11:37:17.059 DEBUG    FSD Assist already stopped, skipping
+11:37:17.059 DEBUG    Entered: stop_sc
+11:37:17.059 DEBUG    SC Assist already stopped, skipping

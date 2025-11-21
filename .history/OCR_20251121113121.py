@@ -11,10 +11,10 @@ from strsimpy.jaro_winkler import JaroWinkler
 from EDlogger import logger
 
 """
-File:OCR.py
+File:OCR.py    
 
 Description:
-  Class for OCR processing using PaddleOCR.
+  Class for OCR processing using PaddleOCR. 
 
 Author: Stumpii
 """
@@ -201,26 +201,6 @@ class OCR:
         #return self.jarowinkler.similarity(s1, s2)
         return self.sorensendice.similarity(s1, s2)
 
-    def _fuzzy_contains(self, normalized_target: str, normalized_ocr: str, threshold: float = 0.8) -> bool:
-        """Проста фаззі-перевірка: чи є у тексті токен, схожий на цільовий вище порога."""
-        if not normalized_target or not normalized_ocr:
-            return False
-
-        tokens = normalized_ocr.split()
-        for token in tokens:
-            # пропускаємо занадто короткі шматки шуму
-            if len(token) < 4:
-                continue
-
-            score = self.string_similarity(normalized_target, token)
-            if score >= threshold:
-                logger.debug(
-                    f"Fuzzy match '{normalized_target}' ~ '{token}' (score={score:.2f})"
-                )
-                return True
-
-        return False
-
     def image_ocr(self, image):
         """ Perform OCR with no filtering. Returns the full OCR data and a simplified list of strings.
         This routine is the slower than the simplified OCR.
@@ -378,19 +358,49 @@ class OCR:
 
         normalized_target = normalize_ocr_text(text, self.language)
         normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
-        logger.debug(
-            f"Selected item OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'"
-        )
+        logger.debug(f"Selected item OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'")
 
-        # спочатку пробуємо точне входження нормалізованого рядка
         if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True
 
-        # якщо точного збігу немає — пробуємо фаззі-порівняння (важливо для помилок типу SARTOGRAPHICS vs CARTOGRAPHICS)
-        if normalized_target and self._fuzzy_contains(normalized_target, normalized_ocr):
-            logger.debug(f"Fuzzy-found '{text}' text in item text '{str(ocr_textlist)}'.")
-            return True
+        # CARTOGRAPHICS OCR часто спотворюється (C→S, відсутні літери, тощо)
+        # Додаємо tolerant matching для всіх мов
+        if normalized_target == 'cartographics' or normalized_target == 'саrтоgrарнiсs':
+            # Патерни для англійської мови
+            en_patterns = [
+                "cartographics",  # оригінал
+                "sartographics",  # C→S помилка
+                "artographics",   # відсутня C
+                "cartographic",   # відсутня S
+                "artographic",    # відсутні CS
+                "kartographics",  # C→K помилка
+                "gartographics",  # C→G помилка
+            ]
+
+            # Патерни для російської мови
+            ru_patterns = [
+                "саrtogrарнiсs",  # оригінал
+                "sартографiсs",   # C→S помилка
+                "артографiс",     # відсутня C
+                "саrтоgrарiс",   # відсутня S
+                "артографiс",     # відсутні CS
+                "картографiсs",   # C→K помилка
+                "гартографiсs",   # C→G помилка
+            ]
+
+            # Правильна логіка: normalize_ocr_text() вже перетворює всі символи,
+            # тому працюємо тільки з нормалізованими патернами
+
+            # Об'єднуємо всі патерни
+            all_patterns = en_patterns + ru_patterns
+
+            logger.debug(f"Checking CARTOGRAPHICS patterns: target='{normalized_target}', total_patterns={len(all_patterns)}")
+
+            for pattern in all_patterns:
+                if pattern in normalized_ocr:
+                    logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}' (tolerant CARTOGRAPHICS match: '{pattern}').")
+                    return True
 
         logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
         return False
@@ -411,16 +421,12 @@ class OCR:
 
         normalized_target = normalize_ocr_text(text, self.language)
         normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
-        logger.debug(
-            f"Region OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'"
-        )
+        logger.debug(f"Region OCR raw='{ocr_textlist}' normalized='{normalized_ocr}' target='{text}' normalized_target='{normalized_target}'")
 
-        # 1) спочатку пробуємо звичайне входження підрядка
         if normalized_target and normalized_target in normalized_ocr:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True, str(ocr_textlist)
 
-        # 2) спеціальний випадок для російського "Пристыкован к ..."
         if self.language == 'ru' and normalized_target == 'пристыкован к':
             # Російський HUD показує статус докування як "Пристыкован к <станція>".
             # OCR інколи втрачає початкову літеру або плутає регістр, тому допускаємо
@@ -430,15 +436,26 @@ class OCR:
                 or "ристыкован к" in normalized_ocr
                 or "стыкован к" in normalized_ocr
             ):
-                logger.debug(
-                    f"Found '{text}' text in item text '{str(ocr_textlist)}' (tolerant match)."
-                )
+                logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}' (tolerant match).")
                 return True, str(ocr_textlist)
 
-        # 3) якщо ні точного збігу, ні докувального спец-випадку — пробуємо фаззі-пошук
-        if normalized_target and self._fuzzy_contains(normalized_target, normalized_ocr):
-            logger.debug(f"Fuzzy-found '{text}' text in item text '{str(ocr_textlist)}'.")
-            return True, str(ocr_textlist)
+        # CARTOGRAPHICS OCR часто спотворюється (C→S, відсутні літери, тощо)
+        # Додаємо tolerant matching для всіх мов
+        if normalized_target == 'cartographics':
+            cartographics_patterns = [
+                "cartographics",  # оригінал
+                "sartographics",  # C→S помилка
+                "artographics",   # відсутня C
+                "cartographic",   # відсутня S
+                "artographic",    # відсутні CS
+                "kartographics",  # C→K помилка
+                "gartographics",  # C→G помилка
+            ]
+
+            for pattern in cartographics_patterns:
+                if pattern in normalized_ocr:
+                    logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}' (tolerant CARTOGRAPHICS match: '{pattern}').")
+                    return True, str(ocr_textlist)
 
         logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
         return False, str(ocr_textlist)
