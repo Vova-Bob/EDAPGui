@@ -2046,73 +2046,130 @@ class EDAutopilot:
             logger.debug("final x:"+str(off['x'])+" y:"+str(off['y']))
 
     def fsd_target_align(self, scr_reg):
-        """ Coarse align to the target to support FSD jumping """
+        """ Fine align to the FSD target for successful jumping """
 
         self.speak_ui(self.VOICE_KEYS['TARGET_ALIGN'])
+        logger.debug("FSD target fine alignment started")
 
         logger.debug('align= fine align')
 
-        close = 50
+        # Tighter tolerance for FSD jump - was 50, now 25 degrees
+        close = 25
 
-        # TODO: should use Pitch Rates to calculate, but this seems to work fine with all ships
-        hold_pitch = 0.150
-        hold_yaw = 0.300
-        new = None  # Initialize to avoid unbound variable
-        off = None  # Initialize to avoid unbound variable
-        
-        for i in range(5):
+        # Adjust hold times based on ship type and distance
+        hold_pitch = 0.120  # Slightly shorter for more precise control
+        hold_yaw = 0.250    # Slightly shorter for more precise control
+
+        new = None
+        off = None
+
+        # Extended attempts to get initial target lock
+        for attempt in range(10):  # Increased from 5 to 10
             new = self.get_destination_offset(scr_reg)
             if new:
                 off = new
+                logger.debug(f'  target found on attempt {attempt + 1}')
                 break
-            sleep(0.25)
+            sleep(0.2)  # Slightly shorter wait
 
-        # try one more time to align
+        # If still no target, try compass align first then re-check
         if new is None:
+            logger.debug('  target not found, trying compass align first')
             self.nav_align(scr_reg)
-            new = self.get_destination_offset(scr_reg)
-            if new:
-                off = new
-            else:
-                logger.debug('  out of fine -not off-'+'\n')
-                return
-        
-        # Safety check to ensure off is valid before using it
-        if off is None:
-            logger.debug('  off is None, cannot continue alignment')
-            return
-            
-        while (off['x'] > close) or \
-              (off['x'] < -close) or \
-              (off['y'] > close) or \
-              (off['y'] < -close):
 
+            # Give time for HUD to stabilize after compass align
+            sleep(0.5)
 
-            #print("off:"+str(new))
-            if off['x'] > close:
-                self.keys.send('YawRightButton', hold=hold_yaw)
-            if off['x'] < -close:
-                self.keys.send('YawLeftButton', hold=hold_yaw)
-            if off['y'] > close:
-                self.keys.send('PitchUpButton', hold=hold_pitch)
-            if off['y'] < -close:
-                self.keys.send('PitchDownButton', hold=hold_pitch)
-
-            if self.jn.ship_state()['status'] == 'starting_hyperspace':
-                return
-
-            for i in range(5):
-                sleep(0.1)
+            # Second attempt with extended tries
+            for attempt in range(8):
                 new = self.get_destination_offset(scr_reg)
                 if new:
                     off = new
+                    logger.debug(f'  target found after compass align on attempt {attempt + 1}')
                     break
-                sleep(0.25)
+                sleep(0.2)
 
-            if not off:
+            if not new:
+                logger.warning('  unable to find FSD target for fine alignment')
                 return
 
-        logger.debug('align=complete')
+        # Safety check
+        if off is None:
+            logger.error('  FSD target offset is None, cannot continue alignment')
+            return
+
+        # Progressive alignment - start coarse, then fine-tune
+        alignment_attempts = 0
+        max_attempts = 30  # Prevent infinite loops
+
+        while (abs(off['x']) > close or abs(off['y']) > close) and alignment_attempts < max_attempts:
+            alignment_attempts += 1
+
+            # Progressive adjustment - smaller corrections as we get closer
+            if alignment_attempts <= 5:
+                # Initial coarse corrections
+                adjust_yaw = hold_yaw
+                adjust_pitch = hold_pitch
+            elif alignment_attempts <= 15:
+                # Medium corrections
+                adjust_yaw = hold_yaw * 0.8
+                adjust_pitch = hold_pitch * 0.8
+            else:
+                # Fine corrections
+                adjust_yaw = hold_yaw * 0.6
+                adjust_pitch = hold_pitch * 0.6
+
+            # Apply corrections based on offset magnitude
+            x_magnitude = abs(off['x'])
+            y_magnitude = abs(off['y'])
+
+            # Larger offsets get longer hold times
+            if x_magnitude > close * 2:
+                adjust_yaw *= 1.5
+            if y_magnitude > close * 2:
+                adjust_pitch *= 1.5
+
+            if off['x'] > close:
+                self.keys.send('YawRightButton', hold=adjust_yaw)
+            elif off['x'] < -close:
+                self.keys.send('YawLeftButton', hold=adjust_yaw)
+
+            if off['y'] > close:
+                self.keys.send('PitchUpButton', hold=adjust_pitch)
+            elif off['y'] < -close:
+                self.keys.send('PitchDownButton', hold=adjust_pitch)
+
+            # Check if FSD jump already started
+            if self.jn.ship_state()['status'] == 'starting_hyperspace':
+                logger.debug('  FSD jump initiated during alignment')
+                return
+
+            # Brief pause for ship movement
+            sleep(0.15)
+
+            # Get updated offset
+            new_offset_found = False
+            for retry in range(6):  # Slightly increased retries
+                new = self.get_destination_offset(scr_reg)
+                if new:
+                    off = new
+                    new_offset_found = True
+                    break
+                sleep(0.15)
+
+            if not new_offset_found:
+                logger.warning(f'  lost FSD target during alignment at attempt {alignment_attempts}')
+                return
+
+            # Progress logging every 5 attempts
+            if alignment_attempts % 5 == 0:
+                logger.debug(f'  alignment attempt {alignment_attempts}, offset: x={off["x"]:.1f}, y={off["y"]:.1f}')
+
+        if alignment_attempts >= max_attempts:
+            logger.warning(f'  FSD target alignment failed after {max_attempts} attempts')
+            return
+
+        logger.debug(f'align=complete after {alignment_attempts} attempts, final offset: x={off["x"]:.1f}, y={off["y"]:.1f}')
 
     def mnvr_to_target(self, scr_reg):
         logger.debug('align')
@@ -2317,12 +2374,21 @@ class EDAutopilot:
         self.speak_ui(self.VOICE_KEYS['FRAMESHIFT_JUMP'])
 
         jump_tries = self.config['JumpTries']
+        alignment_failures = 0
+
         for i in range(jump_tries):
 
-            logger.debug('jump= try:'+str(i))
+            logger.debug(f'jump= try:{i+1}/{jump_tries}')
             if not (self.jn.ship_state()['status'] == 'in_supercruise' or self.jn.ship_state()['status'] == 'in_space'):
                 logger.error('Not ready to FSD jump. jump=err1')
                 raise Exception('not ready to jump')
+
+            # Check if we need realignment before starting FSD
+            if i > 0 and alignment_failures > 0:
+                logger.debug(f'Realigning due to previous {alignment_failures} alignment failures')
+                # Perform fresh alignment before retry
+                self.mnvr_to_target(scr_reg)
+
             sleep(0.5)
             logger.debug('jump= start fsd')
 
@@ -2334,12 +2400,15 @@ class EDAutopilot:
             res = self.status.wait_for_flag_on(FlagsFsdCharging, 5)
             if not res:
                 logger.error('FSD failed to charge.')
+                alignment_failures += 1
                 continue
 
             res = self.status.wait_for_flag_on(FlagsFsdJump, 30)
             if not res:
                 logger.warning('FSD failure to start jump timeout.')
-                self.mnvr_to_target(scr_reg)  # attempt realign to target
+                alignment_failures += 1
+                # attempt realign to target
+                self.mnvr_to_target(scr_reg)
                 continue
 
             logger.debug('jump= in jump')
@@ -2347,16 +2416,17 @@ class EDAutopilot:
             res = self.status.wait_for_flag_off(FlagsFsdJump, 360)
             if not res:
                 logger.error('FSD failure to complete jump timeout.')
+                alignment_failures += 1
                 continue
 
             logger.debug('jump= speed 0')
             self.jump_cnt = self.jump_cnt+1
             self.keys.send('SetSpeedZero', repeat=3)  # Let's be triply sure that we set speed to 0% :)
             sleep(1)  # wait 1 sec after jump to allow graphics to stablize and accept inputs
-            logger.debug('jump=complete')
+            logger.debug(f'jump=complete after {i+1} attempts')
             return True
 
-        logger.error(f'FSD Jump failed {jump_tries} times. jump=err2')
+        logger.error(f'FSD Jump failed {jump_tries} times with {alignment_failures} alignment failures. jump=err2')
         raise Exception("FSD Jump failure")
 
         # a set of convience routes to pitch, rotate by specified degress
