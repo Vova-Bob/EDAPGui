@@ -23,7 +23,7 @@
     "ui.voice.dss_on": "Асистента DSS увімкнено",
     "ui.log.dss_stop": "Зупинка DSS асистента",
     "ui.voice.dss_off": "Асистента DSS вимкнено",
-    "ui.log.single_waypoint_start": "Старт одиночного асистента точки",
+        "ui.log.single_waypoint_start": "Старт одиночного асистента точки",
     "ui.voice.single_waypoint_on": "Одиночну маршрутну точку активовано",
     "ui.log.single_waypoint_stop": "Зупинка одиночного асистента точки",
     "ui.voice.single_waypoint_off": "Одиночну маршрутну точку вимкнено",

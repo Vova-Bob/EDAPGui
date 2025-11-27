@@ -23,7 +23,7 @@
     "ui.voice.dss_on": "DSS Assist On",
     "ui.log.dss_stop": "DSS Assist stop",
     "ui.voice.dss_off": "DSS Assist Off",
-    "ui.log.single_waypoint_start": "Single Waypoint Assist start",
+        "ui.log.single_waypoint_start": "Single Waypoint Assist start",
     "ui.voice.single_waypoint_on": "Single Waypoint Assist On",
     "ui.log.single_waypoint_stop": "Single Waypoint Assist stop",
     "ui.voice.single_waypoint_off": "Single Waypoint Assist Off",
