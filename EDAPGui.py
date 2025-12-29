@@ -1,13 +1,6 @@
-# import queue
-# import sys
-# import os
-# import threading
-# import kthread
-# from datetime import datetime
-# from time import sleep
-# import cv2
-# import json
-# from pathlib import Path
+import queue
+import threading
+from tkinter import messagebox
 import subprocess
 
 import keyboard
@@ -36,6 +29,7 @@ from tktooltip import ToolTip  # In requirements.txt as 'tkinter-tooltip'.
 # from EDJournal import *
 from ED_AP import *
 from EDAPWaypointEditor import WaypointEditorTab
+from QueueManager import QueueManager, Command, StatusMessage
 
 from EDlogger import logger
 
@@ -90,6 +84,16 @@ class APGui:
         root.protocol("WM_DELETE_WINDOW", self.close_window)
         root.resizable(False, False)
 
+        # Thread-safe queues for GUI-Autopilot communication
+        # Using QueueManager for queue size limiting and monitoring
+        self.command_queue = queue.Queue(maxsize=100)
+        self.status_queue = queue.Queue(maxsize=100)
+
+        # Flag for GUI updater lifecycle
+        self.gui_updater_running = False
+        self.gui_updater_thread = None
+        self.monitor_thread = None
+
         self.tooltips = {
             'FSD Route Assist': "Will execute your route. \nAt each jump the sequence will perform some fuel scooping.",
             'Supercruise Assist': "Will keep your ship pointed to target, \nyou target can only be a station for the autodocking to work.",
@@ -142,6 +146,13 @@ class APGui:
         self.ed_ap.robigo.set_single_loop(self.ed_ap.config['Robigo_Single_Loop'])
         # self.calibrator = RegionCalibration(root, self.ed_ap, cb=self.callback)
 
+        # Set queues for thread-safe communication with autopilot
+        self.ed_ap.set_queues(self.command_queue, self.status_queue)
+        logger.info("queues_ready")
+
+        # Start GUI updater daemon thread
+        self.start_gui_updater()
+
         self.ocr_calibration_data = {}
 
         self.mouse = MousePoint()
@@ -186,7 +197,7 @@ class APGui:
         self.entries['ship']['PitchFactor'].delete(0, tk.END)
         self.entries['ship']['RollFactor'].delete(0, tk.END)
         self.entries['ship']['YawFactor'].delete(0, tk.END)
-        
+
         self.entries['autopilot']['Sun Bright Threshold'].delete(0, tk.END)
         self.entries['autopilot']['Nav Align Tries'].delete(0, tk.END)
         self.entries['autopilot']['Jump Tries'].delete(0, tk.END)
@@ -217,7 +228,7 @@ class APGui:
         self.entries['ship']['PitchFactor'].insert(0, float(self.ed_ap.pitchfactor))
         self.entries['ship']['RollFactor'].insert(0, float(self.ed_ap.rollfactor))
         self.entries['ship']['YawFactor'].insert(0, float(self.ed_ap.yawfactor))
-        
+
         self.entries['autopilot']['Sun Bright Threshold'].insert(0, int(self.ed_ap.config['SunBrightThreshold']))
         self.entries['autopilot']['Nav Align Tries'].insert(0, int(self.ed_ap.config['NavAlignTries']))
         self.entries['autopilot']['Jump Tries'].insert(0, int(self.ed_ap.config['JumpTries']))
@@ -277,30 +288,46 @@ class APGui:
             logger.debug("Detected 'fsd_stop' callback msg")
             self.checkboxvar['FSD Route Assist'].set(0)
             self.check_cb('FSD Route Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.STOP_FSD)
         elif msg == 'fsd_start':
             self.checkboxvar['FSD Route Assist'].set(1)
             self.check_cb('FSD Route Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.START_FSD)
         elif msg == 'sc_stop':
             logger.debug("Detected 'sc_stop' callback msg")
             self.checkboxvar['Supercruise Assist'].set(0)
             self.check_cb('Supercruise Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.STOP_SC)
         elif msg == 'sc_start':
             self.checkboxvar['Supercruise Assist'].set(1)
             self.check_cb('Supercruise Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.START_SC)
         elif msg == 'waypoint_stop':
             logger.debug("Detected 'waypoint_stop' callback msg")
             self.checkboxvar['Waypoint Assist'].set(0)
             self.check_cb('Waypoint Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.STOP_WAYPOINT)
         elif msg == 'waypoint_start':
             self.checkboxvar['Waypoint Assist'].set(1)
             self.check_cb('Waypoint Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.START_WAYPOINT)
         elif msg == 'robigo_stop':
             logger.debug("Detected 'robigo_stop' callback msg")
             self.checkboxvar['Robigo Assist'].set(0)
             self.check_cb('Robigo Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.STOP_ROBIGO)
         elif msg == 'robigo_start':
             self.checkboxvar['Robigo Assist'].set(1)
             self.check_cb('Robigo Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.START_ROBIGO)
         elif msg == 'afk_stop':
             logger.debug("Detected 'afk_stop' callback msg")
             self.checkboxvar['AFK Combat Assist'].set(0)
@@ -309,10 +336,14 @@ class APGui:
             logger.debug("Detected 'dss_start' callback msg")
             self.checkboxvar['DSS Assist'].set(1)
             self.check_cb('DSS Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.START_DSS)
         elif msg == 'dss_stop':
             logger.debug("Detected 'dss_stop' callback msg")
             self.checkboxvar['DSS Assist'].set(0)
             self.check_cb('DSS Assist')
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.STOP_DSS)
         elif msg == 'single_waypoint_stop':
             logger.debug("Detected 'single_waypoint_stop' callback msg")
             self.checkboxvar['Single Waypoint Assist'].set(0)
@@ -340,6 +371,8 @@ class APGui:
             self.check_cb('DSS Assist')
 
             self.checkboxvar['Single Waypoint Assist'].set(0)
+            # Send command to autopilot via queue
+            self._send_command_to_autopilot(Command.STOP_ALL)
             self.check_cb('Single Waypoint Assist')
 
         elif msg == 'jumpcount':
@@ -356,7 +389,7 @@ class APGui:
         self.entries['ship']['PitchFactor'].delete(0, tk.END)
         self.entries['ship']['RollFactor'].delete(0, tk.END)
         self.entries['ship']['YawFactor'].delete(0, tk.END)
-        
+
         self.entries['ship']['PitchRate'].insert(0, self.ed_ap.pitchrate)
         self.entries['ship']['RollRate'].insert(0, self.ed_ap.rollrate)
         self.entries['ship']['YawRate'].insert(0, self.ed_ap.yawrate)
@@ -364,7 +397,7 @@ class APGui:
         self.entries['ship']['PitchFactor'].insert(0, self.ed_ap.pitchfactor)
         self.entries['ship']['RollFactor'].insert(0, self.ed_ap.rollfactor)
         self.entries['ship']['YawFactor'].insert(0, self.ed_ap.yawfactor)
-        
+
     def calibrate_callback(self):
         self.ed_ap.calibrate_target()
 
@@ -375,11 +408,147 @@ class APGui:
         logger.debug("Entered: quit")
         self.close_window()
 
+    def start_gui_updater(self):
+        """Start GUI updater thread that processes status_queue."""
+        self.gui_updater_running = True
+        self.gui_updater_thread = threading.Thread(
+            target=self._gui_updater_loop,
+            name="GUIUpdater",
+            daemon=True
+        )
+        self.gui_updater_thread.start()
+        logger.info("GUI updater thread started")
+        
+        # Start queue monitoring thread
+        self.monitor_thread = threading.Thread(
+            target=self._monitor_queues,
+            name="QueueMonitor",
+            daemon=True
+        )
+        self.monitor_thread.start()
+        logger.info("Queue monitor thread started")
+
+    def _gui_updater_loop(self):
+        """Process status messages from autopilot and update GUI safely."""
+        while self.gui_updater_running:
+            try:
+                msg = self.status_queue.get(timeout=0.1)
+                if msg is None:  # Poison pill
+                    break
+
+                # Use root.after() to schedule GUI updates in main thread
+                if msg.type == "status":
+                    self.root.after(0, lambda m=msg: self._update_status_safe(m.data))
+                elif msg.type == "log":
+                    self.root.after(0, lambda m=msg: self._log_message_safe(m.data))
+                elif msg.type == "error":
+                    self.root.after(0, lambda m=msg: self._show_error_safe(m.data))
+            except queue.Empty:
+                continue
+            except Exception as e:
+                logger.error(f"Error in GUI updater: {e}")
+                continue
+
+    def _update_status_safe(self, data):
+        """Thread-safe status update."""
+        self.update_statusline(data.get("message", ""))
+
+        # Update checkboxes based on state
+        mode = data.get("mode")
+        state = data.get("state")
+
+        if mode == "FSD":
+            self.checkboxvar['FSD Route Assist'].set(1 if state == "Running" else 0)
+        elif mode == "SC":
+            self.checkboxvar['Supercruise Assist'].set(1 if state == "Running" else 0)
+        elif mode == "Waypoint":
+            self.checkboxvar['Waypoint Assist'].set(1 if state == "Running" else 0)
+        elif mode == "Robigo":
+            self.checkboxvar['Robigo Assist'].set(1 if state == "Running" else 0)
+        elif mode == "DSS":
+            self.checkboxvar['DSS Assist'].set(1 if state == "Running" else 0)
+
+    def _log_message_safe(self, data):
+        """Thread-safe log message."""
+        self.log_msg(data.get("message", ""))
+
+    def _show_error_safe(self, data):
+        """Thread-safe error display."""
+        messagebox.showerror("Error", data.get("error", "Unknown error"))
+
+    def _monitor_queues(self):
+        """Monitor queue sizes and log warnings when approaching limits."""
+        while self.gui_updater_running:
+            try:
+                # Get current queue sizes
+                cmd_size = self.command_queue.qsize()
+                status_size = self.status_queue.qsize()
+                
+                # Log queue sizes every 10 seconds
+                logger.debug(f"Queue sizes - Command: {cmd_size}, Status: {status_size}")
+                
+                # Log warning at 80% of limit
+                if cmd_size >= 80:
+                    logger.warning(f"Command queue at {cmd_size}/100 (80% capacity)")
+                if status_size >= 80:
+                    logger.warning(f"Status queue at {status_size}/100 (80% capacity)")
+                
+                # Sleep for 10 seconds
+                sleep(10)
+            except Exception as e:
+                logger.error(f"Error in queue monitor: {e}")
+                sleep(10)
+
+    def _send_command_to_autopilot(self, command: Command):
+        """
+        Send command to autopilot via command queue.
+        This method is thread-safe and uses timeout to avoid blocking.
+        
+        Args:
+            command: Command enum value to send to autopilot
+        """
+        if self.command_queue is None:
+            logger.warning("Command queue not initialized, cannot send command")
+            return
+        
+        try:
+            self.command_queue.put(command, timeout=0.1)
+            logger.debug(f"Sent command to autopilot: {command.value}")
+        except queue.Full:
+            logger.warning("Command queue full, dropping command")
+        except Exception as e:
+            logger.error(f"Error sending command to autopilot: {e}")
+
     def close_window(self):
+        """Gracefully shutdown all threads and queues."""
         logger.debug("Entered: close_window")
+
+        # Stop GUI updater and monitor
+        self.gui_updater_running = False
+        self.status_queue.put(None)  # Poison pill
+
+        # Stop autopilot
         self.stop_fsd()
         self.stop_sc()
-        self.ed_ap.quit()
+        self.command_queue.put(Command.STOP_ALL)
+        self.ed_ap.terminate = True
+
+        # Wait for threads to finish
+        if hasattr(self, 'gui_updater_thread') and self.gui_updater_thread:
+            self.gui_updater_thread.join(timeout=2.0)
+            if self.gui_updater_thread.is_alive():
+                logger.warning("GUI updater thread did not stop gracefully")
+
+        if hasattr(self, 'monitor_thread') and self.monitor_thread:
+            self.monitor_thread.join(timeout=2.0)
+            if self.monitor_thread.is_alive():
+                logger.warning("Queue monitor thread did not stop gracefully")
+
+        if hasattr(self.ed_ap, 'ap_thread') and self.ed_ap.ap_thread:
+            self.ed_ap.ap_thread.join(timeout=2.0)
+            if self.ed_ap.ap_thread.is_alive():
+                logger.warning("Autopilot thread did not stop gracefully")
+
         sleep(0.1)
         self.root.destroy()
 
@@ -390,14 +559,18 @@ class APGui:
 
     def start_fsd(self):
         logger.debug("Entered: start_fsd")
-        self.ed_ap.set_fsd_assist(True)
+        # OLD: self.ed_ap.set_fsd_assist(True)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.START_FSD)
         self.FSD_A_running = True
         self.log_msg("FSD Route Assist start")
         self.ed_ap.vce.say("FSD Route Assist On")
 
     def stop_fsd(self):
         logger.debug("Entered: stop_fsd")
-        self.ed_ap.set_fsd_assist(False)
+        # OLD: self.ed_ap.set_fsd_assist(False)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.STOP_FSD)
         self.FSD_A_running = False
         self.log_msg("FSD Route Assist stop")
         self.ed_ap.vce.say("FSD Route Assist Off")
@@ -405,14 +578,18 @@ class APGui:
 
     def start_sc(self):
         logger.debug("Entered: start_sc")
-        self.ed_ap.set_sc_assist(True)
+        # OLD: self.ed_ap.set_sc_assist(True)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.START_SC)
         self.SC_A_running = True
         self.log_msg("SC Assist start")
         self.ed_ap.vce.say("Supercruise Assist On")
 
     def stop_sc(self):
         logger.debug("Entered: stop_sc")
-        self.ed_ap.set_sc_assist(False)
+        # OLD: self.ed_ap.set_sc_assist(False)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.STOP_SC)
         self.SC_A_running = False
         self.log_msg("SC Assist stop")
         self.ed_ap.vce.say("Supercruise Assist Off")
@@ -420,14 +597,18 @@ class APGui:
 
     def start_waypoint(self):
         logger.debug("Entered: start_waypoint")
-        self.ed_ap.set_waypoint_assist(True)
+        # OLD: self.ed_ap.set_waypoint_assist(True)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.START_WAYPOINT)
         self.WP_A_running = True
         self.log_msg("Waypoint Assist start")
         self.ed_ap.vce.say("Waypoint Assist On")
 
     def stop_waypoint(self):
         logger.debug("Entered: stop_waypoint")
-        self.ed_ap.set_waypoint_assist(False)
+        # OLD: self.ed_ap.set_waypoint_assist(False)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.STOP_WAYPOINT)
         self.WP_A_running = False
         self.log_msg("Waypoint Assist stop")
         self.ed_ap.vce.say("Waypoint Assist Off")
@@ -435,14 +616,18 @@ class APGui:
 
     def start_robigo(self):
         logger.debug("Entered: start_robigo")
-        self.ed_ap.set_robigo_assist(True)
+        # OLD: self.ed_ap.set_robigo_assist(True)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.START_ROBIGO)
         self.RO_A_running = True
         self.log_msg("Robigo Assist start")
         self.ed_ap.vce.say("Robigo Assist On")
 
     def stop_robigo(self):
         logger.debug("Entered: stop_robigo")
-        self.ed_ap.set_robigo_assist(False)
+        # OLD: self.ed_ap.set_robigo_assist(False)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.STOP_ROBIGO)
         self.RO_A_running = False
         self.log_msg("Robigo Assist stop")
         self.ed_ap.vce.say("Robigo Assist Off")
@@ -450,14 +635,18 @@ class APGui:
 
     def start_dss(self):
         logger.debug("Entered: start_dss")
-        self.ed_ap.set_dss_assist(True)
+        # OLD: self.ed_ap.set_dss_assist(True)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.START_DSS)
         self.DSS_A_running = True
         self.log_msg("DSS Assist start")
         self.ed_ap.vce.say("DSS Assist On")
 
     def stop_dss(self):
         logger.debug("Entered: stop_dss")
-        self.ed_ap.set_dss_assist(False)
+        # OLD: self.ed_ap.set_dss_assist(False)
+        # NEW: Send command through queue
+        self._send_command_to_autopilot(Command.STOP_DSS)
         self.DSS_A_running = False
         self.log_msg("DSS Assist stop")
         self.ed_ap.vce.say("DSS Assist Off")
@@ -470,6 +659,8 @@ class APGui:
         station = self.single_waypoint_station.get()
 
         if system != "" or station != "":
+            # ERROR: Direct lifecycle call detected
+            logger.error("Direct lifecycle call detected: set_single_waypoint_assist(). Use command queue instead.")
             self.ed_ap.set_single_waypoint_assist(system, station, True)
             self.SWP_A_running = True
             self.log_msg("Single Waypoint Assist start")
@@ -478,6 +669,8 @@ class APGui:
     def stop_single_waypoint_assist(self):
         """ The debug command to go to a system or station or both."""
         logger.debug("Entered: stop_single_waypoint_assist")
+        # ERROR: Direct lifecycle call detected
+        logger.error("Direct lifecycle call detected: set_single_waypoint_assist(). Use command queue instead.")
         self.ed_ap.set_single_waypoint_assist("", "", False)
         self.SWP_A_running = False
         self.log_msg("Single Waypoint Assist stop")
@@ -621,7 +814,7 @@ class APGui:
 
     def ship_tst_yaw_90(self):
         self.ed_ap.ship_tst_yaw(90)
-        
+
     def open_wp_file(self):
         filetypes = (
             ('json files', '*.json'),
@@ -660,7 +853,7 @@ class APGui:
             self.ed_ap.pitchfactor = float(self.entries['ship']['PitchFactor'].get())
             self.ed_ap.rollfactor = float(self.entries['ship']['RollFactor'].get())
             self.ed_ap.yawfactor = float(self.entries['ship']['YawFactor'].get())
-            
+
             self.ed_ap.config['SunBrightThreshold'] = int(self.entries['autopilot']['Sun Bright Threshold'].get())
             self.ed_ap.config['NavAlignTries'] = int(self.entries['autopilot']['Nav Align Tries'].get())
             self.ed_ap.config['JumpTries'] = int(self.entries['autopilot']['Jump Tries'].get())
@@ -766,6 +959,8 @@ class APGui:
 
         if field == 'AFK Combat Assist':
             if self.checkboxvar['AFK Combat Assist'].get() == 1:
+                # ERROR: Direct lifecycle call detected
+                logger.error("Direct lifecycle call detected: set_afk_combat_assist(). Use command queue instead.")
                 self.ed_ap.set_afk_combat_assist(True)
                 self.log_msg("AFK Combat Assist start")
                 self.lab_ck['FSD Route Assist'].config(state='disabled')
@@ -775,6 +970,8 @@ class APGui:
                 self.lab_ck['DSS Assist'].config(state='disabled')
 
             elif self.checkboxvar['AFK Combat Assist'].get() == 0:
+                # ERROR: Direct lifecycle call detected
+                logger.error("Direct lifecycle call detected: set_afk_combat_assist(). Use command queue instead.")
                 self.ed_ap.set_afk_combat_assist(False)
                 self.log_msg("AFK Combat Assist stop")
                 self.lab_ck['FSD Route Assist'].config(state='active')
@@ -1041,18 +1238,18 @@ class APGui:
 
         nb = ttk.Notebook(win)
         nb.grid(row=1, padx=10, pady=5, sticky="NSEW")
-        
+
         page0 = ttk.Frame(nb)
         page0.grid_columnconfigure(0, weight=1)
         page0.grid_rowconfigure(0, weight=0)
         page0.grid_rowconfigure(1, weight=0)
         page0.grid_rowconfigure(2, weight=1)  # Log row
         nb.add(page0, text="Main")  # main page
-        
+
         page1 = ttk.Frame(nb)
         page1.grid_columnconfigure(0, weight=1)
         nb.add(page1, text="Settings")  # options page
-        
+
         page2 = ttk.Frame(nb)
         page2.grid_columnconfigure([0, 1], weight=1)
         nb.add(page2, text="Debug/Test")  # debug/test page

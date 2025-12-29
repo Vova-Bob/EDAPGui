@@ -1,5 +1,6 @@
 import math
 import os
+import queue
 import traceback
 from datetime import timedelta
 from enum import Enum
@@ -7,8 +8,10 @@ from math import atan, degrees
 import random
 from string import Formatter
 from tkinter import messagebox
+import threading
 
 import cv2
+import kthread
 
 from simple_localization import LocalizationManager
 
@@ -19,6 +22,7 @@ from EDShipControl import EDShipControl
 from EDStationServicesInShip import EDStationServicesInShip
 from EDSystemMap import EDSystemMap
 from EDlogger import logging
+from QueueManager import Command, StatusMessage
 import Image_Templates
 import Screen
 import Screen_Regions
@@ -71,6 +75,11 @@ def scale(inp: float, in_min: float, in_max: float, out_min: float, out_max: flo
 class EDAutopilot:
 
     def __init__(self, cb, doThread=True):
+
+        # Initialize queues before any other initialization to prevent AttributeError
+        # These will be set later via set_queues() method
+        self.command_queue = None
+        self.status_queue = None
 
         # NOTE!!! When adding a new config value below, add the same after read_config() to set
         # a default value or an error will occur reading the new value!
@@ -350,8 +359,23 @@ class EDAutopilot:
         #start the engine thread
         self.terminate = False  # terminate used by the thread to exit its loop
         if doThread:
+            if hasattr(self, 'ap_thread') and self.ap_thread.is_alive():
+                logger.warning("Autopilot thread already running - cannot start second thread")
+                return
             self.ap_thread = kthread.KThread(target=self.engine_loop, name="EDAutopilot")
             self.ap_thread.start()
+
+    def set_queues(self, command_queue, status_queue):
+        """
+        Set the command and status queues for thread-safe communication with GUI.
+
+        Args:
+            command_queue: Queue for receiving commands from GUI
+            status_queue: Queue for sending status updates to GUI
+        """
+        self.command_queue = command_queue
+        self.status_queue = status_queue
+        logger.info("Queues set for autopilot communication")
 
         # Start thread to delete old log files.
         del_log_files_thread = threading.Thread(target=delete_old_log_files, daemon=True)
@@ -359,6 +383,58 @@ class EDAutopilot:
 
         # Process config[] settings to update classes as necessary
         self.process_config_settings()
+
+        # Автоматичний запуск потоку після ініціалізації черг
+        if self.command_queue is not None and self.status_queue is not None:
+            if hasattr(self, 'ap_thread') and self.ap_thread.is_alive():
+                logger.warning("Autopilot thread already running - cannot start second thread")
+                return
+            self.ap_thread = kthread.KThread(target=self.engine_loop, name="EDAutopilot")
+            self.ap_thread.start()
+            logger.info("Autopilot thread started automatically after queue initialization")
+
+    def _process_command(self):
+        """
+        Process a single command from the command queue.
+        
+        This method is called from engine_loop to handle commands
+        sent from the GUI via the command queue.
+        """
+        try:
+            cmd = self.command_queue.get(timeout=0.1)
+            if cmd is None:  # Poison pill
+                return
+            
+            logger.debug(f"Processing command: {cmd.value}")
+            
+            # Process command based on type
+            if cmd == Command.START_FSD:
+                self.set_fsd_assist(True)
+            elif cmd == Command.STOP_FSD:
+                self.set_fsd_assist(False)
+            elif cmd == Command.START_SC:
+                self.set_sc_assist(True)
+            elif cmd == Command.STOP_SC:
+                self.set_sc_assist(False)
+            elif cmd == Command.START_WAYPOINT:
+                self.set_waypoint_assist(True)
+            elif cmd == Command.STOP_WAYPOINT:
+                self.set_waypoint_assist(False)
+            elif cmd == Command.START_ROBIGO:
+                self.set_robigo_assist(True)
+            elif cmd == Command.STOP_ROBIGO:
+                self.set_robigo_assist(False)
+            elif cmd == Command.START_DSS:
+                self.set_dss_assist(True)
+            elif cmd == Command.STOP_DSS:
+                self.set_dss_assist(False)
+            elif cmd == Command.STOP_ALL:
+                self.stop_all_assists()
+        except queue.Empty:
+            pass  # No command available, continue loop
+        except Exception as e:
+            logger.error(f"Error processing command: {e}")
+            traceback.print_exc()
 
     @property
     def tce_integration(self) -> TceIntegration:
@@ -450,7 +526,7 @@ class EDAutopilot:
             if self.current_ship_type not in self.ship_configs['Ship_Configs']:
                 self.ship_configs['Ship_Configs'][self.current_ship_type] = {}
                 logger.debug(f"Created new ship config entry for: {self.current_ship_type}")
-            
+
             self.ship_configs['Ship_Configs'][self.current_ship_type]['compass_scale'] = round(self.compass_scale, 4)
             self.ship_configs['Ship_Configs'][self.current_ship_type]['PitchRate'] = self.pitchrate
             self.ship_configs['Ship_Configs'][self.current_ship_type]['RollRate'] = self.rollrate
@@ -588,6 +664,16 @@ class EDAutopilot:
         self.ap_state = txt
         self.update_overlay()
         self.ap_ckb('statusline', txt)
+
+        # Send status update to GUI via status queue if available
+        if self.status_queue is not None:
+            try:
+                status_msg = StatusMessage('status', {'text': txt})
+                self.status_queue.put(status_msg, timeout=0.1)
+            except queue.Full:
+                logger.warning("Status queue full, dropping status update")
+            except Exception as e:
+                logger.error(f"Error sending status to queue: {e}")
 
     def process_config_settings(self):
         """ Update subclasses as necessary with config setting changes. """
@@ -994,6 +1080,16 @@ class EDAutopilot:
         # Interdiction detected.
         self.vce.say("Danger. Interdiction detected.")
         self.ap_ckb('log', 'Interdiction detected.')
+
+        # Send log to GUI via status queue if available
+        if self.status_queue is not None:
+            try:
+                status_msg = StatusMessage('log', {'text': 'Interdiction detected.'})
+                self.status_queue.put(status_msg, timeout=0.1)
+            except queue.Full:
+                logger.warning("Status queue full, dropping log message")
+            except Exception as e:
+                logger.error(f"Error sending log to queue: {e}")
 
         # Keep setting speed to zero to submit while in supercruise or system jump.
         while self.status.get_flag(FlagsSupercruise) or self.status.get_flag2(Flags2FsdHyperdriveCharging):
@@ -2307,6 +2403,7 @@ class EDAutopilot:
             logger.debug('refuel= start refuel')
             self.vce.say("Refueling")
             self.ap_ckb('log', 'Refueling')
+            self._send_log_to_queue('Refueling')
             self.update_ap_status("Refueling")
 
             # mnvr into position
@@ -2353,17 +2450,20 @@ class EDAutopilot:
 
         elif is_star_scoopable == False:
             self.ap_ckb('log', 'Skip refuel - not a fuel star')
+            self._send_log_to_queue('Skip refuel - not a fuel star')
             logger.debug('refuel= needed, unsuitable star')
             self.pitch_up_down(20)
             return False
 
         elif self.jn.ship_state()['fuel_percent'] >= self.config['RefuelThreshold']:
             self.ap_ckb('log', 'Skip refuel - fuel level okay')
+            self._send_log_to_queue('Skip refuel - fuel level okay')
             logger.debug('refuel= not needed')
             return False
 
         elif not has_fuel_scoop:
             self.ap_ckb('log', 'Skip refuel - no fuel scoop fitted')
+            self._send_log_to_queue('Skip refuel - no fuel scoop fitted')
             logger.debug('No fuel scoop fitted.')
             self.pitch_up_down(20)
             return False
@@ -2389,6 +2489,7 @@ class EDAutopilot:
                 # Check if we have an advanced docking computer
                 if not self.jn.ship_state()['has_adv_dock_comp']:
                     self.ap_ckb('log', "Unable to undock. Advanced Docking Computer not fitted.")
+                    self._send_error_to_queue("Unable to undock. Advanced Docking Computer not fitted.")
                     logger.warning('Unable to undock. Advanced Docking Computer not fitted.')
                     raise Exception('Unable to undock. Advanced Docking Computer not fitted.')
 
@@ -2613,10 +2714,10 @@ class EDAutopilot:
                 # update jump counters
                 self.total_dist_jumped += self.jn.ship_state()['dist_jumped']
                 self.total_jumps = self.jump_cnt + self.jn.ship_state()['jumps_remains']
-                
+
                 # reset, upon next Jump the Journal will be updated again, unless last jump,
                 # so we need to clear this out
-                
+
                 self.jn.ship_state()['jumps_remains'] = 0
 
                 avg_time_jump = (time.time()-starttime) / self.jump_cnt
@@ -2883,37 +2984,51 @@ class EDAutopilot:
     #
     def set_fsd_assist(self, enable=True):
         if enable == False and self.fsd_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+            # Defensive guard: only interrupt if thread is alive
+            if hasattr(self, 'ap_thread') and self.ap_thread and self.ap_thread.is_alive():
+                self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
         self.fsd_assist_enabled = enable
 
     def set_sc_assist(self, enable=True):
         if enable == False and self.sc_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+            # Defensive guard: only interrupt if thread is alive
+            if hasattr(self, 'ap_thread') and self.ap_thread and self.ap_thread.is_alive():
+                self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
         self.sc_assist_enabled = enable
 
     def set_waypoint_assist(self, enable=True):
         if enable == False and self.waypoint_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+            # Defensive guard: only interrupt if thread is alive
+            if hasattr(self, 'ap_thread') and self.ap_thread and self.ap_thread.is_alive():
+                self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
         self.waypoint_assist_enabled = enable
 
     def set_robigo_assist(self, enable=True):
         if enable == False and self.robigo_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+            # Defensive guard: only interrupt if thread is alive
+            if hasattr(self, 'ap_thread') and self.ap_thread and self.ap_thread.is_alive():
+                self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
         self.robigo_assist_enabled = enable
 
     def set_afk_combat_assist(self, enable=True):
         if enable == False and self.afk_combat_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+            # Defensive guard: only interrupt if thread is alive
+            if hasattr(self, 'ap_thread') and self.ap_thread and self.ap_thread.is_alive():
+                self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
         self.afk_combat_assist_enabled = enable
 
     def set_dss_assist(self, enable=True):
         if enable == False and self.dss_assist_enabled == True:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+            # Defensive guard: only interrupt if thread is alive
+            if hasattr(self, 'ap_thread') and self.ap_thread and self.ap_thread.is_alive():
+                self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
         self.dss_assist_enabled = enable
 
     def set_single_waypoint_assist(self, system: str, station: str, enable=True):
         if not enable and self.single_waypoint_enabled:
-            self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
+            # Defensive guard: only interrupt if thread is alive
+            if hasattr(self, 'ap_thread') and self.ap_thread and self.ap_thread.is_alive():
+                self.ctype_async_raise(self.ap_thread, EDAP_Interrupt)
         self._single_waypoint_system = system
         self._single_waypoint_station = station
         self.single_waypoint_enabled = enable
@@ -2979,12 +3094,120 @@ class EDAutopilot:
             self.overlay.overlay_quit()
         self.terminate = True
 
+    def _send_log_to_queue(self, message: str):
+        """
+        Send log message to GUI via status queue.
+        This is a helper method to avoid code duplication.
+        """
+        if self.status_queue is not None:
+            try:
+                status_msg = StatusMessage('log', {'text': message})
+                self.status_queue.put(status_msg, timeout=0.1)
+            except queue.Full:
+                logger.warning("Status queue full, dropping log message")
+            except Exception as e:
+                logger.error(f"Error sending log to queue: {e}")
+
+    def _send_error_to_queue(self, message: str):
+        """
+        Send error message to GUI via status queue.
+        This is a helper method to avoid code duplication.
+        """
+        if self.status_queue is not None:
+            try:
+                status_msg = StatusMessage('error', {'text': message})
+                self.status_queue.put(status_msg, timeout=0.1)
+            except queue.Full:
+                logger.warning("Status queue full, dropping error message")
+            except Exception as e:
+                logger.error(f"Error sending error to queue: {e}")
+
+    def _process_commands(self):
+        """
+        Process commands from the command queue.
+        This method is called from engine_loop to handle commands from GUI.
+        """
+        # Guard: ensure command_queue is initialized before processing
+        if self.command_queue is None:
+            logger.warning("Command queue not initialized, skipping command processing")
+            return
+
+        # Process all available commands (non-blocking)
+        while True:
+            try:
+                command = self.command_queue.get_nowait()
+                if command is None:  # Poison pill
+                    logger.debug("Received poison pill in command queue")
+                    return
+
+                logger.debug(f"Processing command: {command.value}")
+
+                # Handle each command type
+                if command == Command.START_FSD:
+                    self.fsd_assist_enabled = True
+                    self.ap_ckb('fsd_start')
+                elif command == Command.STOP_FSD:
+                    self.fsd_assist_enabled = False
+                    self.ap_ckb('fsd_stop')
+                elif command == Command.START_SC:
+                    self.sc_assist_enabled = True
+                    self.ap_ckb('sc_start')
+                elif command == Command.STOP_SC:
+                    self.sc_assist_enabled = False
+                    self.ap_ckb('sc_stop')
+                elif command == Command.START_WAYPOINT:
+                    self.waypoint_assist_enabled = True
+                    self.ap_ckb('waypoint_start')
+                elif command == Command.STOP_WAYPOINT:
+                    self.waypoint_assist_enabled = False
+                    self.ap_ckb('waypoint_stop')
+                elif command == Command.START_ROBIGO:
+                    self.robigo_assist_enabled = True
+                    self.ap_ckb('robigo_start')
+                elif command == Command.STOP_ROBIGO:
+                    self.robigo_assist_enabled = False
+                    self.ap_ckb('robigo_stop')
+                elif command == Command.START_DSS:
+                    self.dss_assist_enabled = True
+                    self.ap_ckb('dss_start')
+                elif command == Command.STOP_DSS:
+                    self.dss_assist_enabled = False
+                    self.ap_ckb('dss_stop')
+                elif command == Command.STOP_ALL:
+                    # Stop all assists
+                    self.fsd_assist_enabled = False
+                    self.sc_assist_enabled = False
+                    self.waypoint_assist_enabled = False
+                    self.robigo_assist_enabled = False
+                    self.dss_assist_enabled = False
+                    self.ap_ckb('fsd_stop')
+                    self.ap_ckb('sc_stop')
+                    self.ap_ckb('waypoint_stop')
+                    self.ap_ckb('robigo_stop')
+                    self.ap_ckb('dss_stop')
+                    logger.info("All assists stopped via STOP_ALL command")
+
+            except queue.Empty:
+                # No more commands to process
+                break
+            except Exception as e:
+                logger.error(f"Error processing command: {e}")
+                traceback.print_exc()
+
     #
     # This function will execute in its own thread and will loop forever until
-    # the self.terminate flag is set
+    # self.terminate flag is set
     #
     def engine_loop(self):
+        # Guard: ensure queues are initialized before processing
+        if self.command_queue is None or self.status_queue is None:
+            logger.error("Queues not initialized - engine_loop cannot start")
+            return
+
         while not self.terminate:
+            # Process commands from GUI if queues are available
+            if self.command_queue is not None:
+                self._process_command()
             # TODO - Remove these show compass/target all the time
             if self.debug_show_compass_overlay:
                 self.get_nav_offset(self.scrReg, True)
