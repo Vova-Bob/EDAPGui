@@ -15,6 +15,12 @@
 /configs/AP.json
 /EDAPGui.exe
 .idea/
+.groupedtimelineinclude
+.claude
+.kilocode
+.specify
+*.log
+/logs
 EDMesg/__pycache__/
 simple_localization/__pycache__/
 ocr_output/
@@ -23,3 +29,10 @@ configs/ocr_calibration.json
 configs/ship_configs.json
 test/match/
 debug-output/
+.coverage
+.history/
+.sparc/
+.speckit/
+sv_ttk/__pycache__/
+test_*.py
+test_queue_manager_*.md
