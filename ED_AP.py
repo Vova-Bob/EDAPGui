@@ -364,7 +364,7 @@ class EDAutopilot:
     def tce_integration(self) -> TceIntegration:
         """ Load TCE Integration class when needed. """
         if not self._tce_integration:
-            self._tce_integration = TceIntegration(self, self.ap_ckb)
+            self._tce_integration = TceIntegration(self, self.ap_ckb, self.locale)
         return self._tce_integration
 
     @property
@@ -450,12 +450,12 @@ class EDAutopilot:
             if self.current_ship_type not in self.ship_configs['Ship_Configs']:
                 self.ship_configs['Ship_Configs'][self.current_ship_type] = {}
                 logger.debug(f"Created new ship config entry for: {self.current_ship_type}")
-            
+
             self.ship_configs['Ship_Configs'][self.current_ship_type]['compass_scale'] = round(self.compass_scale, 4)
             self.ship_configs['Ship_Configs'][self.current_ship_type]['PitchRate'] = self.pitchrate
             self.ship_configs['Ship_Configs'][self.current_ship_type]['RollRate'] = self.rollrate
             self.ship_configs['Ship_Configs'][self.current_ship_type]['YawRate'] = self.yawrate
-            self.ship_configs['Ship_Configs'][self.current_ship_type]['SunPitchUp+Time'] = self.sunpitchuptime
+            self.ship_configs['Ship_Configs'][self.current_ship_type]['gui.ship.sun_pitch_up_time'] = self.sunpitchuptime
             self.ship_configs['Ship_Configs'][self.current_ship_type]['PitchFactor'] = self.pitchfactor
             self.ship_configs['Ship_Configs'][self.current_ship_type]['RollFactor'] = self.rollfactor
             self.ship_configs['Ship_Configs'][self.current_ship_type]['YawFactor'] = self.yawfactor
@@ -498,7 +498,7 @@ class EDAutopilot:
             self.rollrate = ship_defaults.get('RollRate', 80.0)
             self.pitchrate = ship_defaults.get('PitchRate', 33.0)
             self.yawrate = ship_defaults.get('YawRate', 8.0)
-            self.sunpitchuptime = ship_defaults.get('SunPitchUp+Time', 0.0)
+            self.sunpitchuptime = ship_defaults.get('gui.ship.sun_pitch_up_time', 0.0)
             logger.info(f"Loaded default configuration for {ship_type} from default ship cfg file")
 
         # if ship_type in ship_rpy_factor_sc_50:
@@ -513,13 +513,13 @@ class EDAutopilot:
         if ship_type in self.ship_configs['Ship_Configs']:
             current_ship_cfg = self.ship_configs['Ship_Configs'][ship_type]
             # Check if the custom config has actual values (not just empty dict)
-            if any(key in current_ship_cfg for key in ['compass_scale', 'RollRate', 'PitchRate', 'YawRate', 'SunPitchUp+Time']):
+            if any(key in current_ship_cfg for key in ['compass_scale', 'RollRate', 'PitchRate', 'YawRate', 'gui.ship.sun_pitch_up_time']):
                 # Use custom configuration - this means it's been modified and saved to ship_configs.json
                 self.compass_scale = current_ship_cfg.get('compass_scale', self.scr.scaleX)
                 self.rollrate = current_ship_cfg.get('RollRate', 80.0)
                 self.pitchrate = current_ship_cfg.get('PitchRate', 33.0)
                 self.yawrate = current_ship_cfg.get('YawRate', 8.0)
-                self.sunpitchuptime = current_ship_cfg.get('SunPitchUp+Time', 0.0)
+                self.sunpitchuptime = current_ship_cfg.get('gui.ship.sun_pitch_up_time', 0.0)
                 logger.info(f"Loaded your custom configuration for {ship_type} from ship_configs.json")
 
             if any(key in current_ship_cfg for key in ['RollFactor', 'PitchFactor', 'YawFactor']):
@@ -581,7 +581,7 @@ class EDAutopilot:
             self.overlay.overlay_text('5', "JUMPS: {} of {}".format(self.jump_cnt, self.total_jumps), 5, 1, (136, 53, 0), -1)
             self.overlay.overlay_text('6', "ETA (to System): "+self._str_eta, 6, 1, (136, 53, 0), -1)
             if self.config["ElwScannerEnable"]:
-                self.overlay.overlay_text('7', "ELW SCANNER: "+self.fss_detected, 7, 1, (136, 53, 0), -1)
+                self.overlay.overlay_text('7', self.locale["gui.overlay.elw_scanner_status"]+self.fss_detected, 7, 1, (136, 53, 0), -1)
             self.overlay.overlay_paint()
 
     def update_ap_status(self, txt):
@@ -2613,10 +2613,10 @@ class EDAutopilot:
                 # update jump counters
                 self.total_dist_jumped += self.jn.ship_state()['dist_jumped']
                 self.total_jumps = self.jump_cnt + self.jn.ship_state()['jumps_remains']
-                
+
                 # reset, upon next Jump the Journal will be updated again, unless last jump,
                 # so we need to clear this out
-                
+
                 self.jn.ship_state()['jumps_remains'] = 0
 
                 avg_time_jump = (time.time()-starttime) / self.jump_cnt

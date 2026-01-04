@@ -13,10 +13,10 @@ from EDlogger import logger
 from Screen_Regions import Quad, scale_region
 
 """
-File:StationServicesInShip.py    
+File:StationServicesInShip.py
 
 Description:
-  TBD 
+  TBD
 
 Author: Stumpii
 """
@@ -28,6 +28,7 @@ class EDStationServicesInShip:
         self.ap = ed_ap
         self.ocr = ed_ap.ocr
         self.locale = self.ap.locale
+        self.reload_localization = self.locale.reload()
         self.screen = screen
         self.keys = keys
         self.ap_ckb = cb
@@ -86,7 +87,7 @@ class EDStationServicesInShip:
             self.ap.overlay.overlay_paint()
 
         # Wait for screen to appear
-        res = self.ocr.wait_for_text(self.ap, [self.locale["STN_SVCS_CONNECTED_TO"]], self.reg['connected_to'], timeout=15)
+        res = self.ocr.wait_for_text(self.ap, [self.locale["station_services.connected_to"]], self.reg['connected_to'], timeout=15)
 
         # Store image
         # image = self.screen.get_screen_rect_pct(scl_reg['rect'])

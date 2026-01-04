@@ -16,10 +16,10 @@ from StatusParser import StatusParser
 from Screen import crop_image_by_pct
 
 """
-File:navPanel.py    
+File:navPanel.py
 
 Description:
-  TBD 
+  TBD
 
 Author: Stumpii
 """
@@ -115,12 +115,13 @@ class EDNavigationPanel:
         self.keys = keys
         self.ap_ckb = cb
         self.locale = self.ap.locale
+        self.reload_localization = self.locale.reload()
         self.status_parser = StatusParser()
 
-        self.navigation_tab_text = self.locale["NAV_PNL_TAB_NAVIGATION"]
-        self.transactions_tab_text = self.locale["NAV_PNL_TAB_TRANSACTIONS"]
-        self.contacts_tab_text = self.locale["NAV_PNL_TAB_CONTACTS"]
-        self.target_tab_text = self.locale["NAV_PNL_TAB_TARGET"]
+        self.navigation_tab_text = self.locale["navigation.tab_navigation"]
+        self.transactions_tab_text = self.locale["navigation.tab_transactions"]
+        self.contacts_tab_text = self.locale["navigation.tab_contacts"]
+        self.target_tab_text = self.locale["navigation.tab_target"]
 
         # The rect is [L, T, R, B], top left x, y, and bottom right x, y in fraction of screen resolution
         # Nav Panel region covers the entire navigation panel.

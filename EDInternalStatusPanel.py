@@ -26,6 +26,7 @@ class EDInternalStatusPanel:
         self.keys = keys
         self.ap_ckb = cb
         self.locale = self.ap.locale
+        self.reload_localization = self.locale.reload()
         self.status_parser = StatusParser()
 
         self.modules_tab_text = self.locale["INT_PNL_TAB_MODULES"]
@@ -77,8 +78,8 @@ class EDInternalStatusPanel:
         be grabbed.
         """
         if self.panel_quad_pct is None:
-            logger.warning(f"Nav Panel Calibration has not been performed. Cannot continue.")
-            self.ap_ckb('log', 'Nav Panel Calibration has not been performed. Cannot continue.')
+            logger.warning(f"{self.locale['internal_status_panel.nav_panel_calibration_not_performed']}")
+            self.ap_ckb('log', self.locale['internal_status_panel.nav_panel_calibration_not_performed'])
             return None
 
         # Get the nav panel image based on the region
@@ -170,7 +171,7 @@ class EDInternalStatusPanel:
             cv2.imwrite(f'test/status-panel/int_panel_full.png', image)
             return active, active_tab_name
         else:
-            print("Open Status Panel")
+            print(self.locale['internal_status_panel.open_status_panel'])
             logger.debug("show_right_panel: Open Internal Panel")
             self.ap.ship_control.goto_cockpit_view()
 
@@ -197,15 +198,15 @@ class EDInternalStatusPanel:
         if self.status_parser.get_gui_focus() == GuiFocusInternalPanel:
             self.ap.ship_control.goto_cockpit_view()
 
-    def is_panel_active(self) -> (bool, str):
-        """ Determine if the Nav Panel is open and if so, which tab is active.
+    def is_panel_active(self) -> tuple[bool, str]:
+        """ Determine if the Internal Panel is open and if so, which tab is active.
             Returns True if active, False if not and also the string of the tab name.
         """
-        logger.debug("is_right_panel_active: entered")
+        logger.debug("is_panel_active: entered")
 
-        # Check if nav panel is open
+        # Check if internal panel is open
         if not self.status_parser.wait_for_gui_focus(GuiFocusInternalPanel, 3):
-            logger.debug("is_right_panel_active: right panel not focused")
+            logger.debug("is_panel_active: internal panel not focused")
             return False, ""
 
         # Try this 'n' times before giving up
@@ -269,38 +270,38 @@ class EDInternalStatusPanel:
             return False, ""
 
     def show_inventory_tab(self) -> bool | None:
-        """ Shows the INVENTORY tab of the Nav Panel. Opens the Nav Panel if not already open.
+        """ Shows the INVENTORY tab of the Internal Panel. Opens Internal Panel if not already open.
         Returns True if successful, else False.
         """
-        # Show nav panel
+        # Show internal panel
         active, active_tab_name = self.show_panel()
         if active is None:
             return None
         if not active:
-            print("Internal (Right) Panel could not be opened")
+            print(self.locale['internal_status_panel.internal_panel_could_not_be_opened'])
             return False
-        elif active_tab_name is self.inventory_tab_text:
+        elif active_tab_name == self.inventory_tab_text:
             # Do nothing
             return True
-        elif active_tab_name is self.modules_tab_text:
+        elif active_tab_name == self.modules_tab_text:
             self.keys.send('CycleNextPanel', repeat=3)
             return True
-        elif active_tab_name is self.fire_groups_tab_text:
+        elif active_tab_name == self.fire_groups_tab_text:
             self.keys.send('CycleNextPanel', repeat=2)
             return True
-        elif active_tab_name is self.ship_tab_text:
+        elif active_tab_name == self.ship_tab_text:
             self.keys.send('CycleNextPanel', repeat=1)
             return True
-        elif active_tab_name is self.storage_tab_text:
+        elif active_tab_name == self.storage_tab_text:
             self.keys.send('CycleNextPanel', repeat=7)
             return True
-        elif active_tab_name is self.status_tab_text:
+        elif active_tab_name == self.status_tab_text:
             self.keys.send('CycleNextPanel', repeat=6)
             return True
 
     def transfer_to_fleetcarrier(self, ap):
         """ Transfer all goods to Fleet Carrier """
-        self.ap_ckb('log+vce', "Executing transfer to Fleet Carrier.")
+        self.ap_ckb('log+vce', self.locale['internal_status_panel.executing_transfer_to_fleet_carrier'])
         logger.debug("transfer_to_fleetcarrier: entered")
         # Go to the internal (right) panel inventory tab
         self.show_inventory_tab()
@@ -326,12 +327,12 @@ class EDInternalStatusPanel:
         ap.keys.send("UI_Back", repeat=4)
         sleep(0.2)
         ap.keys.send("HeadLookReset")
-        print("End of unload FC")
+        print(self.locale['internal_status_panel.end_of_unload_fc'])
         # quit()
 
     def transfer_from_fleetcarrier(self, ap, buy_commodities):
         """ Transfer specific good from Fleet Carrier to ship"""
-        self.ap_ckb('log+vce', f"Executing transfer from Fleet Carrier.")
+        self.ap_ckb('log+vce', self.locale['internal_status_panel.executing_transfer_from_fleet_carrier'])
         logger.debug("transfer_to_fleetcarrier: entered")
         # Go to the internal (right) panel inventory tab
         self.show_inventory_tab()
@@ -363,7 +364,7 @@ class EDInternalStatusPanel:
         ap.keys.send("UI_Back", repeat=4)
         sleep(0.2)
         ap.keys.send("HeadLookReset")
-        print("End of transfer from FC")
+        print(self.locale['internal_status_panel.end_of_transfer_from_fc'])
 
 
 def dummy_cb(msg, body=None):

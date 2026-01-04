@@ -36,3 +36,5 @@ debug-output/
 sv_ttk/__pycache__/
 test_*.py
 test_queue_manager_*.md
+/tools/
+locale_analysis_result.json
