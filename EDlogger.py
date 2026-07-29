@@ -12,7 +12,10 @@ if os.path.exists(_filename):
     t = os.path.getmtime(_filename)
     v = datetime.datetime.fromtimestamp(t)
     x = v.strftime('%Y-%m-%d %H-%M-%S')
-    os.rename(_filename, f"{filename_only} {x}.log")
+    try:
+        os.rename(_filename, f"{filename_only} {x}.log")
+    except PermissionError:
+        pass  # файл заблокований іншим процесом — використовуємо як є
 
 # Define the logging config.
 logging.basicConfig(filename=_filename, level=logging.ERROR,
