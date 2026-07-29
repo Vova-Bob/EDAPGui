@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import json
+import os
+
 from EDAP_data import GuiFocusSystemMap
 from EDlogger import logger
-from OCR import OCR
-from Screen_Regions import reg_scale_for_station
+from Screen_Regions import Quad, load_calibrated_regions
 from StatusParser import StatusParser
 from time import sleep
 
@@ -18,29 +20,13 @@ class EDSystemMap:
         self.keys = keys
         self.status_parser = StatusParser()
         self.ap_ckb = cb
-        self.log_keys = getattr(self.ap, 'LOG_KEYS', {})
-        self.ocr_tokens = getattr(self.ap, 'ocr_tokens', None)
         # The rect is top left x, y, and bottom right x, y in fraction of screen resolution
-        self.reg = {
-            'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
-        }
+        self.reg = {'full_panel': {'rect': [0.1, 0.1, 0.9, 0.9]},
+                    'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
+                    }
 
-    def _log(self, key_name: str, *, level: str = 'debug', **kwargs) -> str:
-        key = self.log_keys.get(key_name)
-        if not key:
-            logger.warning(f"Missing system map log key: {key_name}")
-            return ''
-        text = self.ap._t(key, **kwargs)
-        self.ap._log_python(level, text)
-        return text
-
-    def _get_ocr_targets(self, key: str) -> list[str]:
-        value = ''
-        if self.ocr_tokens:
-            value = self.ocr_tokens.get(key, '') or ''
-        if not value:
-            return ["CARTOGRAPHICS"]
-        return [item.strip() for item in value.split('|') if item.strip()]
+        # Load custom regions from file
+        load_calibrated_regions('EDSystemMap', self.reg)
 
     def set_sys_map_dest_bookmark(self, ap, bookmark_type: str, bookmark_position: int) -> bool:
         """ Set the System Map destination using a bookmark.
@@ -53,55 +39,41 @@ class EDSystemMap:
         """
         if self.is_odyssey and bookmark_position != -1:
             # Check if this is a nav-panel bookmark
-            bt_lower = bookmark_type.lower()
-            if not bt_lower.startswith("nav"):
-                # ---------- System map bookmarks (Bodies / Stations / Settlements) ----------
-                self.goto_system_map()
+            if not bookmark_type.lower().startswith("nav"):
+                res = self.goto_system_map()
+                if not res:
+                    return False
 
-                # Go to BOOKMARKS
-                ap.keys.send('UI_Left')
-                sleep(0.5)
+                ap.keys.send('UI_Left')  # Go to BOOKMARKS
+                sleep(.5)
                 ap.keys.send('UI_Select')  # Select BOOKMARKS
-                sleep(0.25)
-                ap.keys.send('UI_Right')  # Go to FAVORITES / LOCAL BOOKMARKS
-                sleep(0.25)
+                sleep(.25)
+                ap.keys.send('UI_Right')  # Go to FAVORITES
+                sleep(.25)
 
                 # If bookmark type is Fav, do nothing as this is the first item
-                if bt_lower.startswith("bod"):
+                if bookmark_type.lower().startswith("bod"):
                     ap.keys.send('UI_Down', repeat=1)  # Go to BODIES
-                elif bt_lower.startswith("sta"):
+                elif bookmark_type.lower().startswith("sta"):
                     ap.keys.send('UI_Down', repeat=2)  # Go to STATIONS
-                elif bt_lower.startswith("set"):
+                elif bookmark_type.lower().startswith("set"):
                     ap.keys.send('UI_Down', repeat=3)  # Go to SETTLEMENTS
 
-                sleep(0.25)
-
-                # Enter the bookmark list (focus moves to the first entry)
-                ap.keys.send('UI_Select')
-                sleep(0.25)
-
-                # Move to the requested bookmark entry (first item already selected)
-                if bookmark_position > 1:
-                    ap.keys.send('UI_Down', repeat=bookmark_position - 1)
-                    sleep(0.25)
-
-                # Manual plotting sequence:
-                # 1) Move left to ensure the card is focused
-                ap.keys.send('UI_Left')
-                sleep(0.25)
-                # 2) Short select to focus the card / open the right panel
-                ap.keys.send('UI_Select')
-                sleep(0.25)
-                # 3) Hold select to trigger "HOLD TO PLOT ROUTE"
+                sleep(.25)
+                ap.keys.send('UI_Select')  # Select bookmark type, moves you to bookmark list
+                ap.keys.send('UI_Left')  # Sometimes the first bookmark is not selected, so we try to force it.
+                ap.keys.send('UI_Right')
+                sleep(.25)
+                ap.keys.send('UI_Down', repeat=bookmark_position - 1)
+                sleep(.25)
                 ap.keys.send('UI_Select', hold=3.0)
-                sleep(1.0)
 
                 # Close System Map
                 ap.keys.send('SystemMapOpen')
                 sleep(0.5)
                 return True
 
-            elif bt_lower.startswith("nav"):
+            elif bookmark_type.lower().startswith("nav"):
                 # TODO - Move to, or call Nav Panel code instead?
                 # This is a nav-panel bookmark
                 # Goto cockpit view
@@ -125,31 +97,32 @@ class EDSystemMap:
 
         return False
 
-    def goto_system_map(self):
+    def goto_system_map(self) -> bool:
         """ Open System Map if we are not there.
         """
         if self.status_parser.get_gui_focus() != GuiFocusSystemMap:
-            self._log('SYSTEM_MAP_OPENING')
+            logger.debug("Opening System Map")
             # Goto cockpit view
             self.ap.ship_control.goto_cockpit_view()
             # Goto System Map
             self.ap.keys.send('SystemMapOpen')
 
-            # Wait for map to load
-            # if not self.status_parser.wait_for_gui_focus(GuiFocusSystemMap):
-            #     logger.debug("goto_galaxy_map: System map did not open.")
+            if self.ap.debug_overlay:
+                stn_svcs = Quad.from_rect(self.reg['full_panel']['rect'])
+                self.ap.overlay.overlay_quad_pct('system map', stn_svcs, (0, 255, 0), 2, 5)
+                self.ap.overlay.overlay_paint()
 
-            # TODO - Add OCR to check screen loaded
-            # Scale the regions based on the target resolution.
-            scl_reg = reg_scale_for_station(self.reg['cartographics'], self.screen.screen_width,
-                                            self.screen.screen_height)
+            # Wait for screen to appear. The text is the same, regardless of language.
+            res = self.ocr.wait_for_text(self.ap, ["CARTOGRAPHICS"], self.reg['cartographics'], timeout=15)
+            if not res:
+                if self.status_parser.get_gui_focus() != GuiFocusSystemMap:
+                    logger.warning("Unable to open System Map")
+                    return False
 
-            carto_targets = self._get_ocr_targets('ocr.system_map.cartographics')
-            res = self.ocr.wait_for_text(self.ap, carto_targets, scl_reg)
-
-            # sleep(3.5)
+            return True
         else:
-            self._log('SYSTEM_MAP_ALREADY_OPEN')
+            logger.debug("System Map is already open")
             self.keys.send('UI_Left')
             self.keys.send('UI_Up', hold=2)
             self.keys.send('UI_Left')
+            return True

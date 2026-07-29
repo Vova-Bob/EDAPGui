@@ -25,7 +25,7 @@
     "DiscordWebhook": false,
     "DiscordWebhookURL": "",
     "DiscordUserID": "",
-    "VoiceEnable": true,
+    "VoiceEnable": false,
     "VoiceID": 2,
     "VoiceLanguage": "uk",
     "ElwScannerEnable": false,
@@ -43,5 +43,11 @@
     "EnableEDMesg": false,
     "EDMesgActionsPort": 15570,
     "EDMesgEventsPort": 15571,
-    "DebugOverlay": true
+    "DebugOverlay": true,
+    "InterdictionEscapeEnabled": false,
+    "InterdictionResumeAttempts": 1,
+    "InterdictionResumeTimeout": 30,
+    "ScCompassGraceSeconds": 5,
+    "ScTargetLostMaxRetries": 3,
+    "ScInterdictionRecoveryBuffer": 8
 }

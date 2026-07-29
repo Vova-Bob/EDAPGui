@@ -8,50 +8,12 @@ from time import sleep
 from typing import Any, final
 from xml.etree.ElementTree import parse
 
-import ctypes
-from ctypes import wintypes
 import win32gui
 import xmltodict
 
 from Screen import set_focus_elite_window
 from directinput import *
-
-ULONG_PTR = ctypes.c_ulonglong
-LONG_PTR = ctypes.c_longlong
-HKL = ULONG_PTR
-WPARAM = ULONG_PTR
-LPARAM = LONG_PTR
-
-user32 = ctypes.windll.user32
-kernel32 = ctypes.windll.kernel32
-user32.LoadKeyboardLayoutW.restype = wintypes.HKL
-user32.LoadKeyboardLayoutW.argtypes = [wintypes.LPCWSTR, wintypes.UINT]
-user32.GetWindowThreadProcessId.restype = wintypes.DWORD
-user32.GetWindowThreadProcessId.argtypes = [wintypes.HWND, ctypes.POINTER(wintypes.DWORD)]
-user32.GetKeyboardLayout.restype = wintypes.HKL
-user32.GetKeyboardLayout.argtypes = [wintypes.DWORD]
-user32.ActivateKeyboardLayout.restype = wintypes.HKL
-user32.ActivateKeyboardLayout.argtypes = [HKL, wintypes.UINT]
-user32.AttachThreadInput.restype = wintypes.BOOL
-user32.AttachThreadInput.argtypes = [wintypes.DWORD, wintypes.DWORD, wintypes.BOOL]
-kernel32.GetCurrentThreadId.restype = wintypes.DWORD
-kernel32.GetCurrentThreadId.argtypes = []
-
-ASCII_SCANCODE_MAP: dict[str, int] = {}
-
-# Побудова карти сканкодів для латинських букв та часто вживаних символів.
-for _char_code in range(ord('A'), ord('Z') + 1):
-    _char = chr(_char_code)
-    ASCII_SCANCODE_MAP[_char] = SCANCODE.get(f'Key_{_char}', 0)
-
-for _digit in range(0, 10):
-    ASCII_SCANCODE_MAP[str(_digit)] = SCANCODE.get(f'Key_{_digit}', 0)
-
-ASCII_SCANCODE_MAP[' '] = SCANCODE.get('Key_Space', 0)
-ASCII_SCANCODE_MAP['-'] = SCANCODE.get('Key_Minus', 0)
 from EDlogger import logger
-
-US_ENGLISH_LAYOUT = "00000409"
 
 """
 Description:  Pulls the keybindings for specific controls from the ED Key Bindings file, this class also
@@ -66,9 +28,10 @@ class EDKeys:
 
     def __init__(self, cb):
         self.ap_ckb = cb
-        self.key_mod_delay = 0.010
-        self.key_default_delay = 0.200
-        self.key_repeat_delay = 0.100
+        self.key_mod_delay = 0.01  # Delay for key modifiers to ensure modifier is detected before/after the key
+        self.key_def_hold_time = 0.2  # Default hold time for a key press
+        self.key_repeat_delay = 0.1  # Delay between key press repeats
+        self.activate_window = False
 
         self.keys_to_obtain = [
             'YawLeftButton',
@@ -101,6 +64,7 @@ class EDKeys:
             'IncreaseEnginesPower',
             'IncreaseWeaponsPower',
             'IncreaseSystemsPower',
+            'ResetPowerDistribution',
             'GalaxyMapOpen',
             'CamZoomIn',  # Gal map zoom in
             'SystemMapOpen',
@@ -111,11 +75,10 @@ class EDKeys:
             'TargetNextRouteSystem',  # Target next system in route
             'CamTranslateForward',
             'CamTranslateRight',
+            'OrderAggressiveBehaviour',
         ]
         self.keys = self.get_bindings()
         self.bindings = self.get_bindings_dict()
-        self.activate_window = False
-        self._english_layout_handle: int | None = None
 
         self.missing_keys = []
         # We want to log the keyboard name instead of just the key number so we build a reverse dictionary
@@ -143,17 +106,6 @@ class EDKeys:
                 self.ap_ckb('log', f"WARNING: \tget_bindings_<{key}>= does not have a valid keyboard keybind.")
                 logger.warning("\tget_bindings_<{}>= does not have a valid keyboard keybind.".format(key).upper())
                 self.missing_keys.append(key)
-
-        # Check for key collisions with the keys EDAP uses.
-        for key in self.keys_to_obtain:
-            collisions = self.get_collisions(key)
-            if len(collisions) > 1:
-                # lookup the keyname in the SCANCODE reverse dictionary and output that key name
-                keyname = self.reversed_dict.get(self.keys[key]['key'], "Key not found")
-                warn_text = (f"Key '{keyname}' is used for the following bindings: {collisions}. "
-                             "This MAY causes issues when using EDAP. Monitor and adjust accordingly.")
-                self.ap_ckb('log', f"WARNING: {warn_text}")
-                logger.warning(f"{warn_text}")
 
         # Check if the hotkeys are used in ED
         binding_name = self.check_hotkey_in_bindings('Key_End')
@@ -313,6 +265,16 @@ class EDKeys:
             PressKey(key)
 
     def send(self, key_binding, hold=None, repeat=1, repeat_delay=None, state=None):
+        """ Send a key based on the defined keybind
+        @param key_binding: The key bind name (i.e. UseBoostJuice).
+        @param hold: The time to hold the key down in seconds.
+        @param repeat: Number of times to repeat the key.
+        @param repeat_delay: Time delay in seconds between repeats. If None, uses the default repeat delay.
+        @param state: Key state:
+            None - press and release (default).
+            1 - press (but don't release).
+            0 - release (a previous press state).
+        """
         key = self.keys.get(key_binding)
         if key is None:
             logger.warning('SEND=NONE !!!!!!!!')
@@ -340,9 +302,11 @@ class EDKeys:
 
             if state is None:
                 if hold:
-                    sleep(hold)
+                    if hold > 0.0:
+                        sleep(hold)
                 else:
-                    sleep(self.key_default_delay)
+                    if self.key_def_hold_time > 0.0:
+                        sleep(self.key_def_hold_time)
 
             if 'hold' in key:
                 sleep(0.1)
@@ -359,6 +323,26 @@ class EDKeys:
             else:
                 sleep(self.key_repeat_delay)
 
+    def release_all_keys(self):
+        """Release all modifier keys and any currently tracked key presses to prevent stuck keys.
+        Called on stop/interrupt to ensure no keys remain held down."""
+        modifier_scancodes = [
+            SCANCODE.get("Key_LeftShift"),
+            SCANCODE.get("Key_RightShift"),
+            SCANCODE.get("Key_LeftControl"),
+            SCANCODE.get("Key_RightControl"),
+            SCANCODE.get("Key_LeftAlt"),
+            SCANCODE.get("Key_RightAlt"),
+        ]
+        for sc in modifier_scancodes:
+            if sc is not None:
+                ReleaseKey(sc)
+
+        for binding in self.keys.values():
+            ReleaseKey(binding['key'])
+            for mod in binding['mods']:
+                ReleaseKey(mod)
+
     def get_collisions(self, key_name: str) -> list[str]:
         """ Get key name collisions (keys used for more than one binding).
         @param key_name: The key name (i.e. UI_Up, UI_Down).
@@ -369,116 +353,3 @@ class EDKeys:
             if key == v:
                 collisions.append(k)
         return collisions
-
-    def _ensure_english_layout_handle(self) -> int | None:
-        """Load (once) the US English keyboard layout and return its HKL handle."""
-        if self._english_layout_handle:
-            return self._english_layout_handle
-
-        handle = user32.LoadKeyboardLayoutW(US_ENGLISH_LAYOUT, 0)
-        if handle == 0:
-            logger.warning('Route input: unable to load US English keyboard layout.')
-            return None
-
-        self._english_layout_handle = handle
-        return handle
-
-    @staticmethod
-    def _get_window_keyboard_layout(hwnd: int | None) -> int | None:
-        if not hwnd:
-            return None
-
-        process_id = ctypes.c_ulong()
-        thread_id = user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
-        if thread_id == 0:
-            return None
-
-        layout = user32.GetKeyboardLayout(thread_id)
-        return layout if layout != 0 else None
-
-    @staticmethod
-    def _activate_layout_for_window(hwnd: int, layout: int) -> bool:
-        if not hwnd or not layout:
-            return False
-
-        process_id = ctypes.c_ulong()
-        thread_id = user32.GetWindowThreadProcessId(hwnd, ctypes.byref(process_id))
-        if thread_id == 0:
-            return False
-
-        current_thread_id = kernel32.GetCurrentThreadId()
-        attached = False
-
-        if thread_id != current_thread_id:
-            if not user32.AttachThreadInput(current_thread_id, thread_id, True):
-                logger.warning('Route input: unable to attach to Elite thread for layout switch.')
-                return False
-            attached = True
-
-        try:
-            result = user32.ActivateKeyboardLayout(HKL(layout), 0)
-            sleep(0.02)
-            return result != 0
-        finally:
-            if attached:
-                user32.AttachThreadInput(current_thread_id, thread_id, False)
-
-    def _switch_keyboard_layout_to_en(self, hwnd: int | None) -> int | None:
-        """Switch the target window to EN layout, return previous layout for restoration."""
-        if not hwnd:
-            return None
-
-        english_layout = self._ensure_english_layout_handle()
-        if not english_layout:
-            return None
-
-        current_layout = self._get_window_keyboard_layout(hwnd)
-        if not current_layout or current_layout == english_layout:
-            return None
-
-        logger.debug('Route input: switching keyboard layout to EN for ASCII entry.')
-        if not self._activate_layout_for_window(hwnd, english_layout):
-            logger.warning('Route input: failed to activate EN keyboard layout.')
-            return None
-
-        return current_layout
-
-    def _restore_keyboard_layout(self, hwnd: int | None, layout: int | None) -> None:
-        if not hwnd or not layout:
-            return
-
-        layout_value = LONG_PTR(layout)
-        if self._activate_layout_for_window(hwnd, int(layout_value.value)):
-            logger.debug('Route input: restored previous keyboard layout after ASCII entry.')
-        else:
-            logger.warning('Route input: failed to restore previous keyboard layout.')
-
-    def type_ascii(self, text: str, interval: float = 0.25) -> None:
-        """Вводить ASCII-текст незалежно від розкладки (латиниця + цифри)."""
-        if not text:
-            return
-
-        text_upper = text.upper()
-        logger.debug(f"Route input: sending ASCII system name '{text_upper}' (layout independent).")
-
-        # За потреби активуємо вікно ED перед друком.
-        if self.activate_window:
-            set_focus_elite_window()
-            sleep(0.05)
-
-        target_hwnd = win32gui.GetForegroundWindow()
-        previous_layout = self._switch_keyboard_layout_to_en(target_hwnd)
-
-        try:
-            for char in text_upper:
-                scancode = ASCII_SCANCODE_MAP.get(char)
-                if not scancode:
-                    logger.warning(f"Route input: unsupported char '{char}', skipping.")
-                    continue
-
-                PressKey(scancode)
-                sleep(self.key_mod_delay)
-                ReleaseKey(scancode)
-                sleep(interval)
-        finally:
-            self._restore_keyboard_layout(target_hwnd, previous_layout)

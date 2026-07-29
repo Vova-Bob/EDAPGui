@@ -1,10 +1,14 @@
 from __future__ import annotations
 
+import json
+import os
+
 from EDAP_data import GuiFocusGalaxyMap
-from Screen_Regions import reg_scale_for_station
+from Screen_Regions import Quad, load_calibrated_regions
 from StatusParser import StatusParser
 from time import sleep
 from EDlogger import logger
+from pyautogui import typewrite
 
 
 class EDGalaxyMap:
@@ -17,28 +21,14 @@ class EDGalaxyMap:
         self.keys = keys
         self.status_parser = StatusParser()
         self.ap_ckb = cb
-        self.log_keys = getattr(self.ap, 'LOG_KEYS', {})
-        self.ocr_tokens = getattr(self.ap, 'ocr_tokens', None)
         # The rect is top left x, y, and bottom right x, y in fraction of screen resolution
-        self.reg = {'cartographics': {'rect': [0.0, 0.0, 0.25, 0.25]},
+        self.reg = {'full_panel': {'rect': [0.1, 0.1, 0.9, 0.9]},
+                    'cartographics': {'rect': [0.0, 0.0, 0.15, 0.15]},
                     }
+        self.SystemSelectDelay = 0.5  # Delay selecting the system when in galaxy map
 
-    def _log(self, key_name: str, *, level: str = 'debug', **kwargs) -> str:
-        key = self.log_keys.get(key_name)
-        if not key:
-            logger.warning(f"Missing galaxy map log key: {key_name}")
-            return ''
-        text = self.ap._t(key, **kwargs)
-        self.ap._log_python(level, text)
-        return text
-
-    def _get_ocr_targets(self, key: str) -> list[str]:
-        value = ''
-        if self.ocr_tokens:
-            value = self.ocr_tokens.get(key, '') or ''
-        if not value:
-            return ["CARTOGRAPHICS"]
-        return [item.strip() for item in value.split('|') if item.strip()]
+        # Load custom regions from file
+        load_calibrated_regions('EDGalaxyMap', self.reg)
 
     def set_gal_map_dest_bookmark(self, ap, bookmark_type: str, bookmark_position: int) -> bool:
         """ Set the gal map destination using a bookmark.
@@ -49,7 +39,9 @@ class EDGalaxyMap:
         @return: True if bookmark could be selected, else False
         """
         if self.is_odyssey and bookmark_position > 0:
-            self.goto_galaxy_map()
+            res = self.goto_galaxy_map()
+            if not res:
+                return False
 
             ap.keys.send('UI_Left')  # Go to BOOKMARKS
             sleep(.5)
@@ -91,15 +83,16 @@ class EDGalaxyMap:
 
     def set_gal_map_destination_text_horizons(self, ap, target_name, target_select_cb=None) -> bool:
         """ This sequence for the Horizons. """
-        self.goto_galaxy_map()
+        res = self.goto_galaxy_map()
+        if not res:
+            return False
 
         ap.keys.send('CycleNextPanel')
         sleep(1)
         ap.keys.send('UI_Select')
         sleep(2)
 
-        target_name_uc = target_name.upper()
-        self.keys.type_ascii(target_name_uc, interval=0.25)
+        typewrite(target_name, interval=0.25)
         sleep(1)
 
         # send enter key
@@ -125,7 +118,9 @@ class EDGalaxyMap:
 
     def set_gal_map_destination_text_odyssey(self, ap, target_name) -> bool:
         """ This sequence for the Odyssey. """
-        self.goto_galaxy_map()
+        res = self.goto_galaxy_map()
+        if not res:
+            return False
 
         target_name_uc = target_name.upper()
 
@@ -144,8 +139,8 @@ class EDGalaxyMap:
         sleep(0.05)
 
         # type in the System name
-        self.keys.type_ascii(target_name_uc, interval=0.25)
-        self._log('GALAXY_MAP_ENTER_NAME', target=target_name_uc)
+        typewrite(target_name_uc, interval=0.25)
+        logger.debug(f"Entered system name: {target_name_uc}.")
         sleep(0.05)
 
         # send enter key (removes focus out of input field)
@@ -170,15 +165,15 @@ class EDGalaxyMap:
             # Store the current nav route system
             last_nav_route_sys = ap.nav_route.get_last_system()
             last_nav_route_sys_uc = last_nav_route_sys.upper()
-            self._log('GALAXY_MAP_PREVIOUS_ROUTE', previous=last_nav_route_sys_uc)
+            logger.debug(f"Previous Nav Route dest: {last_nav_route_sys_uc}.")
 
             # Select first (or next) system
             ap.keys.send('UI_Select')  # Select >| button
-            sleep(0.5)
+            sleep(self.SystemSelectDelay)
 
             # zoom camera which puts focus back on the map
             ap.keys.send('CamZoomIn')
-            sleep(0.05)
+            sleep(0.5)
 
             # plot route. Not that once the system has been selected, as shown in the info panel
             # and the gal map has focus, there is no need to wait for the map to bring the system
@@ -190,28 +185,27 @@ class EDGalaxyMap:
             # if got passed through the ship() object, lets call it to see if a target has been
             # selected yet... otherwise we wait.  If long route, it may take a few seconds
             if ap.nav_route is not None:
-                self._log('GALAXY_MAP_WAITING_UPDATE')
+                logger.debug(f"Waiting for Nav Route to update.")
                 while 1:
                     curr_nav_route_sys = ap.nav_route.get_last_system()
                     curr_nav_route_sys_uc = curr_nav_route_sys.upper()
                     # Check if the nav route has been changed (right or wrong)
                     if curr_nav_route_sys_uc != last_nav_route_sys_uc:
-                        self._log('GALAXY_MAP_ROUTE_CHANGED', previous=last_nav_route_sys_uc,
-                                  current=curr_nav_route_sys_uc)
+                        logger.debug(f"Nav Route dest changed from: {last_nav_route_sys_uc} to: {curr_nav_route_sys_uc}.")
                         # Check if this nav route is correct
                         if curr_nav_route_sys_uc == target_name_uc:
-                            self._log('GALAXY_MAP_ROUTE_CORRECT', target=target_name_uc)
+                            logger.debug(f"Nav Route correctly updated to {target_name_uc}.")
                             # Break loop and exit
                             correct_route = True
                             break
                         else:
                             # Try the next system, go back to the search bar
-                            self._log('GALAXY_MAP_ROUTE_WRONG', current=curr_nav_route_sys_uc)
+                            logger.debug(f"Nav Route updated with wrong target: {curr_nav_route_sys_uc}. Select next target.")
                             ap.keys.send('UI_Up')
                             break
             else:
                 # Cannot check route, so assume right
-                self._log('GALAXY_MAP_ASSUME_CORRECT')
+                logger.debug(f"Unable to check Nav Route, so assuming it is correct.")
                 correct_route = True
 
         # Close Galaxy map
@@ -229,34 +223,35 @@ class EDGalaxyMap:
             return True
         else:
             # Error setting target
-            self._log('GALAXY_MAP_WAYPOINT_ERROR', level='warning')
+            logger.warning("Error setting waypoint, breaking")
             return False
 
-    def goto_galaxy_map(self):
+    def goto_galaxy_map(self) -> bool:
         """Open Galaxy Map if we are not there. Waits for map to load. Selects the search bar.
         """
         if self.status_parser.get_gui_focus() != GuiFocusGalaxyMap:
-            self._log('GALAXY_MAP_OPENING')
+            logger.debug("Opening Galaxy Map")
             # Goto cockpit view
             self.ap.ship_control.goto_cockpit_view()
             # Goto Galaxy Map
             self.keys.send('GalaxyMapOpen')
 
-            # Wait for map to load
-            # if not self.status_parser.wait_for_gui_focus(GuiFocusGalaxyMap):
-            #     logger.debug("goto_galaxy_map: Galaxy map did not open.")
+            if self.ap.debug_overlay:
+                stn_svcs = Quad.from_rect(self.reg['full_panel']['rect'])
+                self.ap.overlay.overlay_quad_pct('system map', stn_svcs, (0, 255, 0), 2, 5)
+                self.ap.overlay.overlay_paint()
 
-            # TODO - check this to OCR check
-            #sleep(2)
-            # Scale the regions based on the target resolution.
-            scl_reg = reg_scale_for_station(self.reg['cartographics'], self.screen.screen_width,
-                                            self.screen.screen_height)
-
-            carto_targets = self._get_ocr_targets('ocr.galaxy_map.cartographics')
-            res = self.ocr.wait_for_text(self.ap, carto_targets, scl_reg)
+            # Wait for screen to appear. The text is the same, regardless of language.
+            res = self.ocr.wait_for_text(self.ap, ["CARTOGRAPHICS"], self.reg['cartographics'], timeout=15)
+            if not res:
+                if self.status_parser.get_gui_focus() != GuiFocusGalaxyMap:
+                    logger.warning("Unable to open Galaxy Map")
+                    return False
 
             self.keys.send('UI_Up')  # Go up to search bar
+            return True
         else:
-            self._log('GALAXY_MAP_ALREADY_OPEN')
+            logger.debug("Galaxy Map is already open")
             self.keys.send('UI_Left', repeat=2)
             self.keys.send('UI_Up', hold=2)  # Go up to search bar. Allows 1 left to bookmarks.
+            return True

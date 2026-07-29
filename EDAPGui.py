@@ -1,39 +1,47 @@
-import queue
-import sys
-import os
-import threading
-import kthread
-from datetime import datetime
-from time import sleep
-import cv2
-import json
-from pathlib import Path
+# import queue
+# import sys
+# import os
+# import threading
+# import kthread
+# from datetime import datetime
+# from time import sleep
+# import cv2
+# import json
+# from pathlib import Path
+import subprocess
+from typing import TypedDict
+
 import keyboard
 import webbrowser
-import requests
+# import requests
 
 
-from PIL import Image, ImageGrab, ImageTk
+# from PIL import Image, ImageGrab, ImageTk
 import tkinter as tk
-from tkinter import *
 from tkinter import filedialog as fd
-from tkinter import messagebox
+# from tkinter import messagebox
 from tkinter import ttk
-from idlelib.tooltip import Hovertip
-from simple_localization.localization import LocalizationManager
+import sv_ttk
+import pywinstyles
+import sys  # Do not delete - prevents a 'super' error from tktoolip.
+from tktooltip import ToolTip  # In requirements.txt as 'tkinter-tooltip'.
 
-from Voice import *
-from MousePt import MousePoint
+from EDAPCalibration import Calibration
+from EDAPColonizeEditor import ColonizeEditorTab
+# from OCR import RegionCalibration
+# from Voice import *
+# from MousePt import MousePoint
 
-from Image_Templates import *
-from Screen import *
-from Screen_Regions import *
-from EDKeys import *
-from EDJournal import *
+# from Image_Templates import *
+# from Screen import *
+# from Screen_Regions import *
+# from EDKeys import *
+# from EDJournal import *
 from ED_AP import *
+from EDAPWaypointEditor import WaypointEditorTab
 
 from EDlogger import logger
-
+from RPYLineEditor import line_editor
 
 """
 File:EDAPGui.py
@@ -56,7 +64,7 @@ Author: sumzer0@yahoo.com
 # ---------------------------------------------------------------------------
 # must be updated with a new release so that the update check works properly!
 # contains the names of the release.
-EDAP_VERSION = "V1.7.0"
+EDAP_VERSION = "V1.9.3"
 # depending on how release versions are best marked you could also change it to the release tag, see function check_update.
 # ---------------------------------------------------------------------------
 
@@ -64,126 +72,96 @@ FORM_TYPE_CHECKBOX = 0
 FORM_TYPE_SPINBOX = 1
 FORM_TYPE_ENTRY = 2
 
-NUMERIC_FIELD_WIDTH = 8
-NUMERIC_LABEL_PADX = (8, 4)
-NUMERIC_ENTRY_PADX = (0, 8)
+
+def str_to_float(input_str: str) -> float:
+    try:
+        return float(input_str)
+    except ValueError:
+        return 0.0  # Assign a default value on error
 
 
-def hyperlink_callback(url):
-    webbrowser.open_new(url)
+class SubRegion(TypedDict):
+    """ """
+    rect: list[float]
+    text: str
 
 
-class APGui():
+class Objects(TypedDict):
+    """ """
+    width: float
+    height: float
+    text: str
+
+
+class MyRegion(TypedDict):
+    """ """
+    rect: list[float]
+    text: str
+    readonly: bool
+    regions: dict[str, SubRegion]
+    objects: dict[str, Objects]
+
+
+class APGui:
+
     def __init__(self, root):
+        self.statusbar = None
         self.root = root
-        self.gui_loaded = False
-        self.log_buffer = queue.Queue()
-
-        root.protocol("WM_DELETE_WINDOW", self.close_window)
-        root.geometry("1000x820")
-        root.resizable(False, False)
-        root.rowconfigure(0, weight=1)
-        root.rowconfigure(1, weight=0)
-        root.columnconfigure(0, weight=1)
-
-        self.ed_ap = EDAutopilot(cb=self.callback)
-        self.localization = LocalizationManager('locales', self.ed_ap.config.get('Language', 'en'))
-        self.ed_ap.config['Language'] = self.localization.language
-
-        self.localization_bindings = []
-        self.tooltip_instances = {}
-        self.current_status_text = ''
-        self.current_wp_filename = None
-        self.jumpcount_placeholder = True
-
-        allowed_ui_languages = ('en', 'uk')
-        available_allowed = [lang for lang in allowed_ui_languages if lang in self.localization.available_languages]
-        self.language_options = available_allowed if available_allowed else [allowed_ui_languages[0]]
-        if self.localization.language not in self.language_options:
-            fallback = self.language_options[0]
-            try:
-                self.localization.change_language(fallback)
-            except Exception:
-                pass
-            else:
-                self.ed_ap.config['Language'] = fallback
-
-        self.language_var = tk.StringVar(master=self.root, value=self.localization.language)
-
-        # Ensure the overlay uses the same language as the GUI at startup
-        self.ed_ap.set_ui_language(self.localization.language)
-
-        root.title(self._t('ui.window.title', version=EDAP_VERSION))
+        root.title("EDAutopilot " + EDAP_VERSION)
         # root.overrideredirect(True)
         # root.geometry("400x550")
         # root.configure(bg="blue")
+        root.protocol("WM_DELETE_WINDOW", self.close_window)
+        root.resizable(False, False)
 
-        self.field_text_keys = {
-            'FSD Route Assist': 'ui.mode.fsd_route',
-            'Supercruise Assist': 'ui.mode.supercruise',
-            'Waypoint Assist': 'ui.mode.waypoint',
-            'Robigo Assist': 'ui.mode.robigo',
-            'AFK Combat Assist': 'ui.mode.afk_combat',
-            'DSS Assist': 'ui.mode.dss',
-            'RollRate': 'ui.field.ship.roll_rate',
-            'PitchRate': 'ui.field.ship.pitch_rate',
-            'YawRate': 'ui.field.ship.yaw_rate',
-            'Sun Bright Threshold': 'ui.field.autopilot.sun_bright_threshold',
-            'Nav Align Tries': 'ui.field.autopilot.nav_align_tries',
-            'Jump Tries': 'ui.field.autopilot.jump_tries',
-            'Docking Retries': 'ui.field.autopilot.docking_retries',
-            'Wait For Autodock': 'ui.field.autopilot.wait_for_autodock',
-            'Start FSD': 'ui.field.buttons.start_fsd',
-            'Start SC': 'ui.field.buttons.start_sc',
-            'Start Robigo': 'ui.field.buttons.start_robigo',
-            'Stop All': 'ui.field.buttons.stop_all',
-            'Refuel Threshold': 'ui.field.fuel.refuel_threshold',
-            'Scoop Timeout': 'ui.field.fuel.scoop_timeout',
-            'Fuel Threshold Abort': 'ui.field.fuel.fuel_threshold_abort',
-            'X Offset': 'ui.field.overlay.x_offset',
-            'Y Offset': 'ui.field.overlay.y_offset',
-            'Font Size': 'ui.field.overlay.font_size',
-            'SunPitchUp+Time': 'ui.field.ship.sun_pitch_time'
+        self.tooltips = {
+            'FSD Route Assist': "Will execute your route. \nAt each jump the sequence will perform some fuel scooping.",
+            'Supercruise Assist': "Will keep your ship pointed to target, \nyou target can only be a station for the autodocking to work.",
+            'Waypoint Assist': "When selected, will prompt for the waypoint file. \nThe waypoint file contains System names that \nwill be entered into Galaxy Map and route plotted.",
+            'Robigo Assist': "",
+            'DSS Assist': "When selected, will perform DSS scans while you are traveling between stars.",
+            'Single Waypoint Assist': "",
+            'ELW Scanner': "Will perform FSS scans while FSD Assist is traveling between stars. \nIf the FSS shows a signal in the region of Earth, \nWater or Ammonia type worlds, it will announce that discovery.",
+            'AFK Combat Assist': "Used with a AFK Combat ship in a Rez Zone.",
+            'RollRate': "Roll rate your ship has in deg/sec. Higher the number the more maneuverable the ship.",
+            'PitchRate': "Pitch (up/down) rate your ship has in deg/sec. Higher the number the more maneuverable the ship.",
+            'YawRate': "Yaw rate (rudder) your ship has in deg/sec. Higher the number the more maneuverable the ship.",
+            'SunPitchUp+Time': "This field are for ship that tend to overheat. \nProviding 1-2 more seconds of Pitch up when avoiding the Sun \nwill overcome this problem.",
+            'Sun Bright Threshold': "The low level for brightness detection, \nrange 0-255, want to mask out darker items",
+            'Nav Align Tries': "How many attempts the ap should make at alignment.",
+            'Jump Tries': "How many attempts the ap should make to jump.",
+            'Docking Retries': "How many attempts to make to dock.",
+            'Wait For Autodock': "After docking granted, \nwait this amount of time for us to get docked with autodocking",
+            'Start FSD': "Button to start FSD route assist.",
+            'Start SC': "Button to start Supercruise assist.",
+            'Start Robigo': "Button to start Robigo assist.",
+            'Stop All': "Button to stop all assists.",
+            'Refuel Threshold': "If fuel level get below this level, \nit will attempt refuel.",
+            'Scoop Timeout': "Number of second to wait for full tank, \nmight mean we are not scooping well or got a small scooper",
+            'Fuel Threshold Abort': "Level at which AP will terminate, \nbecause we are not scooping well.",
+            'X Offset': "Offset left the screen to start place overlay text.",
+            'Y Offset': "Offset down the screen to start place overlay text.",
+            'Font Size': "Font size of the overlay.",
+            'Calibrate': "Will iterate through a set of scaling values \ngetting the best match for your system. \nSee HOWTO-Calibrate.md",
+            'Cap Mouse XY': "This will provide the StationCoord value of the Station in the SystemMap. \nSelecting this button and then clicking on the Station in the SystemMap \nwill return the x,y value that can be pasted in the waypoints file",
+            'Debug Overlay': "Enables debug data to be displayed over the \nElite Dangerous screen while playing the game.",
+            'Debug OCR': "Enables OCR debug output to be stored in the 'ocr_output' folder.",
+            'Debug Images': "Enables debug images to be stored in the 'debug_output' folder.",
+            'Modifier Key Delay': "Delay for key modifiers to ensure modifier is detected before/after the key.",
+            'Default Hold Time': "Default hold time for a key press.",
+            'Repeat Key Delay': "Delay between key press repeats.",
         }
 
-        self.tooltip_keys = {
-            'FSD Route Assist': 'ui.tooltip.mode.fsd_route',
-            'Supercruise Assist': 'ui.tooltip.mode.supercruise',
-            'Waypoint Assist': 'ui.tooltip.mode.waypoint',
-            'Robigo Assist': 'ui.tooltip.mode.robigo',
-            'DSS Assist': 'ui.tooltip.mode.dss',
-            'Single Waypoint Assist': 'ui.tooltip.mode.single_waypoint',
-            'ELW Scanner': 'ui.tooltip.mode.elw_scanner',
-            'AFK Combat Assist': 'ui.tooltip.mode.afk_combat',
-            'RollRate': 'ui.tooltip.ship.roll_rate',
-            'PitchRate': 'ui.tooltip.ship.pitch_rate',
-            'YawRate': 'ui.tooltip.ship.yaw_rate',
-            'SunPitchUp+Time': 'ui.tooltip.ship.sun_pitch_time',
-            'Sun Bright Threshold': 'ui.tooltip.autopilot.sun_bright_threshold',
-            'Nav Align Tries': 'ui.tooltip.autopilot.nav_align_tries',
-            'Jump Tries': 'ui.tooltip.autopilot.jump_tries',
-            'Docking Retries': 'ui.tooltip.autopilot.docking_retries',
-            'Wait For Autodock': 'ui.tooltip.autopilot.wait_for_autodock',
-            'Start FSD': 'ui.tooltip.buttons.start_fsd',
-            'Start SC': 'ui.tooltip.buttons.start_sc',
-            'Start Robigo': 'ui.tooltip.buttons.start_robigo',
-            'Stop All': 'ui.tooltip.buttons.stop_all',
-            'Refuel Threshold': 'ui.tooltip.fuel.refuel_threshold',
-            'Scoop Timeout': 'ui.tooltip.fuel.scoop_timeout',
-            'Fuel Threshold Abort': 'ui.tooltip.fuel.fuel_threshold_abort',
-            'X Offset': 'ui.tooltip.overlay.x_offset',
-            'Y Offset': 'ui.tooltip.overlay.y_offset',
-            'Font Size': 'ui.tooltip.overlay.font_size',
-            'Calibrate': 'ui.tooltip.calibrate',
-            'Waypoint List Button': 'ui.tooltip.waypoint.button',
-            'Cap Mouse XY': 'ui.tooltip.waypoint.cap_mouse',
-            'Reset Waypoint List': 'ui.tooltip.waypoint.reset'
-        }
+        self.gui_loaded = False
+        self.log_buffer = queue.Queue()
+        self.callback('log', f'Starting ED Autopilot {EDAP_VERSION}.')
 
-        self.callback('log', self._t('ui.log.starting', version=EDAP_VERSION))
+        self.ed_ap = EDAutopilot(cb=self.callback)
+        self.ed_ap.robigo.set_single_loop(self.ed_ap.config['Robigo_Single_Loop'])
+        # self.calibrator = RegionCalibration(root, self.ed_ap, cb=self.callback)
+        self.calibration = None
 
-        self.ed_ap.robigo.set_single_loop(self.ed_ap.config['Robigo_Single_Loop'])
-        self.ed_ap.robigo.set_single_loop(self.ed_ap.config['Robigo_Single_Loop'])
+        self.ocr_calibration_data = {}
 
         self.mouse = MousePoint()
 
@@ -191,18 +169,15 @@ class APGui():
         self.radiobuttonvar = {}
         self.entries = {}
         self.lab_ck = {}
-        self.single_waypoint_system = StringVar()
-        self.single_waypoint_station = StringVar()
-        self.TCE_Destination_Filepath = StringVar()
-
-        self.radiobuttonvar['ocr_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('OCRLanguage', 'en'))
-        self.radiobuttonvar['voice_language'] = tk.StringVar(master=self.root, value=self.ed_ap.config.get('VoiceLanguage', 'en'))
-        self.voice_selection_var = tk.StringVar(master=self.root)
-        self.voice_options = self._load_voice_options()
-        voice_id_from_config = self.ed_ap.config.get('VoiceID', 0)
-        logger.debug(f"Voice initialization: voice_id_from_config={voice_id_from_config}")
-        self._set_voice_selection(voice_id_from_config)
-        self._auto_select_voice_for_language()
+        self.single_waypoint_system = tk.StringVar()
+        self.single_waypoint_station = tk.StringVar()
+        self.throttle_var = tk.StringVar()
+        self.throttle_combo = None
+        self.throttle_keys = []
+        self._global_shopping_list_tab = None
+        self.waypoint_editor_tab = None
+        self.colonize_tab = None
+        self._nb = None
 
         self.FSD_A_running = False
         self.SC_A_running = False
@@ -210,11 +185,8 @@ class APGui():
         self.RO_A_running = False
         self.DSS_A_running = False
         self.SWP_A_running = False
-        self.AFK_A_running = False
 
         self.cv_view = False
-
-        self.TCE_Destination_Filepath.set(self.ed_ap.config['TCEDestinationFilepath'])
 
         self.msgList = self.gui_gen(root)
 
@@ -223,37 +195,40 @@ class APGui():
         self.checkboxvar['Automatic logout'].set(self.ed_ap.config['AutomaticLogout'])
         self.checkboxvar['Enable Overlay'].set(self.ed_ap.config['OverlayTextEnable'])
         self.checkboxvar['Enable Voice'].set(self.ed_ap.config['VoiceEnable'])
-        self.radiobuttonvar['voice_language'].set(self.ed_ap.config.get('VoiceLanguage', 'en'))
+        self.checkboxvar['ELW Scanner'].set(self.ed_ap.config['ElwScannerEnable'])
+        self.checkboxvar['Enable Hotkeys'].set(self.ed_ap.config['HotkeysEnable'])
+        self.checkboxvar['Debug Overlay'].set(self.ed_ap.config['DebugOverlay'])
+        self.checkboxvar['Debug OCR'].set(self.ed_ap.config['DebugOCR'])
+        self.checkboxvar['Debug Images'].set(self.ed_ap.config['DebugImages'])
+        self.checkboxvar['AFKCombat AttackAtWill'].set(self.ed_ap.config['AFKCombat_AttackAtWill'])
 
         self.radiobuttonvar['dss_button'].set(self.ed_ap.config['DSSButton'])
 
-        self.entries['ship']['PitchRate'].delete(0, END)
-        self.entries['ship']['RollRate'].delete(0, END)
-        self.entries['ship']['YawRate'].delete(0, END)
-        self.entries['ship']['SunPitchUp+Time'].delete(0, END)
+        self.entries['ship']['SunPitchUp+Time'].delete(0, tk.END)
 
-        self.entries['autopilot']['Sun Bright Threshold'].delete(0, END)
-        self.entries['autopilot']['Nav Align Tries'].delete(0, END)
-        self.entries['autopilot']['Jump Tries'].delete(0, END)
-        self.entries['autopilot']['Docking Retries'].delete(0, END)
-        self.entries['autopilot']['Wait For Autodock'].delete(0, END)
+        self.entries['autopilot']['Sun Bright Threshold'].delete(0, tk.END)
+        self.entries['autopilot']['Nav Align Tries'].delete(0, tk.END)
+        self.entries['autopilot']['Jump Tries'].delete(0, tk.END)
+        self.entries['autopilot']['Docking Retries'].delete(0, tk.END)
+        self.entries['autopilot']['Wait For Autodock'].delete(0, tk.END)
 
-        self.entries['refuel']['Refuel Threshold'].delete(0, END)
-        self.entries['refuel']['Scoop Timeout'].delete(0, END)
-        self.entries['refuel']['Fuel Threshold Abort'].delete(0, END)
+        self.entries['refuel']['Refuel Threshold'].delete(0, tk.END)
+        self.entries['refuel']['Scoop Timeout'].delete(0, tk.END)
+        self.entries['refuel']['Fuel Threshold Abort'].delete(0, tk.END)
 
-        self.entries['overlay']['X Offset'].delete(0, END)
-        self.entries['overlay']['Y Offset'].delete(0, END)
-        self.entries['overlay']['Font Size'].delete(0, END)
+        self.entries['overlay']['X Offset'].delete(0, tk.END)
+        self.entries['overlay']['Y Offset'].delete(0, tk.END)
+        self.entries['overlay']['Font Size'].delete(0, tk.END)
 
-        self.entries['buttons']['Start FSD'].delete(0, END)
-        self.entries['buttons']['Start SC'].delete(0, END)
-        self.entries['buttons']['Start Robigo'].delete(0, END)
-        self.entries['buttons']['Stop All'].delete(0, END)
+        self.entries['buttons']['Start FSD'].delete(0, tk.END)
+        self.entries['buttons']['Start SC'].delete(0, tk.END)
+        self.entries['buttons']['Start Robigo'].delete(0, tk.END)
+        self.entries['buttons']['Stop All'].delete(0, tk.END)
 
-        self.entries['ship']['PitchRate'].insert(0, float(self.ed_ap.pitchrate))
-        self.entries['ship']['RollRate'].insert(0, float(self.ed_ap.rollrate))
-        self.entries['ship']['YawRate'].insert(0, float(self.ed_ap.yawrate))
+        self.entries['keys']['Modifier Key Delay'].delete(0, tk.END)
+        self.entries['keys']['Default Hold Time'].delete(0, tk.END)
+        self.entries['keys']['Repeat Key Delay'].delete(0, tk.END)
+
         self.entries['ship']['SunPitchUp+Time'].insert(0, float(self.ed_ap.sunpitchuptime))
 
         self.entries['autopilot']['Sun Bright Threshold'].insert(0, int(self.ed_ap.config['SunBrightThreshold']))
@@ -273,6 +248,10 @@ class APGui():
         self.entries['buttons']['Start Robigo'].insert(0, str(self.ed_ap.config['HotKey_StartRobigo']))
         self.entries['buttons']['Stop All'].insert(0, str(self.ed_ap.config['HotKey_StopAllAssists']))
 
+        self.entries['keys']['Modifier Key Delay'].insert(0, float(self.ed_ap.config['Key_ModDelay']))
+        self.entries['keys']['Default Hold Time'].insert(0, float(self.ed_ap.config['Key_DefHoldTime']))
+        self.entries['keys']['Repeat Key Delay'].insert(0, float(self.ed_ap.config['Key_RepeatDelay']))
+
         if self.ed_ap.config['LogDEBUG']:
             self.radiobuttonvar['debug_mode'].set("Debug")
         elif self.ed_ap.config['LogINFO']:
@@ -280,141 +259,40 @@ class APGui():
         else:
             self.radiobuttonvar['debug_mode'].set("Error")
 
-        self.checkboxvar['Debug Overlay'].set(self.ed_ap.config['DebugOverlay'])
-
-        # global trap for these keys, the 'end' key will stop any current AP action
-        # the 'home' key will start the FSD Assist.  May want another to start SC Assist
-
-        self._register_global_hotkeys()
+        # Hotkeys
+        self.setup_hotkeys()
 
         # check for updates
         self.check_updates()
 
+        sleep(0.25)  # Added because the custom tkinter takes longer to load? Without, you occasionally get errors
+        # that the main thread is not in main loop.
         self.ed_ap.gui_loaded = True
         self.gui_loaded = True
         # Send a log entry which will flush out the buffer.
-        self.callback('log', self._t('ui.log.loaded'))
+        self.callback('log', 'ED Autopilot loaded successfully.')
 
-    def _register_global_hotkeys(self) -> None:
-        """Реєструє глобальні гарячі клавіші та гарантує виконання у потоці Tk."""
+    def setup_hotkeys(self):
+        """ Enable or disable hotkeys.
+        Global trap for these keys, the 'end' key will stop any current AP action the 'home' key will start the
+        FSD Assist. May want another to start SC Assist.
+        """
+        # Remove all the hotkeys. Adding a dummy hotkey will eliminate an error if none had been configured.
+        keyboard.add_hotkey(' ', print)
+        keyboard.remove_all_hotkeys()
 
-        def bind(combo: str, action: str) -> None:
-            combo = str(combo).strip()
+        if self.ed_ap.config['HotkeysEnable']:
+            # Add the desired hotkeys
+            keyboard.add_hotkey(self.ed_ap.config['HotKey_StopAllAssists'], self.stop_all_assists)
+            keyboard.add_hotkey(self.ed_ap.config['HotKey_StartFSD'], self.callback, args=('fsd_start', None))
+            keyboard.add_hotkey(self.ed_ap.config['HotKey_StartSC'], self.callback, args=('sc_start', None))
+            keyboard.add_hotkey(self.ed_ap.config['HotKey_StartRobigo'], self.callback, args=('robigo_start', None))
 
-            def handler() -> None:
-                logger.debug(f"Спрацьовування гарячої клавіші '{combo}' для події '{action}'")
-                self.root.after(0, lambda: self._dispatch_hotkey_action(action, combo))
-
-            keyboard.add_hotkey(combo, handler)
-            logger.debug(f"Зареєстровано гарячу клавішу '{combo}' для події '{action}'")
-
-        bind(self.ed_ap.config['HotKey_StopAllAssists'], 'stop_all_assists')
-        bind(self.ed_ap.config['HotKey_StartFSD'], 'fsd_start')
-        bind(self.ed_ap.config['HotKey_StartSC'], 'sc_start')
-        bind(self.ed_ap.config['HotKey_StartRobigo'], 'robigo_start')
-
-    def _dispatch_hotkey_action(self, action: str, combo: str) -> None:
-        """Централізований обробник гарячих клавіш із синхронізацією GUI."""
-        if action == 'stop_all_assists':
-            logger.info(
-                f"Гаряча клавіша стоп ({combo}) натиснута – зупиняю всі режими"
-            )
-            self.stop_all_assists(reason='hotkey')
-            return
-
-        if action == 'fsd_start':
-            logger.debug(f"Гаряча клавіша ({combo}) – запуск FSD Assist")
-            self.checkboxvar['FSD Route Assist'].set(1)
-            self.check_cb('FSD Route Assist')
-            return
-
-        if action == 'sc_start':
-            logger.debug(f"Гаряча клавіша ({combo}) – запуск SC Assist")
-            self.checkboxvar['Supercruise Assist'].set(1)
-            self.check_cb('Supercruise Assist')
-            return
-
-        if action == 'robigo_start':
-            logger.debug(f"Гаряча клавіша ({combo}) – запуск Robigo Assist")
-            self.checkboxvar['Robigo Assist'].set(1)
-            self.check_cb('Robigo Assist')
-            return
-
-        # Завантаження останнього файлу waypoint при старті програми
-        self._load_last_waypoint_file()
-
-    def _get_gui_config_path(self):
-        """Повертає шлях до конфігураційного файлу GUI"""
-        return os.path.join(os.path.dirname(__file__), 'gui_config.json')
-
-    def _save_last_waypoint_file(self, filepath):
-        """Зберігає шлях до останнього завантаженого файлу waypoint"""
-        try:
-            config_path = self._get_gui_config_path()
-            config_data = {}
-
-            # Завантажуємо існуючу конфігурацію, якщо вона є
-            if os.path.exists(config_path):
-                with open(config_path, 'r', encoding='utf-8') as f:
-                    config_data = json.load(f)
-
-            # Оновлюємо шлях до файлу waypoint
-            config_data['last_waypoint_file'] = filepath
-            config_data['app_version'] = EDAP_VERSION
-
-            # Зберігаємо конфігурацію
-            with open(config_path, 'w', encoding='utf-8') as f:
-                json.dump(config_data, f, indent=4, ensure_ascii=False)
-
-            logger.debug(f"Збережено шлях до waypoint файлу: {filepath}")
-        except Exception as e:
-            logger.error(f"Помилка збереження конфігурації GUI: {e}")
-
-    def _get_last_waypoint_file(self):
-        """Повертає шлях до останнього завантаженого файлу waypoint"""
-        try:
-            config_path = self._get_gui_config_path()
-            if not os.path.exists(config_path):
-                return None
-
-            with open(config_path, 'r', encoding='utf-8') as f:
-                config_data = json.load(f)
-
-            return config_data.get('last_waypoint_file')
-        except Exception as e:
-            logger.error(f"Помилка завантаження конфігурації GUI: {e}")
-            return None
-
-    def _load_last_waypoint_file(self):
-        """Завантажує останній файл waypoint, якщо він існує"""
-        last_file = self._get_last_waypoint_file()
-
-        if last_file and os.path.exists(last_file):
-            try:
-                # Завантажуємо waypoint файл
-                res = self.ed_ap.waypoint.load_waypoint_file(last_file)
-                if res:
-                    self.current_wp_filename = last_file
-                    logger.info(f"Автоматично завантажено waypoint файл: {last_file}")
-                    # Оновлюємо відображення в GUI
-                    self._refresh_waypoint_label()
-                else:
-                    logger.warning(f"Не вдалося завантажити waypoint файл: {last_file}")
-                    self.current_wp_filename = None
-                    # Оновлюємо відображення в GUI
-                    self._refresh_waypoint_label()
-            except Exception as e:
-                logger.error(f"Помилка автоматичного завантаження waypoint файлу {last_file}: {e}")
-                self.current_wp_filename = None
-                # Оновлюємо відображення в GUI
-                self._refresh_waypoint_label()
-        elif last_file:
-            logger.warning(f"Останній waypoint файл не знайдено: {last_file}")
-            self.current_wp_filename = None
-            # Оновлюємо відображення в GUI
-            self._refresh_waypoint_label()
-            # Очищуємо невірний шлях з конфігурації
-            self._save_last_waypoint_file(None)
+            # TODO - Enable these to allow pips to be controlled by EDAP when using the defined keys (tbd).
+            # keyboard.add_hotkey('up', self.callback, args=('up', None))
+            # keyboard.add_hotkey('down', self.callback, args=('down', None))
+            # keyboard.add_hotkey('left', self.callback, args=('left', None))
+            # keyboard.add_hotkey('right', self.callback, args=('right', None))
 
     # callback from the EDAP, to configure GUI items
     def callback(self, msg, body=None):
@@ -479,7 +357,6 @@ class APGui():
             self.checkboxvar['Supercruise Assist'].set(0)
             self.check_cb('Supercruise Assist')
 
-            logger.debug(f"Stopping Waypoint Assist - WP_A_running: {self.WP_A_running}")
             self.checkboxvar['Waypoint Assist'].set(0)
             self.check_cb('Waypoint Assist')
 
@@ -498,25 +375,50 @@ class APGui():
         elif msg == 'jumpcount':
             self.update_jumpcount(body)
         elif msg == 'update_ship_cfg':
-            self.update_ship_cfg()
+            self.root.after(0, self.update_ship_cfg)
+        elif msg == 'load_waypoints':
+            # TODO - Enable this at some point to auto load the previous waypoints on startup. Not called at the moment.
+            self.waypoint_editor_tab.editor_load_waypoint_file(body)
+        elif msg == 'up':
+            # TODO - Enable these to allow pips to be controlled by EDAP when using the defined keys (tbd). Not called at the moment.
+            print('up')
+            if ((self.ed_ap.status.get_flag(FlagsInMainShip) or self.ed_ap.status.get_flag(FlagsInFighter))
+                    and self.ed_ap.status.get_gui_focus() == GuiFocusNoFocus):
+                self.ed_ap.keys.send('ResetPowerDistribution')
+                self.ed_ap.keys.send('IncreaseEnginesPower', repeat=3)
+        elif msg == 'down':
+            print('down')
+            if ((self.ed_ap.status.get_flag(FlagsInMainShip) or self.ed_ap.status.get_flag(FlagsInFighter))
+                    and self.ed_ap.status.get_gui_focus() == GuiFocusNoFocus):
+                self.ed_ap.keys.send('ResetPowerDistribution')
+        elif msg == 'left':
+            print('left')
+            if ((self.ed_ap.status.get_flag(FlagsInMainShip) or self.ed_ap.status.get_flag(FlagsInFighter))
+                    and self.ed_ap.status.get_gui_focus() == GuiFocusNoFocus):
+                self.ed_ap.keys.send('ResetPowerDistribution')
+                self.ed_ap.keys.send('IncreaseSystemsPower', repeat=3)
+        elif msg == 'right':
+            print('right')
+            if ((self.ed_ap.status.get_flag(FlagsInMainShip) or self.ed_ap.status.get_flag(FlagsInFighter))
+                    and self.ed_ap.status.get_gui_focus() == GuiFocusNoFocus):
+                self.ed_ap.keys.send('ResetPowerDistribution')
+                self.ed_ap.keys.send('IncreaseWeaponsPower', repeat=3)
 
     def update_ship_cfg(self):
-        # load up the display with what we read from ED_AP for the current ship
-        self.entries['ship']['PitchRate'].delete(0, END)
-        self.entries['ship']['RollRate'].delete(0, END)
-        self.entries['ship']['YawRate'].delete(0, END)
-        self.entries['ship']['SunPitchUp+Time'].delete(0, END)
-
-        self.entries['ship']['PitchRate'].insert(0, self.ed_ap.pitchrate)
-        self.entries['ship']['RollRate'].insert(0, self.ed_ap.rollrate)
-        self.entries['ship']['YawRate'].insert(0, self.ed_ap.yawrate)
+        """
+        Load up the display with what we read from ED_AP for the current ship.
+        Triggered when the ship is changed.
+        @return:
+        """
+        self.entries['ship']['SunPitchUp+Time'].delete(0, tk.END)
         self.entries['ship']['SunPitchUp+Time'].insert(0, self.ed_ap.sunpitchuptime)
+
+        if self.ed_ap.current_ship_cfg:
+            self.throttle_keys = [key for key, value in self.ed_ap.current_ship_cfg.items() if 'Speed' in key]
+            self.throttle_combo['values'] = self.throttle_keys
 
     def calibrate_callback(self):
         self.ed_ap.calibrate_target()
-
-    def calibrate_compass_callback(self):
-        self.ed_ap.calibrate_compass()
 
     def quit(self):
         logger.debug("Entered: quit")
@@ -533,122 +435,82 @@ class APGui():
     # this routine is to stop any current autopilot activity
     def stop_all_assists(self):
         logger.debug("Entered: stop_all_assists")
-
-        # Перевіряємо чи є активні режими
-        active_modes = []
-        if self.FSD_A_running: active_modes.append("FSD")
-        if self.SC_A_running: active_modes.append("SC")
-        if self.WP_A_running: active_modes.append("Waypoint")
-        if self.RO_A_running: active_modes.append("Robigo")
-        if self.DSS_A_running: active_modes.append("DSS")
-        if self.SWP_A_running: active_modes.append("Single Waypoint")
-        if self.AFK_A_running: active_modes.append("AFK")
-
-        # Якщо є активні режими - вивести одне повідомлення
-        if active_modes:
-            logger.debug(f"Stopping active assists: {', '.join(active_modes)}")
-            self.log_msg(self._t('ui.log.stop_all_assists'))
-            if self.ed_ap.config.get('VoiceEnable', False):
-                self.ed_ap.vce.say(self._t('ui.voice.all_assists_off'))
-        else:
-            logger.debug("No active assists to stop")
-
         self.callback('stop_all_assists')
 
     def start_fsd(self):
         logger.debug("Entered: start_fsd")
         self.ed_ap.set_fsd_assist(True)
         self.FSD_A_running = True
-        self.log_msg(self._t('ui.log.fsd_start'))
-        self.ed_ap.vce.say(self._t('ui.voice.fsd_on'))
+        self.log_msg("FSD Route Assist start")
+        self.ed_ap.vce.say("FSD Route Assist On")
 
     def stop_fsd(self):
         logger.debug("Entered: stop_fsd")
-        if not self.FSD_A_running:
-            logger.debug("FSD Assist already stopped, skipping")
-            return
-
         self.ed_ap.set_fsd_assist(False)
         self.FSD_A_running = False
-        self.log_msg(self._t('ui.log.fsd_stop'))
-        self.ed_ap.vce.say(self._t('ui.voice.fsd_off'))
-        self.update_statusline(self._t('ui.status.idle'))
+        self.log_msg("FSD Route Assist stop")
+        self.ed_ap.vce.say("FSD Route Assist Off")
+        self.update_statusline("Idle")
 
     def start_sc(self):
         logger.debug("Entered: start_sc")
         self.ed_ap.set_sc_assist(True)
         self.SC_A_running = True
-        self.log_msg(self._t('ui.log.sc_start'))
-        self.ed_ap.vce.say(self._t('ui.voice.sc_on'))
+        self.log_msg("SC Assist start")
+        self.ed_ap.vce.say("Supercruise Assist On")
 
     def stop_sc(self):
         logger.debug("Entered: stop_sc")
-        if not self.SC_A_running:
-            logger.debug("SC Assist already stopped, skipping")
-            return
-
         self.ed_ap.set_sc_assist(False)
         self.SC_A_running = False
-        self.log_msg(self._t('ui.log.sc_stop'))
-        self.ed_ap.vce.say(self._t('ui.voice.sc_off'))
-        self.update_statusline(self._t('ui.status.idle'))
+        self.log_msg("SC Assist stop")
+        self.ed_ap.vce.say("Supercruise Assist Off")
+        self.update_statusline("Idle")
 
     def start_waypoint(self):
         logger.debug("Entered: start_waypoint")
         self.ed_ap.set_waypoint_assist(True)
         self.WP_A_running = True
-        self.log_msg(self._t('ui.log.waypoint_start'))
-        self.ed_ap.vce.say(self._t('ui.voice.waypoint_on'))
+        self.log_msg("Waypoint Assist start")
+        self.ed_ap.vce.say("Waypoint Assist On")
 
     def stop_waypoint(self):
         logger.debug("Entered: stop_waypoint")
-        if not self.WP_A_running:
-            logger.debug("Waypoint Assist already stopped, skipping")
-            return
-
         self.ed_ap.set_waypoint_assist(False)
         self.WP_A_running = False
-        self.log_msg(self._t('ui.log.waypoint_stop'))
-        self.ed_ap.vce.say(self._t('ui.voice.waypoint_off'))
-        self.update_statusline(self._t('ui.status.idle'))
+        self.log_msg("Waypoint Assist stop")
+        self.ed_ap.vce.say("Waypoint Assist Off")
+        self.update_statusline("Idle")
 
     def start_robigo(self):
         logger.debug("Entered: start_robigo")
         self.ed_ap.set_robigo_assist(True)
         self.RO_A_running = True
-        self.log_msg(self._t('ui.log.robigo_start'))
-        self.ed_ap.vce.say(self._t('ui.voice.robigo_on'))
+        self.log_msg("Robigo Assist start")
+        self.ed_ap.vce.say("Robigo Assist On")
 
     def stop_robigo(self):
         logger.debug("Entered: stop_robigo")
-        if not self.RO_A_running:
-            logger.debug("Robigo Assist already stopped, skipping")
-            return
-
         self.ed_ap.set_robigo_assist(False)
         self.RO_A_running = False
-        self.log_msg(self._t('ui.log.robigo_stop'))
-        self.ed_ap.vce.say(self._t('ui.voice.robigo_off'))
-        self.update_statusline(self._t('ui.status.idle'))
+        self.log_msg("Robigo Assist stop")
+        self.ed_ap.vce.say("Robigo Assist Off")
+        self.update_statusline("Idle")
 
     def start_dss(self):
         logger.debug("Entered: start_dss")
         self.ed_ap.set_dss_assist(True)
         self.DSS_A_running = True
-        self.log_msg(self._t('ui.log.dss_start'))
-        self.ed_ap.vce.say(self._t('ui.voice.dss_on'))
+        self.log_msg("DSS Assist start")
+        self.ed_ap.vce.say("DSS Assist On")
 
     def stop_dss(self):
         logger.debug("Entered: stop_dss")
-        if not self.DSS_A_running:
-            logger.debug("DSS Assist already stopped, skipping")
-            return
-
         self.ed_ap.set_dss_assist(False)
         self.DSS_A_running = False
-        self.log_msg(self._t('ui.log.dss_stop'))
-        self.ed_ap.vce.say(self._t('ui.voice.dss_off'))
-        self.update_statusline(self._t('ui.status.idle'))
+        self.log_msg("DSS Assist stop")
+        self.ed_ap.vce.say("DSS Assist Off")
+        self.update_statusline("Idle")
 
     def start_single_waypoint_assist(self):
         """ The debug command to go to a system or station or both."""
@@ -659,24 +521,48 @@ class APGui():
         if system != "" or station != "":
             self.ed_ap.set_single_waypoint_assist(system, station, True)
             self.SWP_A_running = True
-            self.log_msg(self._t('ui.log.single_waypoint_start'))
-            self.ed_ap.vce.say(self._t('ui.voice.single_waypoint_on'))
+            self.log_msg("Single Waypoint Assist start")
+            self.ed_ap.vce.say("Single Waypoint Assist On")
 
     def stop_single_waypoint_assist(self):
         """ The debug command to go to a system or station or both."""
         logger.debug("Entered: stop_single_waypoint_assist")
-        if not self.SWP_A_running:
-            logger.debug("Single Waypoint Assist already stopped, skipping")
-            return
-
         self.ed_ap.set_single_waypoint_assist("", "", False)
         self.SWP_A_running = False
-        self.log_msg(self._t('ui.log.single_waypoint_stop'))
-        self.ed_ap.vce.say(self._t('ui.voice.single_waypoint_off'))
-        self.update_statusline(self._t('ui.status.idle'))
+        self.log_msg("Single Waypoint Assist stop")
+        self.ed_ap.vce.say("Single Waypoint Assist Off")
+        self.update_statusline("Idle")
 
     def about(self):
         webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui")
+
+    def check_for_updates(self, repo_path):
+        try:
+            # Fetch the latest changes from the remote repository
+            subprocess.run(["git", "fetch"], cwd=repo_path, check=True, capture_output=True)
+
+            # Get the current commit hash of the local repository
+            local_hash = subprocess.run(["git", "rev-parse", "HEAD"], cwd=repo_path, capture_output=True, text=True,
+                                        check=True).stdout.strip()
+
+            # Get the commit hash of the remote repository
+            remote_hash = subprocess.run(["git", "rev-parse", "origin/HEAD"], cwd=repo_path, capture_output=True,
+                                         text=True, check=True).stdout.strip()
+
+            # Compare the commit hashes
+            if local_hash != remote_hash:
+                print("The repository has been updated. Please clone it again to get the latest version.")
+                return True
+            else:
+                print("The repository is up to date.")
+                return False
+
+        except subprocess.CalledProcessError as e:
+            print(f"Error checking for updates: {e}")
+            return False
+        except FileNotFoundError:
+            print("Git command not found. Please ensure Git is installed and in your system's PATH.")
+            return False
 
     def check_updates(self):
         # response = requests.get("https://api.github.com/repos/SumZer0-git/EDAPGui/releases/latest")
@@ -684,6 +570,27 @@ class APGui():
         #     mb = messagebox.askokcancel("Update Check", "A new release version is available. Download now?")
         #     if mb == True:
         #         webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/releases/latest")
+
+        # Example usage:
+        # repo_path = "/path/to/your/local/repo"
+        repo_path = "./"
+        updates_available = self.check_for_updates(repo_path)
+
+        if updates_available:
+            # Optionally, provide further instructions or automate the cloning process
+            self.log_msg("=====================================================")
+            self.log_msg("========== An update to EDAP is available ===========")
+            self.log_msg("==== Click 'Check for Updates' on the Debug tab, ====")
+            self.log_msg("====== or go directly to the EDAP Github page =======")
+            self.log_msg("=====================================================")
+
+            # print("You can use the following command to clone the repository again:")
+            # print("git clone <repository_url> <new_directory_name>")
+        else:
+            self.log_msg("You have the latest version of EDAP!")
+
+    def on_throttle_select(self, event):
+        # The actual logi cis done on the edit curve buttons.
         pass
 
     def open_changelog(self):
@@ -698,86 +605,141 @@ class APGui():
     def log_msg(self, msg):
         message = datetime.now().strftime("%H:%M:%S: ") + msg
 
-        if not self.gui_loaded:
+        try:
+            if not self.gui_loaded:
+                # Store message in queue
+                self.log_buffer.put(message)
+                logger.info(msg)
+            else:
+                # Add queued messages to the list
+                while not self.log_buffer.empty():
+                    self.msgList.insert(tk.END, self.log_buffer.get())
+
+                self.msgList.insert(tk.END, message)
+                self.msgList.yview(tk.END)
+                logger.info(msg)
+        except:
             # Store message in queue
             self.log_buffer.put(message)
-            logger.info(msg)
-        else:
-            # Add queued messages to the list
-            while not self.log_buffer.empty():
-                self.msgList.insert(END, self.log_buffer.get())
-
-            self.msgList.insert(END, message)
-            self.msgList.yview(END)
             logger.info(msg)
 
     def set_statusbar(self, txt):
         self.statusbar.configure(text=txt)
 
     def update_jumpcount(self, txt):
-        self.jumpcount_placeholder = False
         self.jumpcount.configure(text=txt)
 
     def update_statusline(self, txt):
-        self.current_status_text = txt
-        self.status.configure(text=self._t('ui.status.label', status=txt))
-        self.log_msg(self._t('ui.log.status_update', status=txt))
+        self.status.configure(text="Status: " + txt)
+        self.log_msg(f"Status update: {txt}")
 
-    def ship_tst_pitch(self):
-        self.ed_ap.ship_tst_pitch()
+    def ship_throttle_0(self):
+        self.ed_ap.set_throttle_0()
 
-    def ship_tst_roll(self):
-        self.ed_ap.ship_tst_roll()
+    def ship_throttle_50(self):
+        self.ed_ap.set_throttle_50()
 
-    def ship_tst_yaw(self):
-        self.ed_ap.ship_tst_yaw()
+    def ship_throttle_100(self):
+        self.ed_ap.set_throttle_100()
 
-    def open_wp_file(self):
-        filetypes = (
-            (self._t('ui.file_dialog.json_files'), '*.json'),
-            (self._t('ui.file_dialog.all_files'), '*.*')
-        )
-        filename = fd.askopenfilename(title=self._t('ui.file_dialog.waypoint_title'), initialdir='./waypoints/', filetypes=filetypes)
-        if filename != "":
-            res = self.ed_ap.waypoint.load_waypoint_file(filename)
-            if res:
-                self.current_wp_filename = filename
-                # Зберігаємо шлях до останнього завантаженого файлу
-                self._save_last_waypoint_file(filename)
+    def edit_roll_curve(self):
+        # Get current ship roll curve
+        if self.ed_ap.current_ship_cfg:
+            # Get the selected speed from the combobox
+            selected_throttle = self.throttle_var.get()  # i.e. SCSpeed50 etc.
+            if selected_throttle in self.ed_ap.current_ship_cfg:
+                spd_dmd_dict = self.ed_ap.current_ship_cfg[selected_throttle]
+                if 'RollRate' in spd_dmd_dict:
+                    curve = spd_dmd_dict['RollRate']
+                    # Edit the curve
+                    new_curve = line_editor(curve, f"{selected_throttle} - Roll curve")
+                    if new_curve is not None:
+                        if messagebox.askyesno("RPY curve", "Keep the changes made to curve? If Yes, remember to save."):
+                            spd_dmd_dict['RollRate'] = new_curve
             else:
-                self.current_wp_filename = None
-                # Очищуємо конфігурацію, якщо файл не завантажено
-                self._save_last_waypoint_file(None)
-            self._refresh_waypoint_label()
+                messagebox.showinfo("EDAP", "Select a Throttle setting in the dropdown above.")
 
-    def reset_wp_file(self):
-        if self.WP_A_running != True:
-            mb = messagebox.askokcancel(self._t('ui.message.reset_waypoint_title'), self._t('ui.message.reset_waypoint_body'))
-            if mb == True:
-                self.ed_ap.waypoint.mark_all_waypoints_not_complete()
-        else:
-            mb = messagebox.showerror(self._t('ui.message.reset_waypoint_error_title'), self._t('ui.message.reset_waypoint_error_body'))
+    def edit_pit_curve(self):
+        # Get current ship pitch curve
+        if self.ed_ap.current_ship_cfg:
+            # Get the selected speed from the combobox
+            selected_throttle = self.throttle_var.get()  # i.e. SCSpeed50 etc.
+            if selected_throttle in self.ed_ap.current_ship_cfg:
+                spd_dmd_dict = self.ed_ap.current_ship_cfg[selected_throttle]
+                if 'PitchRate' in spd_dmd_dict:
+                    curve = spd_dmd_dict['PitchRate']
+                    # Edit the curve
+                    new_curve = line_editor(curve, f"{selected_throttle} - Pitch curve")
+                    if new_curve is not None:
+                        if messagebox.askyesno("RPY curve", "Keep the changes made to curve? If Yes, remember to save."):
+                            spd_dmd_dict['PitchRate'] = new_curve
+            else:
+                messagebox.showinfo("EDAP", "Select a Throttle setting in the dropdown above.")
+
+    def edit_yaw_curve(self):
+        # Get current ship yaw curve
+        if self.ed_ap.current_ship_cfg:
+            # Get the selected speed from the combobox
+            selected_throttle = self.throttle_var.get()  # i.e. SCSpeed50 etc.
+            if selected_throttle in self.ed_ap.current_ship_cfg:
+                spd_dmd_dict = self.ed_ap.current_ship_cfg[selected_throttle]
+                if 'YawRate' in spd_dmd_dict:
+                    curve = spd_dmd_dict['YawRate']
+                    # Edit the curve
+                    new_curve = line_editor(curve, f"{selected_throttle} - Pitch curve")
+                    if new_curve is not None:
+                        if messagebox.askyesno("RPY curve", "Keep the changes made to curve? If Yes, remember to save."):
+                            spd_dmd_dict['YawRate'] = new_curve
+            else:
+                messagebox.showinfo("EDAP", "Select a Throttle setting in the dropdown above.")
+
+    def tuning_align_target(self):
+        """
+        Aligns to the target for tuning.
+        @return: N/A
+        """
+        self.ed_ap.compass_align(self.ed_ap.scrReg)
 
     def save_settings(self):
-        self.entry_update()
+        self.entry_update(None)
         self.ed_ap.update_config()
         self.ed_ap.update_ship_configs()
+        self.calibration.save_ocr_calibration_data()
+        self.log_msg("Saved all settings.")
 
-    def load_tce_dest(self):
-        filename = self.ed_ap.config['TCEDestinationFilepath']
-        if os.path.exists(filename):
-            with open(filename, 'r') as json_file:
-                f_details = json.load(json_file)
+    def load_settings(self):
+        self.ed_ap.load_ship_configs()
 
-            self.single_waypoint_system.set(f_details['StarSystem'])
-            self.single_waypoint_station.set(f_details['Station'])
+    def open_help(self):
+        # Determine the active Tab
+        tab_text = self._nb.tab(self._nb.select(), "text")
 
-    # new data was added to a field, re-read them all for simple logic
-    def entry_update(self, event=''):
+        if tab_text == "Main":
+            webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/blob/main/docs/Main.md")
+        elif tab_text == "Settings":
+            webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/blob/main/docs/Settings.md")
+        elif tab_text == "Debug/Test":
+            webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/blob/main/docs/DebugTest.md")
+        elif tab_text == "Calibration":
+            webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/blob/main/docs/Calibration.md")
+        elif tab_text == "Waypoints":
+            webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/blob/main/docs/WaypointEditor.md")
+        elif tab_text == "Colonization":
+            webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/blob/main/docs/ColonizationEditor.md")
+        elif tab_text == "TCE":
+            webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/blob/main/docs/TCE.md")
+        else:
+            messagebox.showwarning("Warning", f"No match for tab text '{tab_text}'. Please report to developers.")
+            webbrowser.open_new("https://github.com/SumZer0-git/EDAPGui/blob/main/docs/Main.md")
+
+
+    def entry_update(self, event):
+        """
+        # new data was added to a field, re-read them all for simple logic
+        @param event: A dummy argument required the calling function.
+        @return: Nothing
+        """
         try:
-            self.ed_ap.pitchrate = float(self.entries['ship']['PitchRate'].get())
-            self.ed_ap.rollrate = float(self.entries['ship']['RollRate'].get())
-            self.ed_ap.yawrate = float(self.entries['ship']['YawRate'].get())
             self.ed_ap.sunpitchuptime = float(self.entries['ship']['SunPitchUp+Time'].get())
 
             self.ed_ap.config['SunBrightThreshold'] = int(self.entries['autopilot']['Sun Bright Threshold'].get())
@@ -796,33 +758,27 @@ class APGui():
             self.ed_ap.config['HotKey_StartRobigo'] = str(self.entries['buttons']['Start Robigo'].get())
             self.ed_ap.config['HotKey_StopAllAssists'] = str(self.entries['buttons']['Stop All'].get())
             self.ed_ap.config['VoiceEnable'] = self.checkboxvar['Enable Voice'].get()
-            self.ed_ap.config['VoiceLanguage'] = self.radiobuttonvar['voice_language'].get()
-            self.ed_ap.config['VoiceID'] = self._get_selected_voice_id()
-            self.ed_ap.config['TCEDestinationFilepath'] = str(self.TCE_Destination_Filepath.get())
+            self.ed_ap.config['ElwScannerEnable'] = self.checkboxvar['ELW Scanner'].get()
             self.ed_ap.config['DebugOverlay'] = self.checkboxvar['Debug Overlay'].get()
-        except Exception:
-            messagebox.showinfo(
-                self._t('ui.message.invalid_float_title'),
-                self._t('ui.message.invalid_float_body')
-            )
+            self.ed_ap.config['AFKCombat_AttackAtWill'] = self.checkboxvar['AFKCombat AttackAtWill'].get()
+            self.ed_ap.config['HotkeysEnable'] = self.checkboxvar['Enable Hotkeys'].get()
+            self.ed_ap.config['DebugOCR'] = self.checkboxvar['Debug OCR'].get()
+            self.ed_ap.config['DebugImages'] = self.checkboxvar['Debug Images'].get()
+            self.ed_ap.config['Key_ModDelay'] = float(self.entries['keys']['Modifier Key Delay'].get())
+            self.ed_ap.config['Key_DefHoldTime'] = float(self.entries['keys']['Default Hold Time'].get())
+            self.ed_ap.config['Key_RepeatDelay'] = float(self.entries['keys']['Repeat Key Delay'].get())
+            self.ed_ap.config['AutoTuneRPYRates'] = self.checkboxvar['Enable Auto-tune RPY'].get()
 
-    def update_voice_controls_state(self):
-        has_voices = bool(self.voice_options)
-        voice_state = 'readonly' if has_voices else 'disabled'
-        logger.debug(f"Voice controls state: has_voices={has_voices}, voice_options_count={len(self.voice_options)}, state={voice_state}")
+            # Process config[] settings to update classes as necessary
+            self.ed_ap.process_config_settings()
+        except:
+            messagebox.showinfo("Exception", "Invalid float entered")
 
-        if hasattr(self, 'voice_combo'):
-            voice_values = [option.get('label', '') for option in self.voice_options]
-            logger.debug(f"Voice combo values: {voice_values}")
-
-            self.voice_combo.config(state=voice_state, values=voice_values)
-            if not has_voices:
-                self.voice_selection_var.set('')
-
-    # ckbox.state:(ACTIVE | DISABLED)
-
-    # ('FSD Route Assist', 'Supercruise Assist', 'Enable Voice', 'Enable CV View')
     def check_cb(self, field):
+        """ Check checkbox
+            ckbox.state:(ACTIVE | DISABLED)
+            ('FSD Route Assist', 'Supercruise Assist', 'Enable Voice', 'Enable CV View')
+        """
         # print("got event:",  checkboxvar['FSD Route Assist'].get(), " ", str(FSD_A_running))
         if field == 'FSD Route Assist':
             if self.checkboxvar['FSD Route Assist'].get() == 1 and self.FSD_A_running == False:
@@ -868,10 +824,7 @@ class APGui():
                 self.start_waypoint()
 
             elif self.checkboxvar['Waypoint Assist'].get() == 0 and self.WP_A_running == True:
-                logger.debug("check_cb: Calling stop_waypoint()")
                 self.stop_waypoint()
-            elif self.checkboxvar['Waypoint Assist'].get() == 0 and self.WP_A_running == False:
-                logger.debug("check_cb: Waypoint checkbox is 0 but WP_A_running is False - already stopped")
                 self.lab_ck['FSD Route Assist'].config(state='active')
                 self.lab_ck['Supercruise Assist'].config(state='active')
                 self.lab_ck['AFK Combat Assist'].config(state='active')
@@ -896,9 +849,8 @@ class APGui():
                 self.lab_ck['DSS Assist'].config(state='active')
 
         if field == 'AFK Combat Assist':
-            if self.checkboxvar['AFK Combat Assist'].get() == 1 and self.AFK_A_running == False:
+            if self.checkboxvar['AFK Combat Assist'].get() == 1:
                 self.ed_ap.set_afk_combat_assist(True)
-                self.AFK_A_running = True
                 self.log_msg("AFK Combat Assist start")
                 self.lab_ck['FSD Route Assist'].config(state='disabled')
                 self.lab_ck['Supercruise Assist'].config(state='disabled')
@@ -906,9 +858,8 @@ class APGui():
                 self.lab_ck['Robigo Assist'].config(state='disabled')
                 self.lab_ck['DSS Assist'].config(state='disabled')
 
-            elif self.checkboxvar['AFK Combat Assist'].get() == 0 and self.AFK_A_running == True:
+            elif self.checkboxvar['AFK Combat Assist'].get() == 0:
                 self.ed_ap.set_afk_combat_assist(False)
-                self.AFK_A_running = False
                 self.log_msg("AFK Combat Assist stop")
                 self.lab_ck['FSD Route Assist'].config(state='active')
                 self.lab_ck['Supercruise Assist'].config(state='active')
@@ -940,7 +891,7 @@ class APGui():
 
         if self.checkboxvar['Activate Elite for each key'].get():
             self.ed_ap.set_activate_elite_eachkey(True)
-            self.ed_ap.keys.activate_window=True
+            self.ed_ap.keys.activate_window = True
         else:
             self.ed_ap.set_activate_elite_eachkey(False)
             self.ed_ap.keys.activate_window = False
@@ -995,778 +946,369 @@ class APGui():
             else:
                 self.ed_ap.debug_overlay = False
 
-    def makeform(
-        self,
-        win,
-        ftype,
-        fields,
-        r=0,
-        inc=1,
-        rfrom=0,
-        rto=1000,
-        entry_width=None,
-        grid_columns=False,
-        label_padx=(0, 0),
-        entry_padx=(0, 0),
-        label_sticky='w',
-        entry_sticky=(N, S, E, W)
-    ):
+        self.ed_ap.config['AFKCombat_AttackAtWill'] = self.checkboxvar['AFKCombat AttackAtWill'].get()
+
+        if field == 'Enable Hotkeys':
+            self.ed_ap.config['HotkeysEnable'] = self.checkboxvar['Enable Hotkeys'].get()
+            self.setup_hotkeys()
+
+        if field == 'Debug OCR':
+            self.ed_ap.debug_ocr = self.checkboxvar['Debug OCR'].get()
+
+        if field == 'Debug Images':
+            self.ed_ap.debug_images = self.checkboxvar['Debug Images'].get()
+
+        if field == 'Enable Auto-tune RPY':
+            self.ed_ap.config['AutoTuneRPYRates'] = self.checkboxvar['Enable Auto-tune RPY'].get()
+
+    def makeform(self, win: ttk.LabelFrame, f_type: int, fields, r: int = 0, inc: float = 1, r_from: float = 0,
+                 rto: float = 1000):
         entries = {}
+        win.columnconfigure(1, weight=1)
 
-        for field in fields:
-            if grid_columns:
-                row_container = win
-                current_row = r
-                r += 1
+        for fld in fields:
+            if f_type == FORM_TYPE_CHECKBOX:
+                self.checkboxvar[fld] = tk.IntVar()
+                lab = ttk.Checkbutton(win, text=fld, variable=self.checkboxvar[fld],
+                                      command=(lambda field=fld: self.check_cb(field)))
+                self.lab_ck[fld] = lab
+                lab.grid(row=r, column=0, columnspan=2, padx=2, pady=2, sticky=tk.W)
             else:
-                row_container = tk.Frame(win)
-                row_container.grid(row=r, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-                row_container.columnconfigure(0, weight=1)
-                row_container.columnconfigure(1, weight=1)
-                current_row = 0
-                r += 1
-
-            display_text = self._get_field_label(field)
-            if ftype == FORM_TYPE_CHECKBOX:
-                self.checkboxvar[field] = IntVar()
-                lab = Checkbutton(row_container, text=display_text, anchor='w', justify=LEFT, wraplength=260, variable=self.checkboxvar[field], command=(lambda field=field: self.check_cb(field)))
-                self.lab_ck[field] = lab
-                self._register_widget_text(lab, self.field_text_keys.get(field))
-                if grid_columns:
-                    lab.grid(row=current_row, column=0, columnspan=2, sticky='w', padx=label_padx, pady=2)
+                lab = ttk.Label(win, text=fld + ": ")
+                if f_type == FORM_TYPE_SPINBOX:
+                    ent = ttk.Spinbox(win, width=10, from_=r_from, to=rto, increment=inc, justify=tk.RIGHT)
                 else:
-                    lab.grid(row=0, column=0, sticky='w')
-            else:
-                lab = tk.Label(row_container, anchor='w', pady=3, text=display_text + ": ")
-                self._register_widget_text(lab, self.field_text_keys.get(field), formatter=lambda txt: f"{txt}: ")
-                if ftype == FORM_TYPE_SPINBOX:
-                    spinbox_kwargs = {}
-                    if entry_width:
-                        spinbox_kwargs['width'] = entry_width
-                    ent = tk.Spinbox(row_container, from_=rfrom, to=rto, increment=inc, **spinbox_kwargs)
-                else:
-                    entry_kwargs = {}
-                    if entry_width:
-                        entry_kwargs['width'] = entry_width
-                    ent = tk.Entry(row_container, **entry_kwargs)
+                    ent = ttk.Entry(win, width=10, justify=tk.RIGHT)
                 ent.bind('<FocusOut>', self.entry_update)
                 ent.insert(0, "0")
-                if grid_columns:
-                    lab.grid(row=current_row, column=0, sticky=label_sticky, padx=label_padx, pady=2)
-                    ent.grid(row=current_row, column=1, sticky=entry_sticky, padx=entry_padx, pady=2)
-                else:
-                    lab.grid(row=0, column=0, sticky='w')
-                    ent.grid(row=0, column=1, sticky=(N, S, E, W))
+                lab.grid(row=r, column=0, padx=2, pady=2, sticky=tk.W)
+                ent.grid(row=r, column=1, padx=2, pady=2, sticky=tk.E)
+                entries[fld] = ent
 
-            tip_text = self._get_tooltip_text(field)
-            if tip_text:
-                tip_target = lab if grid_columns else row_container
-                tip = Hovertip(tip_target, tip_text, hover_delay=1000)
-                self._register_tooltip(field, tip)
-
-            if ftype != FORM_TYPE_CHECKBOX:
-                entries[field] = ent
-
+            lab = ToolTip(lab, msg=self.tooltips[fld], delay=1.0, bg="#808080", fg="#FFFFFF")
+            r += 1
         return entries
-
-    def _get_field_label(self, field):
-        key = self.field_text_keys.get(field)
-        if key:
-            return self._t(key)
-        return field
-
-    def _get_tooltip_text(self, field):
-        key = self.tooltip_keys.get(field)
-        if key:
-            return self._t(key)
-        return ''
-
-    def _t(self, key, **kwargs):
-        text = self.localization[key]
-        if kwargs:
-            return text.format(**kwargs)
-        return text
-
-    def _register_localization(self, key, setter, kwargs=None):
-        self.localization_bindings.append({'key': key, 'setter': setter, 'kwargs': kwargs})
-
-    def _register_widget_text(self, widget, key, attribute='text', formatter=None, kwargs=None):
-        if not key:
-            return
-
-        def setter(value, widget=widget, attribute=attribute, formatter=formatter):
-            if formatter:
-                value = formatter(value)
-            widget.configure(**{attribute: value})
-
-        self._register_localization(key, setter, kwargs)
-
-    def _register_menu_entry(self, menu, key, index=None):
-        if not key:
-            return
-
-        if index is None:
-            index = menu.index('end')
-
-        def setter(value, menu=menu, index=index):
-            menu.entryconfig(index, label=value)
-
-        self._register_localization(key, setter)
-
-    def _register_tooltip(self, field, tooltip):
-        if not field:
-            return
-        self.tooltip_instances.setdefault(field, []).append(tooltip)
-
-    def _language_display_name(self, code):
-        key = f'ui.language.name.{code}'
-        try:
-            return self._t(key)
-        except KeyError:
-            return code
-
-    def _get_ocr_language_display(self, code):
-        if code == 'ru':
-            key = 'ui.radio.ocr_language.ru'
-        else:
-            key = 'ui.radio.ocr_language.en'
-        try:
-            return self._t(key)
-        except KeyError:
-            return code
-
-    def _refresh_waypoint_label(self):
-        """Оновлює напис з назвою завантаженого файлу waypoint"""
-        if not hasattr(self, 'wp_filelabel'):
-            return
-        if self.current_wp_filename:
-            # Відображаємо назву файлу без шляху
-            filename = Path(self.current_wp_filename).name
-            text = self._t('ui.waypoint.loaded', filename=filename)
-        else:
-            text = self._t('ui.waypoint.no_list_loaded')
-        self.wp_filelabel.set(text)
-
-    def _update_tooltips(self):
-        for field, tooltips in self.tooltip_instances.items():
-            text = self._get_tooltip_text(field)
-            for tip in tooltips:
-                tip.text = text
-
-    def refresh_ui_texts(self):
-        self.root.title(self._t('ui.window.title', version=EDAP_VERSION))
-        for binding in self.localization_bindings:
-            kwargs = binding['kwargs']
-            if callable(kwargs):
-                kwargs_value = kwargs()
-            else:
-                kwargs_value = kwargs or {}
-            binding['setter'](self._t(binding['key'], **kwargs_value))
-        self._refresh_waypoint_label()
-        if self.jumpcount_placeholder:
-            self.jumpcount.configure(text=self._t('ui.status.jump_placeholder'))
-        self._update_tooltips()
-
-    def set_language(self, lang):
-        if lang == self.localization.language:
-            return
-        try:
-            self.localization.change_language(lang)
-        except Exception:
-            messagebox.showerror(
-                self._t('ui.message.language_switch_error_title'),
-                self._t('ui.message.language_switch_error_body', language=self._language_display_name(lang))
-            )
-            return
-        self.language_var.set(lang)
-        if not self.ed_ap.set_ui_language(lang):
-            logger.warning(f"Failed to propagate language '{lang}' to overlay localization.")
-        self.refresh_ui_texts()
-        self.log_msg(self._t('ui.log.language_switched', language=self._language_display_name(lang)))
-
-    def on_ocr_language_change(self, lang):
-        current = self.ed_ap.config.get('OCRLanguage', 'en')
-        if lang == current:
-            return
-
-        if not self.ed_ap.set_ocr_language(lang):
-            self.radiobuttonvar['ocr_language'].set(current)
-            return
-
-        self.radiobuttonvar['ocr_language'].set(lang)
-        self.log_msg(self._t('ui.log.ocr_language_switched', language=self._get_ocr_language_display(lang)))
-
-    def on_voice_language_change(self):
-        language = self.radiobuttonvar['voice_language'].get()
-        self.ed_ap.config['VoiceLanguage'] = language
-        self.ed_ap.vce.set_voice_language(language)
-        self._auto_select_voice_for_language()
-        self.update_voice_controls_state()
-        self.ed_ap.update_config()
-
-    def _load_voice_options(self):
-        options = []
-        try:
-            voice_options_raw = self.ed_ap.vce.get_voice_options()
-            logger.debug(f"Found {len(voice_options_raw)} total voice options")
-
-            for voice in voice_options_raw:
-                languages = [str(lang).lower() for lang in voice.get('languages', []) if lang]
-                option = {
-                    'id': voice.get('index', 0),
-                    'name': voice.get('name', ''),
-                    'languages': languages,
-                }
-                option['label'] = self._format_voice_option_label(option)
-                logger.debug(f"Voice option: {option}")
-                options.append(option)
-
-            logger.debug(f"Loaded {len(options)} voice options")
-
-        except Exception as error:
-            logger.error(f"Error loading voice options: {error}")
-            self.log_msg(self._t('log.voice.tts_error', error=str(error)))
-        return options
-
-    def _format_voice_option_label(self, option):
-        languages = option.get('languages') or []
-        language_hint = languages[0] if languages else ''
-        suffix = f" [{language_hint}]" if language_hint else ''
-        return f"{option.get('id', 0)}: {option.get('name', '')}{suffix}"
-
-    def _set_voice_selection(self, voice_id):
-        logger.debug(f"Setting voice selection: requested_id={voice_id}, available_options={len(self.voice_options)}")
-
-        for option in self.voice_options:
-            if option.get('id') == voice_id:
-                logger.debug(f"Found matching voice: {option.get('label', '')}")
-                self.voice_selection_var.set(option.get('label', ''))
-                return
-        if self.voice_options:
-            logger.debug(f"Voice ID {voice_id} not found, using first option: {self.voice_options[0].get('label', '')}")
-            self.voice_selection_var.set(self.voice_options[0].get('label', ''))
-        else:
-            logger.debug("No voice options available, clearing selection")
-            self.voice_selection_var.set('')
-
-    def _find_voice_option_for_language(self, language):
-        target = str(language).lower().strip()
-        if not target:
-            return None
-        for option in self.voice_options:
-            if Voice.matches_language_metadata(
-                option.get('languages', []),
-                option.get('name', ''),
-                option.get('id', ''),
-                target,
-            ):
-                return option
-        return None
-
-    def _auto_select_voice_for_language(self):
-        # Only auto-select if user hasn't already made a choice
-        if not self.voice_selection_var.get():
-            option = self._find_voice_option_for_language(self.radiobuttonvar['voice_language'].get())
-            if option:
-                logger.debug(f"Auto-selecting voice for language: {option.get('label', '')}")
-                self.voice_selection_var.set(option.get('label', ''))
-                self.on_voice_selection_change()
-            else:
-                logger.debug("No voice found for language auto-selection")
-        else:
-            logger.debug("Voice already selected, skipping auto-selection")
-
-    def _get_selected_voice_id(self):
-        value = str(self.voice_selection_var.get())
-        try:
-            return int(value.split(':', 1)[0])
-        except (ValueError, IndexError):
-            return 0
-
-    def on_voice_selection_change(self, _event=None):
-        new_id = self._get_selected_voice_id()
-        self.ed_ap.config['VoiceID'] = new_id
-        self.ed_ap.vce.set_voice_id(new_id)
-        self.ed_ap.update_config()
 
     def gui_gen(self, win):
 
         modes_check_fields = ('FSD Route Assist', 'Supercruise Assist', 'Waypoint Assist', 'Robigo Assist', 'AFK Combat Assist', 'DSS Assist')
-        ship_entry_fields = ('RollRate', 'PitchRate', 'YawRate')
         autopilot_entry_fields = ('Sun Bright Threshold', 'Nav Align Tries', 'Jump Tries', 'Docking Retries', 'Wait For Autodock')
         buttons_entry_fields = ('Start FSD', 'Start SC', 'Start Robigo', 'Stop All')
         refuel_entry_fields = ('Refuel Threshold', 'Scoop Timeout', 'Fuel Threshold Abort')
         overlay_entry_fields = ('X Offset', 'Y Offset', 'Font Size')
-
-        #
-        # Define all the menus
-        #
-        menubar = Menu(win, background='#ff8000', foreground='black', activebackground='white', activeforeground='black')
-        file = Menu(menubar, tearoff=0)
-        file.add_command(label=self._t('ui.menu.file.calibrate_target'), command=self.calibrate_callback)
-        self._register_menu_entry(file, 'ui.menu.file.calibrate_target')
-        file.add_command(label=self._t('ui.menu.file.calibrate_compass'), command=self.calibrate_compass_callback)
-        self._register_menu_entry(file, 'ui.menu.file.calibrate_compass')
-        self.checkboxvar['Enable CV View'] = IntVar()
-        self.checkboxvar['Enable CV View'].set(int(self.ed_ap.config['Enable_CV_View']))  # set IntVar value to the one from config
-        file.add_checkbutton(label=self._t('ui.menu.file.enable_cv_view'), onvalue=1, offvalue=0, variable=self.checkboxvar['Enable CV View'], command=(lambda field='Enable CV View': self.check_cb(field)))
-        self._register_menu_entry(file, 'ui.menu.file.enable_cv_view')
-        file.add_separator()
-        file.add_command(label=self._t('ui.menu.file.restart'), command=self.restart_program)
-        self._register_menu_entry(file, 'ui.menu.file.restart')
-        file.add_command(label=self._t('ui.menu.file.exit'), command=self.close_window)  # win.quit)
-        self._register_menu_entry(file, 'ui.menu.file.exit')
-        menubar.add_cascade(label=self._t('ui.menu.file'), menu=file)
-        self._register_menu_entry(menubar, 'ui.menu.file')
-
-        help_menu = Menu(menubar, tearoff=0)
-        help_menu.add_command(label=self._t('ui.menu.help.check_updates'), command=self.check_updates)
-        self._register_menu_entry(help_menu, 'ui.menu.help.check_updates')
-        help_menu.add_command(label=self._t('ui.menu.help.view_changelog'), command=self.open_changelog)
-        self._register_menu_entry(help_menu, 'ui.menu.help.view_changelog')
-
-        language_menu = Menu(help_menu, tearoff=0)
-        for lang in self.language_options:
-            name_key = f'ui.language.name.{lang}'
-            language_menu.add_radiobutton(
-                label=self._t(name_key),
-                variable=self.language_var,
-                value=lang,
-                command=lambda code=lang: self.set_language(code)
-            )
-            self._register_menu_entry(language_menu, name_key)
-        help_menu.add_cascade(label=self._t('ui.menu.help.language'), menu=language_menu)
-        self._register_menu_entry(help_menu, 'ui.menu.help.language')
-
-        help_menu.add_separator()
-        help_menu.add_command(label=self._t('ui.menu.help.join_discord'), command=self.open_discord)
-        self._register_menu_entry(help_menu, 'ui.menu.help.join_discord')
-        help_menu.add_command(label=self._t('ui.menu.help.about'), command=self.about)
-        self._register_menu_entry(help_menu, 'ui.menu.help.about')
-        menubar.add_cascade(label=self._t('ui.menu.help'), menu=help_menu)
-        self._register_menu_entry(menubar, 'ui.menu.help')
-
-        win.config(menu=menubar)
+        keys_entry_fields = ('Modifier Key Delay', 'Default Hold Time', 'Repeat Key Delay')
 
         # notebook pages
-        nb = ttk.Notebook(win)
-        nb.grid(row=0, column=0, sticky=(N, S, E, W))
-        page0 = Frame(nb)
-        page1 = Frame(nb)
-        page2 = Frame(nb)
-        nb.add(page0, text=self._t('ui.notebook.main'))  # main page
-        self._register_localization('ui.notebook.main', lambda text, nb=nb, tab=page0: nb.tab(tab, text=text))
-        nb.add(page1, text=self._t('ui.notebook.settings'))  # options page
-        self._register_localization('ui.notebook.settings', lambda text, nb=nb, tab=page1: nb.tab(tab, text=text))
-        nb.add(page2, text=self._t('ui.notebook.debug'))  # debug/test page
-        self._register_localization('ui.notebook.debug', lambda text, nb=nb, tab=page2: nb.tab(tab, text=text))
+        blk_top_buttons = ttk.Frame(win)
+        blk_top_buttons.grid(row=0, column=0, padx=10, pady=5, sticky="EW")
+        blk_top_buttons.columnconfigure(0)
+        blk_top_buttons.columnconfigure(1, weight=1)
 
-        page0.columnconfigure(0, weight=1)
-        page0.rowconfigure(0, weight=1)
-        page0.rowconfigure(1, weight=0)
-        page0.rowconfigure(2, weight=1)
-        page1.columnconfigure(0, weight=1)
-        page1.rowconfigure(0, weight=1)
-        page1.rowconfigure(1, weight=0)
-        page2.columnconfigure(0, weight=1)
-        page2.rowconfigure(0, weight=0)
-        page2.rowconfigure(1, weight=1)
-        page2.rowconfigure(2, weight=0)
+        btn_load = ttk.Button(blk_top_buttons, text='Load All Settings', command=self.load_settings)
+        btn_load.grid(row=0, column=0, padx=5, pady=5, sticky="W")
+        btn_save = ttk.Button(blk_top_buttons, text='Save All Settings', command=self.save_settings, style="Accent.TButton")
+        btn_save.grid(row=0, column=1, padx=2, pady=5, sticky="W")
+        ttk.Button(blk_top_buttons, text="Online HELP", command=self.open_help, style="Accent.TButton").grid(row=0, column=2, padx=5, pady=10, sticky=tk.E)
 
+        self._nb = ttk.Notebook(win)
+        self._nb.grid(row=1, padx=10, pady=5, sticky="NSEW")
+
+        page0 = ttk.Frame(self._nb)
+        page0.grid_columnconfigure(0, weight=1)
+        page0.grid_rowconfigure(0, weight=0)
+        page0.grid_rowconfigure(1, weight=0)
+        page0.grid_rowconfigure(2, weight=1)  # Log row
+        self._nb.add(page0, text="Main")  # main page
+
+        page1 = ttk.Frame(self._nb)
+        page1.grid_columnconfigure(0, weight=1)
+        self._nb.add(page1, text="Settings")  # options page
+
+        page2 = ttk.Frame(self._nb)
+        page2.grid_columnconfigure([0, 1], weight=1)
+        self._nb.add(page2, text="Debug/Test")  # debug/test page
+
+        # === Calibration Tab ===
+        page_calibration = ttk.Frame(self._nb)
+        page_calibration.grid_columnconfigure(0, weight=1)
+        self._nb.add(page_calibration, text="Calibration")
+        # self.create_calibration_tab(page_calibration)
+        self.calibration = Calibration(self.ed_ap, self.callback)
+        self.calibration.create_calibration_tab(page_calibration)
+        # self.calibration_tab.frame.pack(fill="both", expand=True)
+
+        # === Waypoint Editor Tab ===
+        page_waypoint_editor = ttk.Frame(self._nb)
+        page_waypoint_editor.grid_columnconfigure(0, weight=1)
+        self._nb.add(page_waypoint_editor, text="Waypoints")
+        self.waypoint_editor_tab = WaypointEditorTab(page_waypoint_editor, self.ed_ap.waypoint)
+        self.waypoint_editor_tab.frame.pack(fill="both", expand=True)
+
+        # === Colonization Editor Tab ===
+        tab_colonize_editor = ttk.Frame(self._nb)
+        tab_colonize_editor.grid_columnconfigure(0, weight=1)
+        self._nb.add(tab_colonize_editor, text="Colonization")
+        self.colonize_tab = ColonizeEditorTab(self.ed_ap, self.callback)
+        self.colonize_tab.create_waypoints_tab(tab_colonize_editor)
+        self.colonize_tab.frame.pack(fill="both", expand=True)
+
+        # === TCE Integration ===
+        page_tce_integration = ttk.Frame(self._nb)
+        page_tce_integration.grid_columnconfigure(0, weight=1)
+        self._nb.add(page_tce_integration, text="TCE")
+        tce_integration_tab = self.ed_ap.tce_integration.create_gui_tab(self, page_tce_integration)
+
+        # === MAIN TAB ===
         # main options block
-        blk_main = tk.Frame(page0)
-        blk_main.grid(row=0, column=0, padx=10, pady=5, sticky=(N, S, E, W))
-        blk_main.columnconfigure([0, 1], weight=1, uniform="group1")
-        blk_main.rowconfigure(0, weight=1)
+        blk_main = ttk.Frame(page0)
+        blk_main.grid(row=0, column=0, padx=10, pady=5, sticky="NSEW")
+        blk_main.columnconfigure([0, 1], weight=1, minsize=100, uniform="group1")
 
         # ap mode checkboxes block
-        blk_modes = LabelFrame(blk_main, text=self._t('ui.frame.mode'))
-        self._register_widget_text(blk_modes, 'ui.frame.mode')
-        blk_modes.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_modes.columnconfigure(0, weight=1)
+        blk_modes = ttk.LabelFrame(blk_main, text="MODE", padding=(10, 5))
+        blk_modes.grid(row=0, column=0, padx=2, pady=2, sticky="NSEW")
         self.makeform(blk_modes, FORM_TYPE_CHECKBOX, modes_check_fields)
 
         # ship values block
-        blk_ship = LabelFrame(blk_main, text=self._t('ui.frame.ship'))
-        self._register_widget_text(blk_ship, 'ui.frame.ship')
-        blk_ship.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_ship.columnconfigure(0, weight=1, uniform='ship_cols')
-        blk_ship.columnconfigure(1, weight=1, uniform='ship_cols')
-        self.entries['ship'] = self.makeform(
-            blk_ship,
-            FORM_TYPE_SPINBOX,
-            ship_entry_fields,
-            0,
-            0.5,
-            entry_width=NUMERIC_FIELD_WIDTH,
-            grid_columns=True,
-            label_padx=NUMERIC_LABEL_PADX,
-            entry_padx=NUMERIC_ENTRY_PADX,
-            label_sticky='e',
-            entry_sticky='w'
-        )
+        blk_ship = ttk.LabelFrame(blk_main, text="SHIP", padding=(10, 5))
+        blk_ship.grid(row=0, column=1, padx=2, pady=2, sticky="NSEW")
 
-        lbl_sun_pitch_up = tk.Label(blk_ship, text=self._t('ui.label.sun_pitch_time'), anchor='e')
-        self._register_widget_text(lbl_sun_pitch_up, 'ui.label.sun_pitch_time')
-        lbl_sun_pitch_up.grid(row=3, column=0, padx=NUMERIC_LABEL_PADX, pady=2, sticky='e')
-        spn_sun_pitch_up = tk.Spinbox(blk_ship, from_=-100, to=100, increment=0.5, width=NUMERIC_FIELD_WIDTH)
-        spn_sun_pitch_up.grid(row=3, column=1, padx=NUMERIC_ENTRY_PADX, pady=2, sticky='w')
+        lbl_sun_pitch_up = ttk.Label(blk_ship, text='SunPitchUp +/- Time:')
+        lbl_sun_pitch_up.grid(row=1, column=0, pady=3, sticky=tk.W)
+        spn_sun_pitch_up = ttk.Spinbox(blk_ship, width=10, from_=-100, to=100, increment=0.5, justify=tk.RIGHT)
+        spn_sun_pitch_up.grid(row=1, column=1, padx=2, pady=2, sticky=tk.E)
         spn_sun_pitch_up.bind('<FocusOut>', self.entry_update)
+        self.entries['ship'] = {}
         self.entries['ship']['SunPitchUp+Time'] = spn_sun_pitch_up
-        tip = Hovertip(lbl_sun_pitch_up, self._get_tooltip_text('SunPitchUp+Time'), hover_delay=1000)
-        self._register_tooltip('SunPitchUp+Time', tip)
 
-        btn_tst_roll = Button(blk_ship, text=self._t('ui.button.test_roll_rate'), command=self.ship_tst_roll)
-        self._register_widget_text(btn_tst_roll, 'ui.button.test_roll_rate')
-        btn_tst_roll.grid(row=4, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-        btn_tst_pitch = Button(blk_ship, text=self._t('ui.button.test_pitch_rate'), command=self.ship_tst_pitch)
-        self._register_widget_text(btn_tst_pitch, 'ui.button.test_pitch_rate')
-        btn_tst_pitch.grid(row=5, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-        btn_tst_yaw = Button(blk_ship, text=self._t('ui.button.test_yaw_rate'), command=self.ship_tst_yaw)
-        self._register_widget_text(btn_tst_yaw, 'ui.button.test_yaw_rate')
-        btn_tst_yaw.grid(row=6, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
+        lbl_calibrate_note = ttk.Label(blk_ship, text="Ship RPY Tuning:\n1. Enable Auto-tune.\n"
+                                                      "2. Fly until until response is correct.\n"
+                                                      "3. Use Align to Target button to fine tune.\n"
+                                                      "4a. Use Throttle dropdown to select and...\n"
+                                                      "4b. Edit Curve if necessary and save changes.\n"
+                                                      "5. Disable Auto-tune.")
+        lbl_calibrate_note.grid(row=2, columnspan=2, pady=5, sticky=tk.W)
 
-        # waypoints button block
-        blk_wp_buttons = tk.LabelFrame(page0, text=self._t('ui.frame.waypoints'))
-        self._register_widget_text(blk_wp_buttons, 'ui.frame.waypoints')
-        blk_wp_buttons.grid(row=1, column=0, padx=10, pady=5, sticky=(N, S, E, W))
-        blk_wp_buttons.columnconfigure([0, 1], weight=1, uniform="group1")
+        self.checkboxvar['Enable Auto-tune RPY'] = tk.BooleanVar()
+        self.checkboxvar['Enable Auto-tune RPY'].set(bool(self.ed_ap.config['AutoTuneRPYRates']))
+        cb_auto_tune_rpy = ttk.Checkbutton(blk_ship, text='Enable Auto-tune RPY',
+                                           variable=self.checkboxvar['Enable Auto-tune RPY'],
+                                           command=(lambda field='Enable Auto-tune RPY': self.check_cb(field)))
+        cb_auto_tune_rpy.grid(row=3, column=0, padx=2, pady=2, sticky=tk.W)
 
-        self.wp_filelabel = tk.StringVar(master=self.root)
-        self._refresh_waypoint_label()
-        btn_wp_file = Button(blk_wp_buttons, textvariable=self.wp_filelabel, command=self.open_wp_file)
-        btn_wp_file.grid(row=0, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-        tip_wp_file = self._get_tooltip_text('Waypoint List Button')
-        if tip_wp_file:
-            tip = Hovertip(btn_wp_file, tip_wp_file, hover_delay=1000)
-            self._register_tooltip('Waypoint List Button', tip)
+        btn_speed_0 = ttk.Button(blk_ship, text='0% Throttle', command=self.ship_throttle_0)
+        btn_speed_0.grid(row=4, column=0, padx=2, pady=12, columnspan=1, sticky="NSEW")
+        btn_speed_50 = ttk.Button(blk_ship, text='50% Throttle', command=self.ship_throttle_50)
+        btn_speed_50.grid(row=4, column=1, padx=2, pady=12, columnspan=1, sticky="NSEW")
+        btn_speed_100 = ttk.Button(blk_ship, text='100% Throttle', command=self.ship_throttle_100)
+        btn_speed_100.grid(row=5, column=0, padx=2, pady=2, columnspan=1, sticky="NSEW")
 
-        btn_reset = Button(blk_wp_buttons, text=self._t('ui.button.reset_list'), command=self.reset_wp_file)
-        self._register_widget_text(btn_reset, 'ui.button.reset_list')
-        btn_reset.grid(row=1, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-        tip_reset = self._get_tooltip_text('Reset Waypoint List')
-        if tip_reset:
-            tip = Hovertip(btn_reset, tip_reset, hover_delay=1000)
-            self._register_tooltip('Reset Waypoint List', tip)
+        btn_align_target = ttk.Button(blk_ship, text='Align to Target', command=self.tuning_align_target)
+        btn_align_target.grid(row=6, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
+
+        ttk.Label(blk_ship, text="Throttle:").grid(row=7, column=0, padx=5, pady=5, sticky=tk.W)
+
+        self.throttle_var = tk.StringVar()
+        self.throttle_combo = ttk.Combobox(blk_ship, textvariable=self.throttle_var, values=self.throttle_keys)
+        self.throttle_combo.grid(row=7, column=1, padx=5, pady=5, sticky="EW")
+        self.throttle_combo.bind("<<ComboboxSelected>>", self.on_throttle_select)
+
+
+        # btn_tst_roll = ttk.Button(blk_ship, text='4. Gather Roll Rates', command=self.ship_tst_roll)
+        # btn_tst_roll.grid(row=10, column=0, padx=2, pady=2, columnspan=1, sticky="NSEW")
+        btn_roll_edit = ttk.Button(blk_ship, text='Edit Roll Curve', command=self.edit_roll_curve)
+        btn_roll_edit.grid(row=10, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
+
+        # lbl_calibrate_note2 = ttk.Label(blk_ship, text="Tune Pitch & Yaw:\n1. Set speed above.\n"
+        #                                                "2. Target remote System.\n"
+        #                                                "3. Maneuver target to center of screen (and compass).")
+        # lbl_calibrate_note2.grid(row=11, columnspan=2, pady=5, sticky=tk.W)
+        # btn_tst_pitch = ttk.Button(blk_ship, text='4. Gather Pitch Rates', command=self.ship_tst_pitch)
+        # btn_tst_pitch.grid(row=12, column=0, padx=2, pady=2, columnspan=1, sticky="NSEW")
+        btn_pit_edit = ttk.Button(blk_ship, text='Edit Pitch Curve', command=self.edit_pit_curve)
+        btn_pit_edit.grid(row=12, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
+        # btn_tst_yaw = ttk.Button(blk_ship, text='6. Gather Yaw Rates', command=self.ship_tst_yaw)
+        # btn_tst_yaw.grid(row=13, column=0, padx=5, pady=2, columnspan=1, sticky="NSEW")
+        btn_yaw_edit = ttk.Button(blk_ship, text='Edit Yaw Curve', command=self.edit_yaw_curve)
+        btn_yaw_edit.grid(row=13, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
 
         # log window
-        log = LabelFrame(page0, text=self._t('ui.frame.log'))
-        self._register_widget_text(log, 'ui.frame.log')
-        log.grid(row=2, column=0, padx=12, pady=5, sticky=(N, S, E, W))
-        log.columnconfigure(0, weight=1)
-        log.rowconfigure(0, weight=1)
-        scrollbar = Scrollbar(log)
-        scrollbar.grid(row=0, column=1, sticky=(N, S))
-        mylist = Listbox(log, height=10, yscrollcommand=scrollbar.set)
-        mylist.grid(row=0, column=0, sticky=(N, S, E, W))
-        scrollbar.config(command=mylist.yview)
+        log = ttk.LabelFrame(page0, text="LOG", padding=(10, 5))
+        log.grid(row=2, column=0, padx=10, pady=5, sticky="NSEW")
+        log.grid_columnconfigure(0, weight=1)
+        log.grid_rowconfigure(0, weight=1)
+        y_scrollbar = ttk.Scrollbar(log)
+        y_scrollbar.grid(row=0, column=1, sticky="NSE")
+        x_scrollbar = ttk.Scrollbar(log, orient="horizontal")
+        x_scrollbar.grid(row=1, column=0, sticky="EW")
+        mylist = tk.Listbox(log, width=100, yscrollcommand=y_scrollbar.set, xscrollcommand=x_scrollbar.set)
+        mylist.grid(row=0, column=0, sticky="NSEW")
+        y_scrollbar.config(command=mylist.yview)
+        x_scrollbar.config(command=mylist.xview)
 
+        # === SETTINGS TAB ===
         # settings block
-        blk_settings = tk.Frame(page1)
-        blk_settings.grid(row=0, column=0, padx=10, pady=5, sticky=(N, S, E, W))
-        blk_settings.columnconfigure([0, 1], weight=1, uniform="group1")
-        for idx in range(3):
-            blk_settings.rowconfigure(idx, weight=1)
+        blk_settings = ttk.Frame(page1)
+        blk_settings.grid(row=0, column=0, padx=10, pady=5, sticky="EW")
+        blk_settings.columnconfigure([0, 1], weight=1, minsize=100, uniform="group1")
 
         # autopilot settings block
-        blk_ap = LabelFrame(blk_settings, text=self._t('ui.frame.autopilot'))
-        self._register_widget_text(blk_ap, 'ui.frame.autopilot')
-        blk_ap.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_ap.columnconfigure(0, weight=1, uniform='ap_cols')
-        blk_ap.columnconfigure(1, weight=1, uniform='ap_cols')
-        self.entries['autopilot'] = self.makeform(
-            blk_ap,
-            FORM_TYPE_SPINBOX,
-            autopilot_entry_fields,
-            entry_width=NUMERIC_FIELD_WIDTH,
-            grid_columns=True,
-            label_padx=NUMERIC_LABEL_PADX,
-            entry_padx=NUMERIC_ENTRY_PADX,
-            label_sticky='e',
-            entry_sticky='w'
-        )
-        self.checkboxvar['Enable Randomness'] = BooleanVar()
-        cb_random = Checkbutton(blk_ap, text=self._t('ui.checkbox.enable_randomness'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Enable Randomness'], command=(lambda field='Enable Randomness': self.check_cb(field)))
-        self._register_widget_text(cb_random, 'ui.checkbox.enable_randomness')
-        cb_random.grid(row=5, column=0, columnspan=2, sticky=(N, S, E, W))
-        self.checkboxvar['Activate Elite for each key'] = BooleanVar()
-        cb_activate_elite = Checkbutton(blk_ap, text=self._t('ui.checkbox.activate_elite_each_key'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Activate Elite for each key'], command=(lambda field='Activate Elite for each key': self.check_cb(field)))
-        self._register_widget_text(cb_activate_elite, 'ui.checkbox.activate_elite_each_key')
-        cb_activate_elite.grid(row=6, column=0, columnspan=2, sticky=(N, S, E, W))
-        self.checkboxvar['Automatic logout'] = BooleanVar()
-        cb_logout = Checkbutton(blk_ap, text=self._t('ui.checkbox.automatic_logout'), anchor='w', pady=3, justify=LEFT, wraplength=260, onvalue=1, offvalue=0, variable=self.checkboxvar['Automatic logout'], command=(lambda field='Automatic logout': self.check_cb(field)))
-        self._register_widget_text(cb_logout, 'ui.checkbox.automatic_logout')
-        cb_logout.grid(row=7, column=0, columnspan=2, sticky=(N, S, E, W))
-
-        lbl_ocr_language = tk.Label(blk_ap, text=self._t('ui.label.ocr_language'), anchor='e')
-        self._register_widget_text(lbl_ocr_language, 'ui.label.ocr_language')
-        lbl_ocr_language.grid(row=8, column=0, padx=NUMERIC_LABEL_PADX, pady=2, sticky='e')
-        frm_ocr_language = tk.Frame(blk_ap)
-        frm_ocr_language.grid(row=8, column=1, padx=NUMERIC_ENTRY_PADX, pady=2, sticky='w')
-        rb_ocr_en = Radiobutton(
-            frm_ocr_language,
-            pady=3,
-            text=self._t('ui.radio.ocr_language.en'),
-            variable=self.radiobuttonvar['ocr_language'],
-            value='en',
-            command=lambda lang='en': self.on_ocr_language_change(lang)
-        )
-        self._register_widget_text(rb_ocr_en, 'ui.radio.ocr_language.en')
-        rb_ocr_en.grid(row=0, column=0, sticky='w')
-        rb_ocr_ru = Radiobutton(
-            frm_ocr_language,
-            pady=3,
-            text=self._t('ui.radio.ocr_language.ru'),
-            variable=self.radiobuttonvar['ocr_language'],
-            value='ru',
-            command=lambda lang='ru': self.on_ocr_language_change(lang)
-        )
-        self._register_widget_text(rb_ocr_ru, 'ui.radio.ocr_language.ru')
-        rb_ocr_ru.grid(row=1, column=0, sticky='w')
+        blk_ap = ttk.LabelFrame(blk_settings, text="AUTOPILOT", padding=(10, 5))
+        blk_ap.grid(row=0, column=0, padx=2, pady=2, sticky="NSEW")
+        self.entries['autopilot'] = self.makeform(blk_ap, FORM_TYPE_SPINBOX, autopilot_entry_fields)
+        self.checkboxvar['Enable Randomness'] = tk.BooleanVar()
+        cb_random = ttk.Checkbutton(blk_ap, text='Enable Randomness', variable=self.checkboxvar['Enable Randomness'], command=(lambda field='Enable Randomness': self.check_cb(field)))
+        cb_random.grid(row=5, column=0, columnspan=2, sticky=tk.W)
+        self.checkboxvar['Automatic logout'] = tk.BooleanVar()
+        cb_logout = ttk.Checkbutton(blk_ap, text='Automatic logout', variable=self.checkboxvar['Automatic logout'], command=(lambda field='Automatic logout': self.check_cb(field)))
+        cb_logout.grid(row=6, column=0, columnspan=2, sticky=tk.W)
 
         # buttons settings block
-        blk_buttons = LabelFrame(blk_settings, text=self._t('ui.frame.buttons'))
-        self._register_widget_text(blk_buttons, 'ui.frame.buttons')
-        blk_buttons.grid(row=0, column=1, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_buttons.columnconfigure(0, weight=0, uniform='buttons_cols')
-        blk_buttons.columnconfigure(1, weight=1, uniform='buttons_cols')
-
-        lb_dss = Label(blk_buttons, anchor='e', pady=3, text=self._t('ui.label.dss_button'))
-        self._register_widget_text(lb_dss, 'ui.label.dss_button')
-        lb_dss.grid(row=0, column=0, sticky='e', padx=NUMERIC_LABEL_PADX, pady=2)
-
-        blk_dss = Frame(blk_buttons)
-        blk_dss.grid(row=0, column=1, sticky='w', padx=NUMERIC_ENTRY_PADX, pady=2)
-        self.radiobuttonvar['dss_button'] = StringVar()
-        rb_dss_primary = Radiobutton(
-            blk_dss,
-            pady=3,
-            text=self._t('ui.radio.primary'),
-            variable=self.radiobuttonvar['dss_button'],
-            value="Primary",
-            command=(lambda field='dss_button': self.check_cb(field))
-        )
-        self._register_widget_text(rb_dss_primary, 'ui.radio.primary')
-        rb_dss_primary.grid(row=0, column=0, sticky='w')
-        rb_dss_secandary = Radiobutton(
-            blk_dss,
-            pady=3,
-            text=self._t('ui.radio.secondary'),
-            variable=self.radiobuttonvar['dss_button'],
-            value="Secondary",
-            command=(lambda field='dss_button': self.check_cb(field))
-        )
-        self._register_widget_text(rb_dss_secandary, 'ui.radio.secondary')
-        rb_dss_secandary.grid(row=1, column=0, sticky='w')
-
-        self.entries['buttons'] = self.makeform(
-            blk_buttons,
-            FORM_TYPE_ENTRY,
-            buttons_entry_fields,
-            r=1,
-            grid_columns=True,
-            label_padx=NUMERIC_LABEL_PADX,
-            entry_padx=NUMERIC_ENTRY_PADX,
-            label_sticky='e',
-            entry_sticky='w'
-        )
+        blk_buttons = ttk.LabelFrame(blk_settings, text="BUTTONS", padding=(10, 5))
+        blk_buttons.grid(row=0, column=1, padx=2, pady=2, sticky="NSEW")
+        blk_dss = ttk.Frame(blk_buttons)
+        blk_dss.grid(row=0, column=0, columnspan=2, padx=0, pady=0, sticky="NSEW")
+        lb_dss = ttk.Label(blk_dss, text="D-Scanner (Honk) Button: ")
+        lb_dss.grid(row=0, column=0, sticky=tk.W)
+        self.radiobuttonvar['dss_button'] = tk.StringVar()
+        rb_dss_primary = ttk.Radiobutton(blk_dss, text="Primary", variable=self.radiobuttonvar['dss_button'], value="Primary", command=(lambda field='dss_button': self.check_cb(field)))
+        rb_dss_primary.grid(row=0, column=1, sticky=tk.W)
+        rb_dss_secondary = ttk.Radiobutton(blk_dss, text="Secondary", variable=self.radiobuttonvar['dss_button'], value="Secondary", command=(lambda field='dss_button': self.check_cb(field)))
+        rb_dss_secondary.grid(row=1, column=1, sticky=tk.W)
+        self.checkboxvar['Enable Hotkeys'] = tk.BooleanVar()
+        cb_enable = ttk.Checkbutton(blk_buttons, text='Enable Hotkeys (toggle after hotkey change)', variable=self.checkboxvar['Enable Hotkeys'], command=(lambda field='Enable Hotkeys': self.check_cb(field)))
+        cb_enable.grid(row=2, column=0, columnspan=2, sticky=tk.W)
+        self.entries['buttons'] = self.makeform(blk_buttons, FORM_TYPE_ENTRY, buttons_entry_fields, 3)
 
         # refuel settings block
-        blk_fuel = LabelFrame(blk_settings, text=self._t('ui.frame.fuel'))
-        self._register_widget_text(blk_fuel, 'ui.frame.fuel')
-        blk_fuel.grid(row=1, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_fuel.columnconfigure(0, weight=1, uniform='fuel_cols')
-        blk_fuel.columnconfigure(1, weight=1, uniform='fuel_cols')
-        self.entries['refuel'] = self.makeform(
-            blk_fuel,
-            FORM_TYPE_SPINBOX,
-            refuel_entry_fields,
-            entry_width=NUMERIC_FIELD_WIDTH,
-            grid_columns=True,
-            label_padx=NUMERIC_LABEL_PADX,
-            entry_padx=NUMERIC_ENTRY_PADX,
-            label_sticky='e',
-            entry_sticky='w'
-        )
+        blk_fuel = ttk.LabelFrame(blk_settings, text="FUEL", padding=(10, 5))
+        blk_fuel.grid(row=1, column=0, padx=2, pady=2, sticky="NSEW")
+        self.entries['refuel'] = self.makeform(blk_fuel, FORM_TYPE_SPINBOX, refuel_entry_fields)
 
         # overlay settings block
-        blk_overlay = LabelFrame(blk_settings, text=self._t('ui.frame.overlay'))
-        self._register_widget_text(blk_overlay, 'ui.frame.overlay')
-        blk_overlay.grid(row=1, column=1, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_overlay.columnconfigure(0, weight=1, uniform='overlay_cols')
-        blk_overlay.columnconfigure(1, weight=1, uniform='overlay_cols')
-        self.checkboxvar['Enable Overlay'] = BooleanVar()
-        cb_enable = Checkbutton(blk_overlay, text=self._t('ui.checkbox.enable_overlay_restart'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Enable Overlay'], command=(lambda field='Enable Overlay': self.check_cb(field)))
-        self._register_widget_text(cb_enable, 'ui.checkbox.enable_overlay_restart')
-        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
-        self.entries['overlay'] = self.makeform(
-            blk_overlay,
-            FORM_TYPE_SPINBOX,
-            overlay_entry_fields,
-            1,
-            1.0,
-            0.0,
-            3000.0,
-            entry_width=NUMERIC_FIELD_WIDTH,
-            grid_columns=True,
-            label_padx=NUMERIC_LABEL_PADX,
-            entry_padx=NUMERIC_ENTRY_PADX,
-            label_sticky='e',
-            entry_sticky='w'
-        )
+        blk_overlay = ttk.LabelFrame(blk_settings, text="OVERLAY", padding=(10, 5))
+        blk_overlay.grid(row=1, column=1, padx=2, pady=2, sticky="NSEW")
+        self.checkboxvar['Enable Overlay'] = tk.BooleanVar()
+        cb_enable = ttk.Checkbutton(blk_overlay, text='Enable', variable=self.checkboxvar['Enable Overlay'], command=(lambda field='Enable Overlay': self.check_cb(field)))
+        cb_enable.grid(row=0, column=0, columnspan=2, sticky=tk.W)
+        self.entries['overlay'] = self.makeform(blk_overlay, FORM_TYPE_SPINBOX, overlay_entry_fields, 1, 1.0, 0.0, 3000.0)
 
-        # tts / voice settings block
-        blk_voice = LabelFrame(blk_settings, text=self._t('ui.frame.voice'))
-        self._register_widget_text(blk_voice, 'ui.frame.voice')
-        blk_voice.grid(row=2, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_voice.columnconfigure(0, weight=1)
-        self.checkboxvar['Enable Voice'] = BooleanVar()
-        cb_enable = Checkbutton(blk_voice, text=self._t('ui.checkbox.enable'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Enable Voice'], command=(lambda field='Enable Voice': self.check_cb(field)))
-        self._register_widget_text(cb_enable, 'ui.checkbox.enable')
-        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
+        # Keys settings block
+        blk_keys = ttk.LabelFrame(blk_settings, text="KEYS", padding=(10, 5))
+        blk_keys.grid(row=2, column=0, padx=2, pady=2, sticky="NSEW")
+        self.checkboxvar['Activate Elite for each key'] = tk.BooleanVar()
+        cb_activate_elite = ttk.Checkbutton(blk_keys, text='Activate Elite for each key', variable=self.checkboxvar['Activate Elite for each key'], command=(lambda field='Activate Elite for each key': self.check_cb(field)))
+        cb_activate_elite.grid(row=0, column=0, columnspan=2, sticky=tk.W)
+        self.entries['keys'] = self.makeform(blk_keys, FORM_TYPE_SPINBOX, keys_entry_fields, 1, 0.01)
 
-        lbl_voice_language = tk.Label(blk_voice, text=self._t('ui.voice.language.label'), anchor='w', pady=2)
-        self._register_widget_text(lbl_voice_language, 'ui.voice.language.label')
-        lbl_voice_language.grid(row=1, column=0, sticky='w', padx=NUMERIC_LABEL_PADX)
-        frm_voice_language = tk.Frame(blk_voice)
-        frm_voice_language.grid(row=1, column=1, sticky='w', padx=NUMERIC_ENTRY_PADX)
-        rb_voice_en = Radiobutton(
-            frm_voice_language,
-            pady=3,
-            text=self._t('ui.voice.language.english'),
-            variable=self.radiobuttonvar['voice_language'],
-            value='en',
-            command=self.on_voice_language_change
-        )
-        self._register_widget_text(rb_voice_en, 'ui.voice.language.english')
-        rb_voice_en.grid(row=0, column=0, sticky='w')
-        rb_voice_uk = Radiobutton(
-            frm_voice_language,
-            pady=3,
-            text=self._t('ui.voice.language.ukrainian'),
-            variable=self.radiobuttonvar['voice_language'],
-            value='uk',
-            command=self.on_voice_language_change
-        )
-        self._register_widget_text(rb_voice_uk, 'ui.voice.language.ukrainian')
-        rb_voice_uk.grid(row=1, column=0, sticky='w')
+        # voice settings block
+        blk_voice = ttk.LabelFrame(blk_settings, text="VOICE", padding=(10, 5))
+        blk_voice.grid(row=3, column=0, padx=2, pady=2, sticky="NSEW")
+        self.checkboxvar['Enable Voice'] = tk.BooleanVar()
+        cb_enable = ttk.Checkbutton(blk_voice, text='Enable', variable=self.checkboxvar['Enable Voice'], command=(lambda field='Enable Voice': self.check_cb(field)))
+        cb_enable.grid(row=0, column=0, columnspan=2, sticky=tk.W)
 
-        lbl_voice_choice = tk.Label(blk_voice, text=self._t('ui.voice.voice.label'), anchor='w', pady=2)
-        self._register_widget_text(lbl_voice_choice, 'ui.voice.voice.label')
-        lbl_voice_choice.grid(row=2, column=0, sticky='w', padx=NUMERIC_LABEL_PADX)
-        self.voice_combo = ttk.Combobox(
-            blk_voice,
-            values=[option.get('label', '') for option in self.voice_options],
-            textvariable=self.voice_selection_var,
-            state='readonly'
-        )
-        self.voice_combo.grid(row=2, column=1, sticky='w', padx=NUMERIC_ENTRY_PADX)
-        self.voice_combo.bind('<<ComboboxSelected>>', self.on_voice_selection_change)
-        self._register_widget_text(self.voice_combo, 'ui.voice.voice.label')
+        # ELW Scanner settings block
+        blk_voice = ttk.LabelFrame(blk_settings, text="ELW SCANNER", padding=(10, 5))
+        blk_voice.grid(row=3, column=1, padx=2, pady=2, sticky="NSEW")
+        self.checkboxvar['ELW Scanner'] = tk.BooleanVar()
+        cb_enable = ttk.Checkbutton(blk_voice, text='Enable', variable=self.checkboxvar['ELW Scanner'], command=(lambda field='ELW Scanner': self.check_cb(field)))
+        cb_enable.grid(row=0, column=0, columnspan=2, sticky=tk.W)
 
-        self.update_voice_controls_state()
+        # AFK Combat settings block
+        blk_afk_combat = ttk.LabelFrame(blk_settings, text="AFK Combat", padding=(10, 5))
+        blk_afk_combat.grid(row=4, column=0, padx=2, pady=2, sticky="NSEW")
+        self.checkboxvar['AFKCombat AttackAtWill'] = tk.BooleanVar()
+        cb_enable = ttk.Checkbutton(blk_afk_combat, text='Command SLF to Attack At Will', variable=self.checkboxvar['AFKCombat AttackAtWill'], command=(lambda field='AFKCombat AttackAtWill': self.check_cb(field)))
+        cb_enable.grid(row=0, column=0, columnspan=2, sticky=tk.W)
 
-        # Scanner settings block
-        blk_voice = LabelFrame(blk_settings, text=self._t('ui.frame.elw_scanner'))
-        self._register_widget_text(blk_voice, 'ui.frame.elw_scanner')
-        blk_voice.grid(row=2, column=1, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_voice.columnconfigure(0, weight=1)
-        self.checkboxvar['ELW Scanner'] = BooleanVar()
-        cb_enable = Checkbutton(blk_voice, text=self._t('ui.checkbox.enable'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['ELW Scanner'], command=(lambda field='ELW Scanner': self.check_cb(field)))
-        self._register_widget_text(cb_enable, 'ui.checkbox.enable')
-        cb_enable.grid(row=0, column=0, columnspan=2, sticky=(N, S, E, W))
+        # ==== DEBUG/TEST TAB ====
+        # File Actions
+        blk_file_actions = ttk.LabelFrame(page2, text="File Actions", padding=(10, 5))
+        blk_file_actions.grid(row=0, column=0, padx=10, pady=5, sticky="NSEW")
+        self.checkboxvar['Enable CV View'] = tk.IntVar()
+        self.checkboxvar['Enable CV View'].set(int(self.ed_ap.config['Enable_CV_View']))
+        cb_enable_cv_view = ttk.Checkbutton(blk_file_actions, text='Enable CV View', variable=self.checkboxvar['Enable CV View'], command=(lambda field='Enable CV View': self.check_cb(field)))
+        cb_enable_cv_view.grid(row=2, column=0, padx=2, pady=2, sticky=tk.W)
+        btn_restart = ttk.Button(blk_file_actions, text="Restart", command=self.restart_program)
+        btn_restart.grid(row=3, column=0, padx=2, pady=2, sticky=tk.W)
+        btn_exit = ttk.Button(blk_file_actions, text="Exit", command=self.close_window)
+        btn_exit.grid(row=4, column=0, padx=2, pady=2, sticky=tk.W)
 
-        # settings button block
-        blk_settings_buttons = tk.Frame(page1)
-        blk_settings_buttons.grid(row=1, column=0, padx=10, pady=5, sticky=(N, S, E, W))
-        blk_settings_buttons.columnconfigure([0, 1], weight=1)
-        btn_save = Button(blk_settings_buttons, text=self._t('ui.button.save_all'), command=self.save_settings)
-        self._register_widget_text(btn_save, 'ui.button.save_all')
-        btn_save.grid(row=0, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
+        # Help Actions
+        blk_help_actions = ttk.LabelFrame(page2, text="Help Actions", padding=(10, 5))
+        blk_help_actions.grid(row=0, column=1, padx=10, pady=5, sticky="NSEW")
+        btn_check_updates = ttk.Button(blk_help_actions, text="Check for Updates", command=self.check_updates)
+        btn_check_updates.grid(row=0, column=0, padx=2, pady=2, sticky=tk.W)
+        btn_view_changelog = ttk.Button(blk_help_actions, text="View Changelog", command=self.open_changelog)
+        btn_view_changelog.grid(row=1, column=0, padx=2, pady=2, sticky=tk.W)
+        btn_join_discord = ttk.Button(blk_help_actions, text="Join Discord", command=self.open_discord)
+        btn_join_discord.grid(row=2, column=0, padx=2, pady=2, sticky=tk.W)
+        btn_about = ttk.Button(blk_help_actions, text="About", command=self.about)
+        btn_about.grid(row=3, column=0, padx=2, pady=2, sticky=tk.W)
 
-        # debug block
-        blk_debug = tk.Frame(page2)
-        blk_debug.grid(row=0, column=0, padx=10, pady=5, sticky=(N, S, E, W))
-        blk_debug.columnconfigure([0, 1], weight=1, uniform="group2")
+        # # debug block
+        # blk_debug = ttk.Frame(page2)
+        # blk_debug.grid(row=1, column=0, padx=10, pady=5, sticky=(tk.E, tk.W))
+        # blk_debug.columnconfigure([0, 1], weight=1, minsize=100, uniform="group2")
 
-        # debug settings block
-        blk_debug_settings = LabelFrame(blk_debug, text=self._t('ui.frame.debug'))
-        self._register_widget_text(blk_debug_settings, 'ui.frame.debug')
-        blk_debug_settings.grid(row=0, column=0, padx=2, pady=2, sticky=(N, S, E, W))
-        blk_debug_settings.columnconfigure(0, weight=1)
-        self.radiobuttonvar['debug_mode'] = StringVar()
-        rb_debug_debug = Radiobutton(blk_debug_settings, pady=3, text=self._t('ui.radio.debug_all'), variable=self.radiobuttonvar['debug_mode'], value="Debug", command=(lambda field='debug_mode': self.check_cb(field)))
-        self._register_widget_text(rb_debug_debug, 'ui.radio.debug_all')
-        rb_debug_debug.grid(row=0, column=1, columnspan=2, sticky=(W))
-        rb_debug_info = Radiobutton(blk_debug_settings, pady=3, text=self._t('ui.radio.debug_info'), variable=self.radiobuttonvar['debug_mode'], value="Info", command=(lambda field='debug_mode': self.check_cb(field)))
-        self._register_widget_text(rb_debug_info, 'ui.radio.debug_info')
-        rb_debug_info.grid(row=1, column=1, columnspan=2, sticky=(W))
-        rb_debug_error = Radiobutton(blk_debug_settings, pady=3, text=self._t('ui.radio.debug_error'), variable=self.radiobuttonvar['debug_mode'], value="Error", command=(lambda field='debug_mode': self.check_cb(field)))
-        self._register_widget_text(rb_debug_error, 'ui.radio.debug_error')
-        rb_debug_error.grid(row=2, column=1, columnspan=2, sticky=(W))
-        btn_open_logfile = Button(blk_debug_settings, text=self._t('ui.button.open_log_file'), command=self.open_logfile)
-        self._register_widget_text(btn_open_logfile, 'ui.button.open_log_file')
-        btn_open_logfile.grid(row=3, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
+        # Debug Settings frame
+        blk_debug_settings = ttk.LabelFrame(page2, text="Debug Settings", padding=(10, 5))
+        blk_debug_settings.grid(row=1, column=0, padx=10, pady=5, sticky="NSEW")
+        self.radiobuttonvar['debug_mode'] = tk.StringVar()
+        rb_debug_debug = ttk.Radiobutton(blk_debug_settings, text="Debug + Info + Errors", variable=self.radiobuttonvar['debug_mode'], value="Debug", command=(lambda field='debug_mode': self.check_cb(field)))
+        rb_debug_debug.grid(row=0, column=1, columnspan=2, sticky=tk.W)
+        rb_debug_info = ttk.Radiobutton(blk_debug_settings, text="Info + Errors", variable=self.radiobuttonvar['debug_mode'], value="Info", command=(lambda field='debug_mode': self.check_cb(field)))
+        rb_debug_info.grid(row=1, column=1, columnspan=2, sticky=tk.W)
+        rb_debug_error = ttk.Radiobutton(blk_debug_settings, text="Errors only (default)", variable=self.radiobuttonvar['debug_mode'], value="Error", command=(lambda field='debug_mode': self.check_cb(field)))
+        rb_debug_error.grid(row=2, column=1, columnspan=2, sticky=tk.W)
+        btn_open_logfile = ttk.Button(blk_debug_settings, text='Open Log File', command=self.open_logfile)
+        btn_open_logfile.grid(row=3, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
 
-        # debug settings block
-        blk_single_waypoint_asst = LabelFrame(page2, text=self._t('ui.frame.single_waypoint'))
-        self._register_widget_text(blk_single_waypoint_asst, 'ui.frame.single_waypoint')
-        blk_single_waypoint_asst.grid(row=1, column=0, padx=10, pady=5, sticky=(N, S, E, W))
-        blk_single_waypoint_asst.columnconfigure(0, weight=1, minsize=10, uniform="group1")
-        blk_single_waypoint_asst.columnconfigure(1, weight=3, minsize=10, uniform="group1")
+        # Single Waypoint Assist frame
+        blk_single_waypoint_asst = ttk.LabelFrame(page2, text="Single Waypoint Assist", padding=(10, 5))
+        blk_single_waypoint_asst.grid(row=1, column=1, padx=10, pady=5, sticky="NSEW")
+        blk_single_waypoint_asst.columnconfigure(0, weight=1, minsize=10)
+        blk_single_waypoint_asst.columnconfigure(1, weight=3, minsize=10)
 
-        lbl_system = tk.Label(blk_single_waypoint_asst, text=self._t('ui.label.system'))
-        self._register_widget_text(lbl_system, 'ui.label.system')
-        lbl_system.grid(row=0, column=0, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
-        txt_system = Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_system)
-        txt_system.grid(row=0, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
-        lbl_station = tk.Label(blk_single_waypoint_asst, text=self._t('ui.label.station'))
-        self._register_widget_text(lbl_station, 'ui.label.station')
-        lbl_station.grid(row=1, column=0, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
-        txt_station = Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_station)
-        txt_station.grid(row=1, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
-        self.checkboxvar['Single Waypoint Assist'] = BooleanVar()
-        cb_single_waypoint = Checkbutton(blk_single_waypoint_asst, text=self._t('ui.checkbox.single_waypoint'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Single Waypoint Assist'], command=(lambda field='Single Waypoint Assist': self.check_cb(field)))
-        self._register_widget_text(cb_single_waypoint, 'ui.checkbox.single_waypoint')
-        cb_single_waypoint.grid(row=2, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
+        lbl_system = ttk.Label(blk_single_waypoint_asst, text='System:')
+        lbl_system.grid(row=0, column=0, padx=2, pady=2, columnspan=1, sticky="NSEW")
+        txt_system = ttk.Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_system)
+        txt_system.grid(row=0, column=1, padx=2, pady=2, columnspan=1, sticky="NSEW")
+        lbl_station = ttk.Label(blk_single_waypoint_asst, text='Station:')
+        lbl_station.grid(row=1, column=0, padx=2, pady=2, columnspan=1, sticky="NSEW")
+        txt_station = ttk.Entry(blk_single_waypoint_asst, textvariable=self.single_waypoint_station)
+        txt_station.grid(row=1, column=1, padx=2, pady=2, columnspan=1, sticky="NSEW")
+        self.checkboxvar['Single Waypoint Assist'] = tk.BooleanVar()
+        cb_single_waypoint = ttk.Checkbutton(blk_single_waypoint_asst, text='Single Waypoint Assist', variable=self.checkboxvar['Single Waypoint Assist'], command=(lambda field='Single Waypoint Assist': self.check_cb(field)))
+        cb_single_waypoint.grid(row=2, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
 
-        lbl_tce = tk.Label(blk_single_waypoint_asst, text=self._t('ui.label.tce'), fg="blue", cursor="hand2")
-        self._register_widget_text(lbl_tce, 'ui.label.tce')
-        lbl_tce.bind("<Button-1>", lambda e: hyperlink_callback("https://forums.frontier.co.uk/threads/trade-computer-extension-mk-ii.223056/"))
-        lbl_tce.grid(row=3, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-        lbl_tce_dest = tk.Label(blk_single_waypoint_asst, text=self._t('ui.label.tce_dest'))
-        self._register_widget_text(lbl_tce_dest, 'ui.label.tce_dest')
-        lbl_tce_dest.grid(row=4, column=0, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
-        txt_tce_dest = Entry(blk_single_waypoint_asst, textvariable=self.TCE_Destination_Filepath)
-        txt_tce_dest.bind('<FocusOut>', self.entry_update)
-        txt_tce_dest.grid(row=4, column=1, padx=2, pady=2, columnspan=1, sticky=(N, E, W, S))
+        blk_debug_buttons = ttk.Frame(page2)
+        blk_debug_buttons.grid(row=2, column=0, columnspan=2, padx=10, pady=5, sticky="NSEW")
+        blk_debug_buttons.columnconfigure([0, 1], weight=1, minsize=100)
 
-        btn_load_tce = Button(blk_single_waypoint_asst, text=self._t('ui.button.load_tce_destination'), command=self.load_tce_dest)
-        self._register_widget_text(btn_load_tce, 'ui.button.load_tce_destination')
-        btn_load_tce.grid(row=5, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
+        self.checkboxvar['Debug Overlay'] = tk.BooleanVar()
+        cb_debug_overlay = ttk.Checkbutton(blk_debug_buttons, text='Debug Overlay', variable=self.checkboxvar['Debug Overlay'], command=(lambda field='Debug Overlay': self.check_cb(field)))
+        cb_debug_overlay.grid(row=6, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
+        tip = ToolTip(cb_debug_overlay, msg=self.tooltips['Debug Overlay'], delay=1.0, bg="#808080", fg="#FFFFFF")
 
-        blk_debug_buttons = tk.Frame(page2)
-        blk_debug_buttons.grid(row=2, column=0, padx=10, pady=5, sticky=(N, S, E, W))
-        blk_debug_buttons.columnconfigure([0, 1], weight=1)
+        self.checkboxvar['Debug OCR'] = tk.BooleanVar()
+        cb_debug_ocr = ttk.Checkbutton(blk_debug_buttons, text="Debug OCR - Writes OCR output to 'ocr-output' folder", variable=self.checkboxvar['Debug OCR'], command=(lambda field='Debug OCR': self.check_cb(field)))
+        cb_debug_ocr.grid(row=7, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
+        tip = ToolTip(cb_debug_ocr, msg=self.tooltips['Debug OCR'], delay=1.0, bg="#808080", fg="#FFFFFF")
 
-        self.checkboxvar['Debug Overlay'] = BooleanVar()
-        cb_debug_overlay = Checkbutton(blk_debug_buttons, text=self._t('ui.checkbox.debug_overlay'), onvalue=1, offvalue=0, anchor='w', pady=3, justify=LEFT, wraplength=260, variable=self.checkboxvar['Debug Overlay'], command=(lambda field='Debug Overlay': self.check_cb(field)))
-        self._register_widget_text(cb_debug_overlay, 'ui.checkbox.debug_overlay')
-        cb_debug_overlay.grid(row=6, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
+        self.checkboxvar['Debug Images'] = tk.BooleanVar()
+        cb_debug_images = ttk.Checkbutton(blk_debug_buttons, text="Debug Images - Writes debug images to 'debug-output' folder", variable=self.checkboxvar['Debug Images'], command=(lambda field='Debug Images': self.check_cb(field)))
+        cb_debug_images.grid(row=8, column=0, padx=2, pady=2, columnspan=2, sticky="NSEW")
+        tip = ToolTip(cb_debug_images, msg=self.tooltips['Debug Images'], delay=1.0, bg="#808080", fg="#FFFFFF")
 
-        btn_save = Button(blk_debug_buttons, text=self._t('ui.button.save_all'), command=self.save_settings)
-        self._register_widget_text(btn_save, 'ui.button.save_all')
-        btn_save.grid(row=7, column=0, padx=2, pady=2, columnspan=2, sticky=(N, E, W, S))
-
-        # Statusbar
-        statusbar = Frame(win)
-        statusbar.grid(row=1, column=0, sticky=(E, W))
-        statusbar.columnconfigure(0, weight=1)
-        self.status = tk.Label(statusbar, text=self._t('ui.status.label', status=''), bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT)
-        self._register_widget_text(self.status, 'ui.status.label', kwargs=lambda: {'status': self.current_status_text})
-        self.jumpcount = tk.Label(statusbar, text=self._t('ui.status.jump_placeholder'), bd=1, relief=tk.SUNKEN, anchor=tk.W, justify=LEFT)
-        self.status.pack(in_=statusbar, side=LEFT, fill=BOTH, expand=True)
-        self.jumpcount.pack(in_=statusbar, side=RIGHT, fill=Y, expand=False)
+        # === Status Bar ===
+        statusbar = ttk.Frame(win)
+        statusbar.grid(row=4, column=0)
+        self.status = ttk.Label(win, text="Status: ", relief=tk.SUNKEN, anchor=tk.W, justify=tk.LEFT, width=29)
+        self.jumpcount = ttk.Label(statusbar, text="<info> ", relief=tk.SUNKEN, anchor=tk.W, justify=tk.LEFT, width=40)
+        self.status.pack(in_=statusbar, side=tk.LEFT, fill=tk.BOTH, expand=True)
+        self.jumpcount.pack(in_=statusbar, side=tk.RIGHT, fill=tk.Y, expand=False)
 
         return mylist
 
@@ -1787,6 +1329,21 @@ class APGui():
         import os
         os.execv(sys.executable, ['python'] + sys.argv)
 
+
+def apply_theme_to_titlebar(root):
+    version = sys.getwindowsversion()
+
+    if version.major == 10 and version.build >= 22000:
+        # Set the title bar color to the background color on Windows 11 for better appearance
+        pywinstyles.change_header_color(root, "#1c1c1c" if sv_ttk.get_theme() == "dark" else "#fafafa")
+    elif version.major == 10:
+        pywinstyles.apply_style(root, "dark" if sv_ttk.get_theme() == "dark" else "normal")
+
+        # A hacky way to update the title bar's color on Windows 10 (it doesn't update instantly like on Windows 11)
+        root.wm_attributes("-alpha", 0.99)
+        root.wm_attributes("-alpha", 1)
+
+
 def main():
     #   handle = win32gui.FindWindow(0, "Elite - Dangerous (CLIENT)")
     #   if handle != None:
@@ -1794,6 +1351,16 @@ def main():
 
     root = tk.Tk()
     app = APGui(root)
+
+    sv_ttk.set_theme("dark")
+
+    # Remove focus outline from tabs by setting focuscolor to the background color
+    style = ttk.Style()
+    bg_color = "#1c1c1c" if sv_ttk.get_theme() == "dark" else "#fafafa"
+    style.configure("TNotebook.Tab", focuscolor=bg_color)
+
+    # if sys.platform == "win32":
+    #     apply_theme_to_titlebar(root)
 
     root.mainloop()
 
