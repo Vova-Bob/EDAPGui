@@ -25,16 +25,29 @@ class Calibration:
         self.ocr_calibration_data: dict[str, MyRegion] = {}
         self.subregion_keys = None
 
+    def _t(self, key, **kwargs):
+        """Localized UI string via the autopilot localization manager."""
+        try:
+            text = self.ap.locale[key]
+        except Exception:
+            return key
+        if kwargs:
+            try:
+                return text.format(**kwargs)
+            except (KeyError, ValueError):
+                return text
+        return text
+
     def create_calibration_tab(self, tab):
         self.ocr_calibration_data = load_default_calib_data()
         tab.columnconfigure(0, weight=1)
 
         # Region Calibration
-        blk_region_cal = ttk.LabelFrame(tab, text="Region Calibration")
+        blk_region_cal = ttk.LabelFrame(tab, text=self._t('ui.calibration.region_frame'))
         blk_region_cal.grid(row=0, column=0, padx=10, pady=5, sticky="NSEW")
         blk_region_cal.columnconfigure(1, weight=1)
 
-        ttk.Label(blk_region_cal, text="Region:").grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
+        ttk.Label(blk_region_cal, text=self._t('ui.calibration.region_label')).grid(row=0, column=0, padx=5, pady=5, sticky=tk.W)
 
         region_keys = sorted([key for key, value in self.ocr_calibration_data.items() if isinstance(value,
                                                                                                     dict) and 'rect' in value and 'compass' not in key and 'target' not in key and 'subregion' not in key])
@@ -44,22 +57,22 @@ class Calibration:
         self.calibration_region_combo.grid(row=0, column=1, padx=5, pady=5, sticky="EW")
         self.calibration_region_combo.bind("<<ComboboxSelected>>", self.on_region_select)
 
-        ttk.Label(blk_region_cal, text="Procedure:").grid(row=1, column=0, padx=5, pady=5, sticky="NW")
+        ttk.Label(blk_region_cal, text=self._t('ui.calibration.procedure')).grid(row=1, column=0, padx=5, pady=5, sticky="NW")
         self.calibration_rect_text_var = tk.StringVar()
         ttk.Label(blk_region_cal, textvariable=self.calibration_rect_text_var).grid(row=1, column=1, padx=5, pady=5,
                                                                                     sticky=tk.W)
 
-        ttk.Label(blk_region_cal, text="Rect:").grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
+        ttk.Label(blk_region_cal, text=self._t('ui.calibration.rect')).grid(row=2, column=0, padx=5, pady=5, sticky=tk.W)
         self.calibration_rect_label_var = tk.StringVar()
         ttk.Label(blk_region_cal, textvariable=self.calibration_rect_label_var).grid(row=2, column=1, padx=5, pady=5,
                                                                                      sticky=tk.W)
 
         ttk.Label(blk_region_cal,
-                  text="Manually change the region below and save.\nHint: You can also use your keyboard up and down arrow keys.").grid(
+                  text=self._t('ui.calibration.hint')).grid(
             row=3, column=0, columnspan=2, padx=5, pady=5, sticky=tk.W)
 
         self.calibration_rect_left_var = tk.StringVar()
-        lbl_calibration_rect_left = ttk.Label(blk_region_cal, text='Left:')
+        lbl_calibration_rect_left = ttk.Label(blk_region_cal, text=self._t('ui.calibration.left'))
         lbl_calibration_rect_left.grid(row=4, column=0, padx=5, pady=5, sticky=tk.W)
         spn_calibration_rect_left = ttk.Spinbox(blk_region_cal, textvariable=self.calibration_rect_left_var, width=10,
                                                 from_=0, to=1, increment=0.001, justify=tk.RIGHT,
@@ -67,7 +80,7 @@ class Calibration:
         spn_calibration_rect_left.grid(row=4, column=1, padx=5, pady=5, sticky=tk.W)
 
         self.calibration_rect_top_var = tk.StringVar()
-        lbl_calibration_rect_top = ttk.Label(blk_region_cal, text='Top:')
+        lbl_calibration_rect_top = ttk.Label(blk_region_cal, text=self._t('ui.calibration.top'))
         lbl_calibration_rect_top.grid(row=5, column=0, padx=5, pady=5, sticky=tk.W)
         spn_calibration_rect_top = ttk.Spinbox(blk_region_cal, textvariable=self.calibration_rect_top_var, width=10,
                                                from_=0, to=1, increment=0.001, justify=tk.RIGHT,
@@ -75,7 +88,7 @@ class Calibration:
         spn_calibration_rect_top.grid(row=5, column=1, padx=5, pady=5, sticky=tk.W)
 
         self.calibration_rect_right_var = tk.StringVar()
-        lbl_calibration_rect_right = ttk.Label(blk_region_cal, text='Right:')
+        lbl_calibration_rect_right = ttk.Label(blk_region_cal, text=self._t('ui.calibration.right'))
         lbl_calibration_rect_right.grid(row=6, column=0, padx=5, pady=5, sticky=tk.W)
         spn_calibration_rect_right = ttk.Spinbox(blk_region_cal, textvariable=self.calibration_rect_right_var, width=10,
                                                  from_=0, to=1, increment=0.001, justify=tk.RIGHT,
@@ -83,7 +96,7 @@ class Calibration:
         spn_calibration_rect_right.grid(row=6, column=1, padx=5, pady=5, sticky=tk.W)
 
         self.calibration_rect_bottom_var = tk.StringVar()
-        lbl_calibration_rect_bottom = ttk.Label(blk_region_cal, text='Bottom:')
+        lbl_calibration_rect_bottom = ttk.Label(blk_region_cal, text=self._t('ui.calibration.bottom'))
         lbl_calibration_rect_bottom.grid(row=7, column=0, padx=5, pady=5, sticky=tk.W)
         spn_calibration_rect_bottom = ttk.Spinbox(blk_region_cal, textvariable=self.calibration_rect_bottom_var,
                                                   width=10, from_=0, to=1, increment=0.001, justify=tk.RIGHT,
@@ -92,12 +105,12 @@ class Calibration:
         r = 9
 
         # Region Calibration
-        blk_subregion_cal = ttk.LabelFrame(blk_region_cal, text="Sub-Region Calibration")
+        blk_subregion_cal = ttk.LabelFrame(blk_region_cal, text=self._t('ui.calibration.subregion_frame'))
         blk_subregion_cal.grid(row=r, column=0, columnspan=2, padx=10, pady=5, sticky="NSEW")
         blk_subregion_cal.columnconfigure(1, weight=1)
 
         # SUB-REGION
-        ttk.Label(blk_subregion_cal, text="Sub-region:").grid(row=r, column=0, padx=5, pady=5, sticky=tk.W)
+        ttk.Label(blk_subregion_cal, text=self._t('ui.calibration.subregion_label')).grid(row=r, column=0, padx=5, pady=5, sticky=tk.W)
         self.calibration_subregion_var = tk.StringVar()
         self.calibration_subregion_combo = ttk.Combobox(blk_subregion_cal, textvariable=self.calibration_subregion_var,
                                                         values=self.subregion_keys)
@@ -105,13 +118,13 @@ class Calibration:
         self.calibration_subregion_combo.bind("<<ComboboxSelected>>", self.on_subregion_select)
         r += 1
 
-        ttk.Label(blk_subregion_cal, text="Procedure:").grid(row=r, column=0, padx=5, pady=5, sticky="NW")
+        ttk.Label(blk_subregion_cal, text=self._t('ui.calibration.procedure')).grid(row=r, column=0, padx=5, pady=5, sticky="NW")
         self.calibration_subrect_text_var = tk.StringVar()
         ttk.Label(blk_subregion_cal, textvariable=self.calibration_subrect_text_var).grid(row=r, column=1, padx=5, pady=5, sticky=tk.W)
         r += 1
 
         self.calibration_subrect_left_var = tk.StringVar()
-        lbl_calibration_subrect_left = ttk.Label(blk_subregion_cal, text='Left:')
+        lbl_calibration_subrect_left = ttk.Label(blk_subregion_cal, text=self._t('ui.calibration.left'))
         lbl_calibration_subrect_left.grid(row=r, column=0, padx=5, pady=5, sticky=tk.W)
         spn_calibration_subrect_left = ttk.Spinbox(blk_subregion_cal, textvariable=self.calibration_subrect_left_var,
                                                    width=10,
@@ -121,7 +134,7 @@ class Calibration:
         r += 1
 
         self.calibration_subrect_top_var = tk.StringVar()
-        lbl_calibration_subrect_top = ttk.Label(blk_subregion_cal, text='Top:')
+        lbl_calibration_subrect_top = ttk.Label(blk_subregion_cal, text=self._t('ui.calibration.top'))
         lbl_calibration_subrect_top.grid(row=r, column=0, padx=5, pady=5, sticky=tk.W)
         spn_calibration_subrect_top = ttk.Spinbox(blk_subregion_cal, textvariable=self.calibration_subrect_top_var,
                                                   width=10,
@@ -131,7 +144,7 @@ class Calibration:
         r += 1
 
         self.calibration_subrect_right_var = tk.StringVar()
-        lbl_calibration_subrect_right = ttk.Label(blk_subregion_cal, text='Right:')
+        lbl_calibration_subrect_right = ttk.Label(blk_subregion_cal, text=self._t('ui.calibration.right'))
         lbl_calibration_subrect_right.grid(row=r, column=0, padx=5, pady=5, sticky=tk.W)
         spn_calibration_subrect_right = ttk.Spinbox(blk_subregion_cal, textvariable=self.calibration_subrect_right_var,
                                                     width=10,
@@ -141,7 +154,7 @@ class Calibration:
         r += 1
 
         self.calibration_subrect_bottom_var = tk.StringVar()
-        lbl_calibration_subrect_bottom = ttk.Label(blk_subregion_cal, text='Bottom:')
+        lbl_calibration_subrect_bottom = ttk.Label(blk_subregion_cal, text=self._t('ui.calibration.bottom'))
         lbl_calibration_subrect_bottom.grid(row=r, column=0, padx=5, pady=5, sticky=tk.W)
         spn_calibration_subrect_bottom = ttk.Spinbox(blk_subregion_cal, textvariable=self.calibration_subrect_bottom_var,
                                                      width=10, from_=0, to=1, increment=0.001, justify=tk.RIGHT,
@@ -152,21 +165,20 @@ class Calibration:
         # Button Frame
         button_frame = ttk.Frame(blk_region_cal)
         button_frame.grid(row=r, column=0, padx=10, pady=10, sticky=tk.W)
-        ttk.Button(button_frame, text="Calibrate Region help online", command=self.calibrate_region_help).grid(row=r, column=0, padx=5, pady=10, sticky=tk.W)
-        ttk.Button(button_frame, text="Save All Calibrations", command=self.save_ocr_calibration_data, style="Accent.TButton").grid(row=r, column=1, padx=5, pady=10, sticky=tk.W)
-        ttk.Button(button_frame, text="Reset All to Default", command=self.reset_all_calibrations).grid(row=r, column=2, padx=5, pady=10, sticky=tk.W)
+        ttk.Button(button_frame, text=self._t('ui.calibration.help_online'), command=self.calibrate_region_help).grid(row=r, column=0, padx=5, pady=10, sticky=tk.W)
+        ttk.Button(button_frame, text=self._t('ui.calibration.save_all'), command=self.save_ocr_calibration_data, style="Accent.TButton").grid(row=r, column=1, padx=5, pady=10, sticky=tk.W)
+        ttk.Button(button_frame, text=self._t('ui.calibration.reset_all'), command=self.reset_all_calibrations).grid(row=r, column=2, padx=5, pady=10, sticky=tk.W)
         r += 1
 
         # Compass and Target Calibrations
-        blk_other_cal = ttk.LabelFrame(tab, text="Target Calibration")
+        blk_other_cal = ttk.LabelFrame(tab, text=self._t('ui.calibration.target_frame'))
         blk_other_cal.grid(row=r, column=0, padx=10, pady=5, sticky="NSEW")
 
-        btn_calibrate_target = ttk.Button(blk_other_cal, text="Calibrate Target", command=self.calibrate_callback)
+        btn_calibrate_target = ttk.Button(blk_other_cal, text=self._t('ui.calibration.calibrate_target'), command=self.calibrate_callback)
         btn_calibrate_target.grid(row=1, padx=10, pady=5, sticky="W")
 
-        lbl_calibrate_target = ttk.Label(blk_other_cal, wraplength=500, text='Performs target calibration for your '
-                                                                             'screen. Perform when the target is '
-                                                                             'visible center screen.')
+        lbl_calibrate_target = ttk.Label(blk_other_cal, wraplength=500, text=self._t('ui.calibration.target_hint') +
+                                                                             self._t('ui.calibration.target_hint_body'))
         lbl_calibrate_target.grid(row=1, column=1, padx=10, pady=5, sticky=tk.W)
 
     def save_ocr_calibration_data(self):
@@ -204,7 +216,7 @@ class Calibration:
         # messagebox.showinfo("Saved", "OCR calibration data saved.\nPlease restart the application for changes to take effect.")
 
     def reset_all_calibrations(self):
-        if messagebox.askyesno("Reset All Calibrations",
+        if messagebox.askyesno(self._t('ui.calibration.reset_confirm_title'),
                                "Are you sure you want to reset all OCR calibrations to their default values? This cannot be undone."):
             calibration_file = 'configs/ocr_calibration.json'
             if os.path.exists(calibration_file):
@@ -234,7 +246,7 @@ class Calibration:
 
             # self.log_msg("All OCR calibrations have been reset to default.")
             self.ap_ckb('log', f"All OCR calibrations have been reset to default.")
-            messagebox.showinfo("Reset Complete",
+            messagebox.showinfo(self._t('ui.calibration.reset_done_title'),
                                 "All calibrations have been reset to default. Please restart the application for all changes to take effect.")
 
     def on_region_select(self, event):

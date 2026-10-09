@@ -29,6 +29,19 @@ class TceIntegration:
         self.var_tce_shoppinglist_path.set(self.tce_shoppinglist_path)
         self.var_tce_destination_filepath.set(self.ap.config['TCEDestinationFilepath'])
 
+    def _t(self, key, **kwargs):
+        """Localized UI string via the autopilot localization manager."""
+        try:
+            text = self.ap.locale[key]
+        except Exception:
+            return key
+        if kwargs:
+            try:
+                return text.format(**kwargs)
+            except (KeyError, ValueError):
+                return text
+        return text
+
     def write_shopping_list(self) -> bool:
         """ Write the global shopping list to file.
         @return: True once complete.
@@ -133,58 +146,56 @@ class TceIntegration:
         tab.columnconfigure(0, weight=1)
 
         # Description
-        blk_desc = ttk.LabelFrame(tab, text="Description")
+        blk_desc = ttk.LabelFrame(tab, text=self._t('ui.tce.description'))
         blk_desc.grid(row=1, column=0, padx=5, pady=5, sticky="NSEW")
 
-        lbl_tce_desc = ttk.Label(blk_desc, text="The Trade Computer Extension Mk.II is a 3rd party app for Elite "
-                                                "Dangerous and supports the player in many ways.")
+        lbl_tce_desc = ttk.Label(blk_desc, text=self._t('ui.tce.description_body'))
         lbl_tce_desc.grid(row=1, column=0, padx=5, pady=5, sticky="EW")
-        lbl_tce_desc1 = ttk.Label(blk_desc, text="It's an overlay, that displays on top of the HUD of Elite "
-                                                 "Dangerous, so it's not necessary to ALT-TAB away from the game.")
+        lbl_tce_desc1 = ttk.Label(blk_desc, text=self._t('ui.tce.description_body2'))
         lbl_tce_desc1.grid(row=2, column=0, padx=5, pady=5, sticky="EW")
 
-        btn_tce_web = ttk.Button(blk_desc, text='Trade Computer Extension (TCE) forum page',
+        btn_tce_web = ttk.Button(blk_desc, text=self._t('ui.tce.forum_link'),
                                  command=self.goto_tce_webpage)
         btn_tce_web.grid(row=3, column=0, padx=5, pady=5, sticky="W")
 
         # Options
-        blk_options = ttk.LabelFrame(tab, text="Options")
+        blk_options = ttk.LabelFrame(tab, text=self._t('ui.tce.options'))
         blk_options.grid(row=2, column=0, padx=5, pady=5, sticky="NSEW")
         blk_options.columnconfigure(1, weight=1)
 
-        lbl_tce_inst = ttk.Label(blk_options, text='TCE Installation Folder (i.e. C:\\TCE)')
+        lbl_tce_inst = ttk.Label(blk_options, text=self._t('ui.tce.install_folder'))
         lbl_tce_inst.grid(row=3, column=0, padx=5, pady=5, sticky="NSEW")
         txt_tce_inst = ttk.Entry(blk_options, textvariable=self.var_tce_installation_path)
         txt_tce_inst.bind('<FocusOut>', self.entry_update)
         txt_tce_inst.grid(row=3, column=1, padx=5, pady=5, sticky="NSEW")
 
-        lbl_tce_dest = ttk.Label(blk_options, text='TCE Dest json:')
+        lbl_tce_dest = ttk.Label(blk_options, text=self._t('ui.label.tce_dest'))
         lbl_tce_dest.grid(row=4, column=0, padx=5, pady=5, sticky="NSEW")
         txt_tce_dest = ttk.Entry(blk_options, textvariable=self.var_tce_destination_filepath)
         txt_tce_dest.bind('<FocusOut>', self.entry_update)
         txt_tce_dest.grid(row=4, column=1, padx=5, pady=5, sticky="NSEW")
 
-        lbl_tce_shoppinglist = ttk.Label(blk_options, text='Shopping list file (read only):')
+        lbl_tce_shoppinglist = ttk.Label(blk_options, text=self._t('ui.tce.shopping_list_file'))
         lbl_tce_shoppinglist.grid(row=5, column=0, padx=5, pady=5, sticky="NSEW")
         txt_tce_shoppinglist = ttk.Entry(blk_options, textvariable=self.var_tce_shoppinglist_path)
         txt_tce_shoppinglist.bind('<FocusOut>', self.entry_update)
         txt_tce_shoppinglist.grid(row=5, column=1, padx=5, pady=5, sticky="NSEW")
 
         # Control
-        blk_control = ttk.LabelFrame(tab, text="Control")
+        blk_control = ttk.LabelFrame(tab, text=self._t('ui.tce.control'))
         blk_control.grid(row=3, column=0, padx=5, pady=5, sticky="NSEW")
 
-        btn_load_tce = ttk.Button(blk_control, text='Load TCE Destination', command=self.load_tce_dest)
+        btn_load_tce = ttk.Button(blk_control, text=self._t('ui.button.load_tce_destination'), command=self.load_tce_dest)
         btn_load_tce.grid(row=1, column=0, padx=5, pady=5, sticky="W")
-        lbl_load_tce = ttk.Label(blk_control, text='The current TCE destination will be loaded to the Single Waypoint fields on the debug page.')
+        lbl_load_tce = ttk.Label(blk_control, text=self._t('ui.tce.load_dest_hint'))
         lbl_load_tce.grid(row=1, column=1, padx=5, pady=5, sticky="EW")
 
         separator = ttk.Separator(blk_control, orient='horizontal')
         separator.grid(row=2, column=0, columnspan=2, padx=5, pady=5, sticky="EW")
 
-        btn_write_shopping = ttk.Button(blk_control, text='Write Global Shopping List', command=self.write_shopping_list)
+        btn_write_shopping = ttk.Button(blk_control, text=self._t('ui.tce.write_shopping_list'), command=self.write_shopping_list)
         btn_write_shopping.grid(row=3, column=0, padx=5, pady=5, sticky="W")
-        lbl_write_shopping = ttk.Label(blk_control, text="Writes the Global Shopping List for importing into the TCE shopping panel.")
+        lbl_write_shopping = ttk.Label(blk_control, text=self._t('ui.tce.write_shopping_hint'))
         lbl_write_shopping.grid(row=3, column=1, padx=5, pady=5, sticky="EW")
 
     def entry_update(self, event):

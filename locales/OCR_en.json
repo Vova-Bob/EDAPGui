@@ -12,5 +12,6 @@
     "ocr.nav_panel.tab.target": "TARGET",
     "ocr.station_services.connected_to": "CONNECTED TO",
     "ocr.system_map.cartographics": "CARTOGRAPHICS",
-    "ocr.galaxy_map.cartographics": "CARTOGRAPHICS"
+    "ocr.galaxy_map.cartographics": "CARTOGRAPHICS",
+    "ocr.station_services.commodities_market": "COMMODITIES"
 }

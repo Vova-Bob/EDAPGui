@@ -24,3 +24,6 @@ configs/ship_configs.json
 test/match/
 debug-output/
 runs/
+/venv/
+/.history/
+/autopilot *.log

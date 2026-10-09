@@ -28,13 +28,39 @@ class EDStationServicesInShip:
         self.ap = ed_ap
         self.ocr = ed_ap.ocr
         self.locale = self.ap.locale
+        # OCR targets come from the "Game language (for OCR)" setting
+        # (OCRTokenManager), NOT from the UI language.
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self.ocr_tokens = self.ap.ocr_tokens
         self.screen = screen
         self.keys = keys
         self.ap_ckb = cb
         self.passenger_lounge = PassengerLounge(self, self.ap, self.ocr, self.keys, self.screen, self.ap_ckb)
         self.commodities_market = CommoditiesMarket(self, self.ap, self.ocr, self.keys, self.screen, self.ap_ckb)
-        self.status_parser = StatusParser()
-        self.market_parser = MarketParser()
+        self.status_parser = StatusParser(log_func=self.ap.log_ui)
+        self.market_parser = MarketParser(log_func=self.ap.log_ui)
+
+    @property
+    def log_keys(self):
+        return getattr(self.ap, 'LOG_KEYS', {})
+
+    @property
+    def voice_keys(self):
+        return getattr(self.ap, 'VOICE_KEYS', {})
+
+    def _log(self, key_name: str, *, level: str = 'info', **kwargs):
+        key = self.log_keys.get(key_name)
+        if not key:
+            logger.warning(f"Missing station services log key: {key_name}")
+            return ''
+        return self.ap.log_ui(key, level=level, **kwargs)
+
+    def _log_and_speak(self, log_key_name: str, voice_key_name: str | None = None, **kwargs):
+        text = self._log(log_key_name, **kwargs)
+        voice_key = self.voice_keys.get(voice_key_name or log_key_name)
+        if voice_key:
+            self.ap.speak_ui(voice_key, **kwargs)
+        return text
         # The rect is top left x, y, and bottom right x, y in fraction of screen resolution
         self.reg = {'commodities_market': {'rect': [0.0, 0.0, 0.25, 0.25]},
                     'station_services': {'rect': [0.10, 0.10, 0.90, 0.85]},
@@ -63,8 +89,8 @@ class EDStationServicesInShip:
             self.ap.overlay.overlay_quad_pct('stn_svcs', stn_svcs, (0, 255, 0), 2, 5)
             self.ap.overlay.overlay_paint()
 
-        # Wait for screen to appear
-        res = self.ocr.wait_for_text(self.ap, [self.locale["STN_SVCS_CONNECTED_TO"]], self.reg['connected_to'], timeout=15)
+        # Wait for screen to appear (OCR target from OCR locale, not UI language)
+        res = self.ocr.wait_for_text(self.ap, [self.ocr_tokens["ocr.station_services.connected_to"]], self.reg['connected_to'], timeout=15)
 
         # Store image
         # image = self.screen.get_screen_rect_pct(scl_reg['rect'])
@@ -123,10 +149,10 @@ class EDStationServicesInShip:
         # right of the mission board.
         res = self.determine_commodities_location()
         if res == "":
-            logger.warning("Unable to find COMMODITIES MARKET button on Station Services screen.")
+            self.parent._log('TRADE_MARKET_BUTTON_MISSING', level='warning')
             return False
 
-        self.ap_ckb('log+vce', "Connecting to commodities market.")
+        self.parent._log_and_speak('TRADE_CONNECTING_MARKET')
 
         # Select Mission Board
         if res == "RR":
@@ -156,8 +182,8 @@ class EDStationServicesInShip:
             self.ap.overlay.overlay_quad_pct('commodities_market', mkt, (0, 255, 0), 2, 5)
             self.ap.overlay.overlay_paint()
 
-        # Wait for screen to appear
-        res = self.ocr.wait_for_text(self.ap, [self.locale["COMMODITIES_MARKET"]], self.reg['title'], timeout=15)
+        # Wait for screen to appear (OCR target from OCR locale, not UI language)
+        res = self.ocr.wait_for_text(self.ap, [self.ocr_tokens["ocr.station_services.commodities_market"]], self.reg['title'], timeout=15)
         return res
 
     @staticmethod
@@ -260,7 +286,7 @@ class CommoditiesMarket:
         # Determine if station sells the commodity!
         self.market_parser.get_market_data()
         if not self.market_parser.can_buy_item(name):
-            self.ap_ckb('log+vce', f"'{name}' is not sold or has no stock at {self.market_parser.get_market_name()}.")
+            self.parent._log_and_speak('TRADE_COMMODITY_NOT_SOLD', commodity=name, market=self.market_parser.get_market_name())
             logger.debug(f"Item '{name}' is not sold or has no stock at {self.market_parser.get_market_name()}.")
             return False, 0
 
@@ -336,8 +362,8 @@ class CommoditiesMarket:
             sleep(0.5)  # give time to popup
             keys.send('UI_Up', repeat=2)  # go up to quantity to buy (may not default to this)
             # Log the planned quantity
-            self.ap_ckb('log+vce', f"Buying {act_qty} units of {name}.")
-            logger.info(f"Attempting to buy {act_qty} units of {name}")
+            self.parent._log_and_speak('TRADE_BUYING_UNITS', quantity=act_qty, commodity=name)
+            self.parent._log('TRADE_ATTEMPT_BUY_UNITS', level='info', quantity=act_qty, commodity=name)
             # Increment count
             if qty >= 9999 or qty >= stock or qty >= free_cargo:
                 keys.send("UI_Right", hold=4)
@@ -369,7 +395,7 @@ class CommoditiesMarket:
         # Determine if station buys the commodity!
         self.market_parser.get_market_data()
         if not self.market_parser.can_sell_item(name):
-            self.ap_ckb('log+vce', f"'{name}' is not bought at {self.market_parser.get_market_name()}.")
+            self.parent._log_and_speak('TRADE_MARKET_NOT_BUYING', commodity=name, market=self.market_parser.get_market_name())
             logger.debug(f"Item '{name}' is not bought at {self.market_parser.get_market_name()}.")
             return False, 0
 
@@ -413,12 +439,12 @@ class CommoditiesMarket:
 
             # Sell all if quantity is 9999 or if we are selling
             if act_qty >= 9999 or qty_in_cargo <= act_qty:
-                self.ap_ckb('log+vce', f"Selling all our units of {name}.")
-                logger.info(f"Attempting to sell all our units of {name}")
+                self.parent._log_and_speak('TRADE_SELLING_ALL_UNITS', commodity=name)
+                self.parent._log('TRADE_ATTEMPT_SELL_ALL_UNITS', level='info', commodity=name)
                 keys.send("UI_Right", hold=4)
             else:
-                self.ap_ckb('log+vce', f"Selling {act_qty} units of {name}.")
-                logger.info(f"Attempting to sell {act_qty} units of {name}")
+                self.parent._log_and_speak('TRADE_SELLING_UNITS', quantity=act_qty, commodity=name)
+                self.parent._log('TRADE_ATTEMPT_SELL_UNITS', level='info', quantity=act_qty, commodity=name)
                 keys.send('UI_Left', hold=4.0)  # Clear quantity to 0
                 keys.send("UI_Right", hold=0.04, repeat=act_qty)
 

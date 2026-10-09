@@ -11,6 +11,7 @@ import numpy as np
 
 from EDAP_data import GuiFocusExternalPanel
 from EDlogger import logger
+from OCR import normalize_ocr_text
 from Screen_Regions import Quad, Point, load_calibrated_regions
 from StatusParser import StatusParser
 from Screen import crop_image_by_pct
@@ -117,10 +118,11 @@ class EDNavigationPanel:
         self.locale = self.ap.locale
         self.status_parser = StatusParser()
 
-        self.navigation_tab_text = self.locale["NAV_PNL_TAB_NAVIGATION"]
-        self.transactions_tab_text = self.locale["NAV_PNL_TAB_TRANSACTIONS"]
-        self.contacts_tab_text = self.locale["NAV_PNL_TAB_CONTACTS"]
-        self.target_tab_text = self.locale["NAV_PNL_TAB_TARGET"]
+        # OCR tab targets come from the "Game language (for OCR)" setting
+        # (OCRTokenManager), NOT from the UI language.
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self.ocr_tokens = self.ap.ocr_tokens
+        self._load_tab_texts()
 
         # The rect is [L, T, R, B], top left x, y, and bottom right x, y in fraction of screen resolution
         # Nav Panel region covers the entire navigation panel.
@@ -142,6 +144,24 @@ class EDNavigationPanel:
         load_calibrated_regions('EDNavigationPanel', self.reg)
 
         self.customize_regions()
+
+    def _load_tab_texts(self):
+        self.navigation_tab_text = self.ocr_tokens["ocr.nav_panel.tab.navigation"]
+        self.transactions_tab_text = self.ocr_tokens["ocr.nav_panel.tab.transactions"]
+        self.contacts_tab_text = self.ocr_tokens["ocr.nav_panel.tab.contacts"]
+        self.target_tab_text = self.ocr_tokens["ocr.nav_panel.tab.target"]
+        self._normalized_tabs = {
+            'navigation': normalize_ocr_text(self.navigation_tab_text, self.ocr_language),
+            'transactions': normalize_ocr_text(self.transactions_tab_text, self.ocr_language),
+            'contacts': normalize_ocr_text(self.contacts_tab_text, self.ocr_language),
+            'target': normalize_ocr_text(self.target_tab_text, self.ocr_language),
+        }
+
+    def update_ocr_language(self):
+        """Re-read OCR targets after the "Game language (for OCR)" setting changed."""
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self.ocr_tokens = self.ap.ocr_tokens
+        self._load_tab_texts()
 
     def customize_regions(self):
         # Produce quadrilateral from the two bounds rectangles
@@ -310,17 +330,19 @@ class EDNavigationPanel:
                     self.ap.overlay.overlay_quad_pix('nav_panel_item', q_out, (0, 255, 0), 2)
                     self.ap.overlay.overlay_paint()
 
-                # Test OCR string
-                if self.navigation_tab_text in str(ocr_textlist):
+                # Test OCR string (normalized: Cyrillic HUD text may come back as
+                # Latin look-alikes or with truncated words)
+                normalized_tab_text = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.ocr_language)
+                if self._normalized_tabs['navigation'] and self._normalized_tabs['navigation'] in normalized_tab_text:
                     tab_text = self.navigation_tab_text
                     break
-                if self.transactions_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['transactions'] and self._normalized_tabs['transactions'] in normalized_tab_text:
                     tab_text = self.transactions_tab_text
                     break
-                if self.contacts_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['contacts'] and self._normalized_tabs['contacts'] in normalized_tab_text:
                     tab_text = self.contacts_tab_text
                     break
-                if self.target_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['target'] and self._normalized_tabs['target'] in normalized_tab_text:
                     tab_text = self.target_tab_text
                     break
 

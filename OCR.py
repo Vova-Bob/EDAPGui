@@ -1,4 +1,6 @@
 from __future__ import annotations
+
+import re
 import time
 import cv2
 import numpy as np
@@ -19,6 +21,113 @@ Description:
 Author: Stumpii
 """
 
+# Cyrillic support (restored): PaddleOCR's Russian (eslav) model often returns
+# Latin look-alike characters for Cyrillic HUD text because the game font shapes
+# are nearly identical. These tables normalize OCR output and comparison targets
+# so RU HUD strings match reliably.
+_OCR_RU_SIMILAR_CHARS = str.maketrans({
+    'a': 'а', 'b': 'в', 'c': 'с', 'e': 'е', 'h': 'н', 'k': 'к', 'm': 'м',
+    'o': 'о', 'p': 'р', 't': 'т', 'x': 'х', 'y': 'у', 'w': 'ш', 'u': 'и',
+    '3': 'з', '4': 'ч', '6': 'б', '0': 'о',
+})
+
+_OCR_STRIP_CHARS = str.maketrans('', '', '()[]{}"\'`´‘’“”<>=+*_.,:;!?/\\|')
+
+_JW_SIMILARITY = JaroWinkler()
+
+
+def normalize_ocr_text(text: str | None, lang: str | None = None) -> str:
+    """Normalize OCR output and comparison targets for reliable matching."""
+    if not text:
+        return ''
+
+    normalized = text.lower().strip()
+    normalized = normalized.replace('\n', ' ')
+    normalized = normalized.translate(_OCR_STRIP_CHARS)
+
+    if lang == 'ru':
+        normalized = normalized.translate(_OCR_RU_SIMILAR_CHARS)
+
+    normalized = re.sub(r'[^\w\s]+', ' ', normalized)
+    normalized = ''.join(ch for ch in normalized if ch.isalpha() or ch.isspace())
+    normalized = re.sub(r'\s+', ' ', normalized).strip()
+    return normalized
+
+
+def _best_ru_token_similarity(tokens: list[str], target: str) -> tuple[float, str]:
+    """Return the best Jaro-Winkler similarity for the given target and token list."""
+    best_score = 0.0
+    best_token = ''
+    for token in tokens:
+        score = _JW_SIMILARITY.similarity(target, token)
+        if score > best_score:
+            best_score = score
+            best_token = token
+    return best_score, best_token
+
+
+def ru_contains_disengage_keywords(text: str, return_details: bool = False):
+    """Повертає True, якщо нормалізований текст містить фрагменти команд для виходу з СК.
+
+    Евристика для російської HUD-підказки більш агресивна до OCR-помилок: спершу
+    шукаємо префіксні токени «нажм…»/«ажм…» та «остан…»/«стоп…», бо гра часто
+    «відгризає» закінчення слів. Це безпечніше для автопілота: потрібні обидва
+    ключові слова, тож випадковий шум типу односимвольних токенів не спрацює.
+    """
+    tokens = text.split()
+    meaningful_tokens = [t for t in tokens if len(t) >= 3]
+
+    press_prefix_candidates = [
+        t for t in meaningful_tokens
+        if (
+            t.startswith(("нажм", "ажм"))
+            or "жмит" in t
+            or t.startswith("жми")
+        )
+    ]
+
+    stop_prefix_candidates = [
+        t for t in meaningful_tokens
+        if (
+            t.startswith(("остан", "останов", "остано", "стоп"))
+        )
+    ]
+
+    press_score, press_token = _best_ru_token_similarity(tokens, "нажмите")
+    stop_score, stop_token = _best_ru_token_similarity(tokens, "останови")
+
+    press_hit_jw = press_score >= 0.65
+    stop_hit_jw = stop_score >= 0.65
+
+    press_hit_prefix = any(len(t) >= 3 for t in press_prefix_candidates)
+    stop_hit_prefix = any(len(t) >= 4 for t in stop_prefix_candidates)
+
+    keyword_hit = (press_hit_prefix and stop_hit_prefix) or (press_hit_jw and stop_hit_jw)
+    has_prefix_token = bool(press_prefix_candidates or stop_prefix_candidates)
+    has_min_tokens = len(meaningful_tokens) >= 2
+
+    details = {
+        'tokens': tokens,
+        'meaningful_tokens': meaningful_tokens,
+        'press_token': press_token,
+        'press_score': press_score,
+        'stop_token': stop_token,
+        'stop_score': stop_score,
+        'press_prefix_candidates': press_prefix_candidates,
+        'stop_prefix_candidates': stop_prefix_candidates,
+        'press_hit_jw': press_hit_jw,
+        'stop_hit_jw': stop_hit_jw,
+        'press_hit_prefix': press_hit_prefix,
+        'stop_hit_prefix': stop_hit_prefix,
+        'has_prefix_token': has_prefix_token,
+        'has_min_tokens': has_min_tokens,
+        'keyword_hit': keyword_hit,
+    }
+
+    if return_details:
+        return keyword_hit, details
+    return keyword_hit
+
 
 class OCR:
     def __init__(self, ed_ap, screen):
@@ -29,23 +138,54 @@ class OCR:
         """
         self.ap = ed_ap
         self.screen = screen
-        if self.ap.config['OCRMobile']:
-            self.paddleocr = PaddleOCR(
-                use_doc_orientation_classify=False,
-                use_doc_unwarping=False,
-                use_textline_orientation=False,
-                text_detection_model_name="PP-OCRv5_mobile_det",
-                text_recognition_model_name="en_PP-OCRv5_mobile_rec")  # text detection + text recognition
-        else:
-            self.paddleocr = PaddleOCR(
-                use_doc_orientation_classify=False,
-                use_doc_unwarping=False,
-                use_textline_orientation=False)  # text detection + text recognition
+        # Game HUD language for OCR ('en' or 'ru'). Drives model selection and
+        # Cyrillic normalization; independent from the UI localization language.
+        self.language = self.ap.config.get('OCRLanguage', 'en')
+        self.paddleocr = self._create_paddleocr(self.language)
 
         # Class for text similarity metrics
         self.jarowinkler = JaroWinkler()
         self.sorensendice = SorensenDice()
         self.normalized_levenshtein = NormalizedLevenshtein()
+
+    def _paddle_kwargs(self, language: str) -> dict:
+        """Build constructor kwargs for PaddleOCR 3.x for the given HUD language."""
+        kwargs = {
+            'use_doc_orientation_classify': False,
+            'use_doc_unwarping': False,
+            'use_textline_orientation': False,
+        }
+        mobile = self.ap.config.get('OCRMobile', False)
+        if mobile:
+            kwargs['text_detection_model_name'] = "PP-OCRv5_mobile_det"
+            # Cyrillic has its own recognition model; the default en model cannot
+            # read Cyrillic text at all (the original regression).
+            kwargs['text_recognition_model_name'] = (
+                "eslav_PP-OCRv5_mobile_rec" if language == 'ru' else "en_PP-OCRv5_mobile_rec")
+        elif language == 'ru':
+            # Server det (default) + the eslav recognition model for Russian HUD.
+            kwargs['text_recognition_model_name'] = "eslav_PP-OCRv5_mobile_rec"
+        return kwargs
+
+    def _create_paddleocr(self, language: str):
+        """Create a PaddleOCR instance for the requested language. Falls back to the
+        default (English) model if the requested language pack is unavailable."""
+        try:
+            return PaddleOCR(**self._paddle_kwargs(language))
+        except Exception as e:
+            logger.error(f"Failed to create PaddleOCR for language '{language}': {e}")
+            return PaddleOCR(
+                use_doc_orientation_classify=False,
+                use_doc_unwarping=False,
+                use_textline_orientation=False)
+
+    def set_language(self, language: str) -> None:
+        """Switch the OCR model to the given game HUD language ('en'/'ru')."""
+        if not language or language == self.language:
+            return
+        logger.info(f"Reinitializing PaddleOCR for language '{language}'")
+        self.language = language
+        self.paddleocr = self._create_paddleocr(language)
 
     def _reinit_paddleocr(self):
         """ Reinitialize PaddleOCR after a failure. PaddleOCR's C++ layer can throw
@@ -54,19 +194,7 @@ class OCR:
         Creating a fresh instance prevents this. """
         try:
             logger.warning("Reinitializing PaddleOCR after failure.")
-            if self.ap.config['OCRMobile']:
-                self.paddleocr = PaddleOCR(
-                    use_doc_orientation_classify=False,
-                    use_doc_unwarping=False,
-                    use_textline_orientation=False,
-                    text_detection_model_name="PP-OCRv5_mobile_det",
-                    text_recognition_model_name="en_PP-OCRv5_mobile_rec")  # text detection + text recognition
-            else:
-                self.paddleocr = PaddleOCR(
-                    use_doc_orientation_classify=False,
-                    use_doc_unwarping=False,
-                    use_textline_orientation=False)  # text detection + text recognition
-
+            self.paddleocr = self._create_paddleocr(self.language)
         except Exception as e:
             logger.error(f"Failed to reinitialize PaddleOCR: {e}")
 
@@ -372,9 +500,17 @@ class OCR:
         if text_ns in ocr_textlist_ns:
             logger.debug(f"Found '{text}' text in item text '{str(ocr_textlist)}'.")
             return True, str(ocr_textlist)
-        else:
-            logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
-            return False, str(ocr_textlist)
+
+        # Cyrillic fallback: normalize both sides (mixed Latin/Cyrillic look-alikes,
+        # OCR truncation) before the substring check.
+        normalized_target = normalize_ocr_text(text, self.language)
+        normalized_ocr = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.language)
+        if normalized_target and normalized_target.replace(' ', '') in normalized_ocr.replace(' ', ''):
+            logger.debug(f"Fuzzy matched '{text}' in item text '{str(ocr_textlist)}'.")
+            return True, str(ocr_textlist)
+
+        logger.debug(f"Did not find '{text}' text in item text '{str(ocr_textlist)}'.")
+        return False, str(ocr_textlist)
 
     def select_item_in_list(self, text, region, keys, quad: Quad, name='') -> bool:
         """ Attempt to find the item by text in a list defined by the region.

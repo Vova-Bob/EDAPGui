@@ -52,8 +52,47 @@ class EDWayPoint:
         # print("waypoints: "+str(self.waypoints))
 
         # self.mouse = MousePoint()
-        self.market_parser = MarketParser()
-        self.cargo_parser = CargoParser()
+        self.market_parser = MarketParser(log_func=self.ap.log_ui)
+        self.cargo_parser = CargoParser(log_func=self.ap.log_ui)
+
+        # Автоматично вмикаємо перемикання файлу лише для мовних шаблонів example_*.json
+        self.filename = self._get_default_waypoint_path()
+        self.using_default_file = Path(self.filename).name.startswith('example_')
+
+        ss = self._read_waypoints(self.filename)
+
+        if ss is None and self.filename != './waypoints/waypoints.json':
+            # Якщо мовний шаблон недоступний, повертаємось до базового файлу.
+            self.filename = './waypoints/waypoints.json'
+            self.using_default_file = False
+            ss = self._read_waypoints(self.filename)
+
+        if ss is not None:
+            self.waypoints = ss
+            self.num_waypoints = len(self.waypoints)
+            logger.debug("EDWayPoint: read json:" + str(ss))
+
+    @property
+    def log_keys(self):
+        return getattr(self.ap, 'LOG_KEYS', {})
+
+    @property
+    def voice_keys(self):
+        return getattr(self.ap, 'VOICE_KEYS', {})
+
+    def _log(self, key_name: str, **kwargs):
+        key = self.log_keys.get(key_name)
+        if not key:
+            logger.warning(f"Missing waypoint log key: {key_name}")
+            return ''
+        return self.ap.log_ui(key, **kwargs)
+
+    def _log_and_speak(self, log_key_name: str, voice_key_name: str | None = None, **kwargs):
+        text = self._log(log_key_name, **kwargs)
+        voice_key = self.voice_keys.get(voice_key_name or log_key_name)
+        if voice_key:
+            self.ap.speak_ui(voice_key, **kwargs)
+        return text
 
     def load_waypoint_file(self, filename='./waypoints/waypoints.json') -> bool:
         if not os.path.exists(filename):
@@ -65,13 +104,58 @@ class EDWayPoint:
             self.waypoints = ss
             self.num_waypoints = len(self.waypoints)
             self.filename = filename
+            self.using_default_file = False
             self.ap.config['WaypointFilepath'] = filename
-            self.ap_ckb('log', f"Loaded Waypoint file: {filename}")
+            self._log('WAYPOINT_FILE_LOADED', filename=filename)
             logger.debug("EDWayPoint: read json:" + str(ss))
             return True
 
-        self.ap_ckb('log', f"Waypoint file is invalid. Check log file for details.")
+        self._log('WAYPOINT_FILE_INVALID')
         return False
+
+    def _get_default_waypoint_path(self, language: str | None = None) -> str:
+        """Повертає типовий файл маршрутів з урахуванням мови OCR.
+
+        Використовуємо окремі шаблони для ru/en, щоб користувач міг одразу
+        працювати зі зрозумілим кодуванням і назвами товарів.
+        """
+        lang = language or getattr(self.ap, 'ocr_language', 'en')
+        base_dir = Path('./waypoints')
+        template_map = {
+            'ru': base_dir / 'example_RU_repeat.json',
+            'en': base_dir / 'example_EN_repeat.json',
+        }
+
+        user_primary = base_dir / 'waypoints.json'
+        preferred = template_map.get(lang, user_primary)
+
+        if user_primary.exists():
+            return str(user_primary)
+
+        if preferred.exists():
+            return str(preferred)
+
+        return str(preferred)
+
+    def update_default_file_for_language(self, language: str) -> None:
+        """Оновлює типовий файл маршрутів, якщо користувач ще не вибрав свій."""
+        if not self.using_default_file:
+            return
+
+        new_default = self._get_default_waypoint_path(language)
+        if new_default == self.filename:
+            return
+
+        ss = self._read_waypoints(new_default)
+        if ss is None:
+            return
+
+        self.filename = new_default
+        self.waypoints = ss
+        self.num_waypoints = len(self.waypoints)
+        self.ap.config['WaypointFilepath'] = new_default
+        self._log('WAYPOINT_FILE_LOADED', filename=new_default)
+        logger.debug("EDWayPoint: read json:" + str(ss))
 
     def _read_waypoints(self, filename='./waypoints/waypoints.json'):
         if not os.path.exists(filename):
@@ -86,9 +170,8 @@ class EDWayPoint:
             # Perform any checks on the data returned
             # Check if the waypoint data contains the 'GlobalShoppingList' (new requirement)
             if 'GlobalShoppingList' not in s:
-                # self.ap_ckb('log', f"Waypoint file is invalid. Check log file for details.")
-                logger.warning(f"Waypoint file {filename} is invalid or old version. "
-                               f"It does not contain a 'GlobalShoppingList' waypoint.")
+                # self._log('WAYPOINT_FILE_INVALID')
+                self._log('WAYPOINT_GLOBAL_LIST_MISSING', level='warning', filename=filename)
                 s = None
 
             # Check the
@@ -97,51 +180,51 @@ class EDWayPoint:
                 if key == 'GlobalShoppingList':
                     # Special case
                     if 'BuyCommodities' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'BuyCommodities'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='BuyCommodities')
                         err = True
                     if 'UpdateCommodityCount' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'UpdateCommodityCount'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='UpdateCommodityCount')
                         err = True
                     if 'Skip' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'Skip'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='Skip')
                         err = True
                 else:
                     # All other cases
                     if 'SystemName' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'SystemName'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='SystemName')
                         err = True
                     if 'StationName' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'StationName'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='StationName')
                         err = True
                     if 'GalaxyBookmarkType' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'GalaxyBookmarkType'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='GalaxyBookmarkType')
                         err = True
                     if 'GalaxyBookmarkNumber' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'GalaxyBookmarkNumber'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='GalaxyBookmarkNumber')
                         err = True
                     if 'SystemBookmarkType' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'SystemBookmarkType'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='SystemBookmarkType')
                         err = True
                     if 'SystemBookmarkNumber' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'SystemBookmarkNumber'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='SystemBookmarkNumber')
                         err = True
                     if 'SellCommodities' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'SellCommodities'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='SellCommodities')
                         err = True
                     if 'BuyCommodities' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'BuyCommodities'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='BuyCommodities')
                         err = True
                     if 'UpdateCommodityCount' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'UpdateCommodityCount'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='UpdateCommodityCount')
                         err = True
                     if 'FleetCarrierTransfer' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'FleetCarrierTransfer'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='FleetCarrierTransfer')
                         err = True
                     if 'Skip' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'Skip'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='Skip')
                         err = True
                     if 'Completed' not in value:
-                        logger.warning(f"Waypoint file key '{key}' does not contain 'Completed'.")
+                        self._log('WAYPOINT_FIELD_MISSING', level='warning', waypoint=key, field='Completed')
                         err = True
 
             if err:
@@ -230,10 +313,10 @@ class EDWayPoint:
         # From the journal, this works for stations (incl. outpost), colonisation ship and megaships
         if ap.jn.ship_state()['StationServices'] is not None:
             if 'commodities' not in ap.jn.ship_state()['StationServices']:
-                self.ap_ckb('log', f"No commodities market at docked location.")
+                self._log('WAYPOINT_NO_COMMODITIES_MARKET')
                 return
         else:
-            self.ap_ckb('log', f"No station services at docked location.")
+            self._log('WAYPOINT_NO_STATION_SERVICES')
             return
 
         # Determine type of station we are at
@@ -243,12 +326,12 @@ class EDWayPoint:
             if station_type == StationType.ColonisationShip:
                 # Colonisation Ship
                 self.stats_log['Colonisation'] = self.stats_log['Colonisation'] + 1
-                self.ap_ckb('log', f"Executing trade with Colonisation Ship.")
+                self._log('WAYPOINT_TRADE_COLONISATION')
                 logger.debug(f"Execute Trade: On Colonisation Ship")
             if station_type == StationType.SpaceConstructionDepot:
                 # Construction Ship
                 self.stats_log['Construction'] = self.stats_log['Construction'] + 1
-                self.ap_ckb('log', f"Executing trade with Orbital Construction Ship.")
+                self._log('WAYPOINT_TRADE_CONSTRUCTION')
                 logger.debug(f"Execute Trade: On Orbital Construction Site")
 
             # Go to station services
@@ -274,7 +357,7 @@ class EDWayPoint:
 
         else:
             # Regular Station or Fleet Carrier or Squadron Carrier in Buy/Sell mode
-            self.ap_ckb('log', "Executing trade.")
+            self._log('WAYPOINT_TRADE_GENERIC')
             logger.debug(f"Execute Trade: On Regular Station")
             self.stats_log['Station'] = self.stats_log['Station'] + 1
 
@@ -303,7 +386,7 @@ class EDWayPoint:
             #     ap.keys.send('UI_Down')
             #     ap.keys.send('UI_Select')  # Select Commodities
 
-            self.ap_ckb('log+vce', "Downloading commodities data from market.")
+            self._log_and_speak('TRADE_DOWNLOAD_MARKET_DATA')
 
             # Wait for market to update
             market_time_new = ""
@@ -366,9 +449,14 @@ class EDWayPoint:
             sleep(1)
 
             # --------- BUY ----------
+            leg_had_buy_attempts = False
             if len(buy_commodities) > 0 or len(global_buy_commodities) > 0:
                 # Select the BUY option
                 self.ap.stn_svcs_in_ship.commodities_market.select_buy(ap.keys)
+
+                # Track commodities purchased in this leg to avoid buying the same
+                # item twice when the global list is processed on the same station visit.
+                leg_buy_names = {name for name, qty in buy_commodities.items() if qty > 0}
 
                 # Go through buy commodities list
                 for i, key in enumerate(buy_commodities):
@@ -398,6 +486,10 @@ class EDWayPoint:
                                 result, qty = self.ap.stn_svcs_in_ship.commodities_market.buy_commodity(ap.keys, name, qty_to_buy, free_cargo)
                                 logger.info(f"Execute trade: Bought {qty} units of {name}")
 
+                                # Будь-яка спроба купівлі для цього waypoint вважається завершенням локального плану,
+                                # щоб уникнути повторних покупок на цій самій станції.
+                                leg_had_buy_attempts = True
+
                                 # If we bought any goods, wait for status file to update with
                                 # new cargo count for next commodity
                                 if qty > 0:
@@ -422,6 +514,10 @@ class EDWayPoint:
                         result, qty = self.ap.stn_svcs_in_ship.commodities_market.buy_commodity(ap.keys, key, qty_to_buy, free_cargo)
                         logger.info(f"Execute trade: Bought {qty} units of {key}")
 
+                        # Будь-яка спроба купівлі для цього waypoint вважається завершенням локального плану,
+                        # щоб уникнути повторних покупок на цій самій станції.
+                        leg_had_buy_attempts = True
+
                         # If we bought any goods, wait for status file to update with
                         # new cargo count for next commodity
                         if qty > 0:
@@ -431,8 +527,22 @@ class EDWayPoint:
                         if qty > 0 and self.waypoints[dest_key]['UpdateCommodityCount']:
                             buy_commodities[key] = qty_to_buy - qty
 
-                # Go through global buy commodities list
-                for i, key in enumerate(global_buy_commodities):
+                # Якщо ми вже виконали покупки для цього waypoint, глобальний список пропускаємо,
+                # щоб уникнути повторного входу в меню купівлі на тій самій станції.
+                global_list_active = len(global_buy_commodities) > 0
+                if leg_had_buy_attempts and global_list_active:
+                    self._log(
+                        'WAYPOINT_GLOBAL_SKIP_AFTER_LEG',
+                        station=self.waypoints[dest_key].get('StationName', ''),
+                        system=self.waypoints[dest_key].get('SystemName', ''),
+                    )
+                    global_list_active = False
+
+                # Go through global buy commodities list, якщо він активний
+                for i, key in enumerate(global_buy_commodities if global_list_active else []):
+                    if key in leg_buy_names:
+                        logger.debug(f"Skipping global purchase for {key} already handled in leg list")
+                        continue
                     curr_cargo_qty = int(ap.status.get_cleaned_data()['Cargo'])
                     cargo_timestamp = ap.status.current_data['timestamp']
 
@@ -471,11 +581,11 @@ class EDWayPoint:
         also can then perform trades if specific in the waypoints file.
         """
         if len(self.waypoints) == 0:
-            self.ap_ckb('log+vce', "No Waypoint file loaded. Exiting Waypoint Assist.")
+            self._log_and_speak('WAYPOINT_NO_FILE_LOADED')
             return
 
         self.step = 0  # start at first waypoint
-        self.ap_ckb('log', "Waypoint file: " + str(Path(self.filename).name))
+        self._log('WAYPOINT_FILE_SELECTED', filename=str(Path(self.filename).name))
         self.reset_stats()
 
         # Loop until complete, or error
@@ -508,7 +618,7 @@ class EDWayPoint:
                     break
 
             if dest_key is None:
-                self.ap_ckb('log+vce', "Waypoint list has been completed.")
+                self._log_and_speak('WAYPOINT_LIST_COMPLETED')
                 break
 
             # Is this a new waypoint?
@@ -529,7 +639,7 @@ class EDWayPoint:
             next_wp_station = next_waypoint.get('StationName', '').upper()
 
             if new_waypoint:
-                self.ap_ckb('log+vce', f"Next Waypoint: {next_wp_station} in {next_wp_system}")
+                self._log_and_speak('WAYPOINT_NEXT', station=next_wp_station, system=next_wp_system)
 
             # ====================================
             # Target and travel to a System
@@ -538,7 +648,7 @@ class EDWayPoint:
             # Check current system and go to next system if different and not blank
             if next_wp_system == "" or (cur_star_system == next_wp_system):
                 if new_waypoint:
-                    self.ap_ckb('log+vce', f"Already in target System.")
+                    self._log_and_speak('WAYPOINT_ALREADY_IN_SYSTEM')
             else:
                 # Check if the current nav route is to the target system
                 last_nav_route_sys = self.ap.nav_route.get_last_system().upper()
@@ -547,16 +657,16 @@ class EDWayPoint:
                 if ((last_nav_route_sys == next_wp_system) and
                         (destination_body == 0 and destination_name != "")):
                     # No need to target system
-                    self.ap_ckb('log+vce', f"System already targeted.")
+                    self._log_and_speak('WAYPOINT_SYSTEM_ALREADY_TARGETED')
                 else:
-                    self.ap_ckb('log+vce', f"Targeting system {next_wp_system}.")
+                    self._log_and_speak('WAYPOINT_TARGETING_SYSTEM', system=next_wp_system)
                     # Select destination in galaxy map based on name
                     res = self.ap.galaxy_map.set_gal_map_destination_text(self.ap, next_wp_system,
                                                                           self.ap.jn.ship_state)
                     if res:
-                        self.ap_ckb('log', f"System has been targeted.")
+                        self._log('WAYPOINT_SYSTEM_TARGETED')
                     else:
-                        self.ap_ckb('log+vce', f"Unable to target {next_wp_system} in Galaxy Map.")
+                        self._log_and_speak('WAYPOINT_TARGET_FAILED', system=next_wp_system)
                         _abort = True
                         break
 
@@ -565,10 +675,10 @@ class EDWayPoint:
                 keys.send('TargetNextRouteSystem')
 
                 # Jump to the destination system
-                self.ap_ckb('log+vce', f"Jumping to {next_wp_system}.")
+                self._log_and_speak('WAYPOINT_JUMPING', system=next_wp_system)
                 res = self.ap.jump_to_system(scr_reg)
                 if not res:
-                    self.ap_ckb('log', f"Failed to jump to {next_wp_system}.")
+                    self._log('WAYPOINT_JUMP_FAILED', system=next_wp_system)
                     _abort = True
                     break
 
@@ -585,25 +695,25 @@ class EDWayPoint:
                 # Check if we are at the correct station. Note that for FCs, the station name
                 # reported by the Journal is only the ship identifier (ABC-123) and not the carrier name.
                 # So we need to check if the ID (ABC-123) is at the end of the target ('Fleety McFleet ABC-123').
-                self.ap_ckb('log', f"Docked at {cur_station}.")
-                self.ap_ckb('log', f"Checking station name against target station: {next_wp_station}.")
+                self._log('WAYPOINT_DOCKED_AT', station=cur_station)
+                self._log('WAYPOINT_CHECKING_STATION', target=next_wp_station)
                 if cur_station_type == StationType.FleetCarrier:
                     if next_wp_station.endswith(cur_station):
                         docked_at_stn = True
                     else:
-                        self.ap_ckb('log', f"FleetCarrier name: {next_wp_station} does not end with: {cur_station}.")
+                        self._log('WAYPOINT_FC_NAME_MISMATCH', target=next_wp_station, current=cur_station)
 
                 elif cur_station_type == StationType.SquadronCarrier:
                     if next_wp_station.endswith(cur_station):
                         docked_at_stn = True
                     else:
-                        self.ap_ckb('log', f"SquadronCarrier name: {next_wp_station} does not end with: {cur_station}.")
+                        self._log('WAYPOINT_SQUADRON_NAME_MISMATCH', target=next_wp_station, current=cur_station)
 
                 elif 'System Colonisation Ship'.upper() in next_wp_station:
                     if cur_station_type == StationType.ColonisationShip:
                         docked_at_stn = True
                     else:
-                        self.ap_ckb('log', f"Current station is not a Colonisation Ship.")
+                        self._log('WAYPOINT_NOT_COLONISATION_SHIP')
 
                 # elif next_wp_station.startswith('Orbital Construction Site'.upper()):
                 #     if (cur_station_type == 'SurfaceStation'.upper() and
@@ -613,24 +723,24 @@ class EDWayPoint:
                     docked_at_stn = True
 
                 if not docked_at_stn:
-                    self.ap_ckb('log', f"We are not docked at the target station.")
+                    self._log('WAYPOINT_NOT_TARGET_STATION')
 
             # Check current station and go to it if different
             if docked_at_stn:
                 if new_waypoint:
-                    self.ap_ckb('log+vce', f"Already at target Station: {next_wp_station}.")
+                    self._log_and_speak('WAYPOINT_ALREADY_AT_STATION', station=next_wp_station)
             else:
                 # Check if we need to travel to a station, else we are done.
                 # This may be by 1) System bookmark, 2) Galaxy bookmark or 3) by Station Name text
                 if sys_bookmark or gal_bookmark or next_wp_station != "":
                     # If waypoint file has a Station Name associated then attempt targeting it
-                    self.ap_ckb('log+vce', f"Targeting Station: {next_wp_station}")
+                    self._log_and_speak('WAYPOINT_TARGETING_STATION', station=next_wp_station)
 
                     if gal_bookmark:
                         # Set destination via gal bookmark, not system bookmark
                         res = self.ap.galaxy_map.set_gal_map_dest_bookmark(self.ap, gal_bookmark_type, gal_bookmark_num)
                         if not res:
-                            self.ap_ckb('log+vce', f"Unable to set Galaxy Map bookmark.")
+                            self._log_and_speak('WAYPOINT_GALAXY_BOOKMARK_FAILED')
                             _abort = True
                             break
 
@@ -638,7 +748,7 @@ class EDWayPoint:
                         # Set destination via system bookmark
                         res = self.ap.system_map.set_sys_map_dest_bookmark(self.ap, sys_bookmark_type, sys_bookmark_num)
                         if not res:
-                            self.ap_ckb('log+vce', f"Unable to set System Map bookmark.")
+                            self._log_and_speak('WAYPOINT_SYSTEM_BOOKMARK_FAILED')
                             _abort = True
                             break
 
@@ -647,18 +757,17 @@ class EDWayPoint:
                         # bookmark are empty, so we will default to using OCR.
                         if sys_bookmark_type != 'Nav Panel OCR':
                             # Log fall back to OCR message.
-                            self.ap.ap_ckb('log', f"No bookmark number configured for '{next_wp_station}'; defaulting "
-                                                  f"to Nav Panel OCR to set station by name.")
+                            self._log('WAYPOINT_NO_BOOKMARK_NUMBER', station=next_wp_station)
                         # Locate the station by name in the in-game Nav Panel (left HUD) and lock onto it.
                         res = self.ap.nav_panel.lock_destination(next_wp_station)
                         if not res:
-                            self.ap_ckb('log+vce', f"Unable to set Nav Panel OCR bookmark.")
+                            self._log_and_speak('WAYPOINT_NAV_OCR_BOOKMARK_FAILED')
                             _abort = True
                             break
 
                     else:
                         # No bookmark and no station name -- nothing to target.
-                        self.ap_ckb('log+vce', "No bookmark or station name defined for this waypoint.")
+                        self._log_and_speak('WAYPOINT_NO_BOOKMARK_OR_NAME')
                         _abort = True
                         break
 
@@ -667,7 +776,7 @@ class EDWayPoint:
                     sleep(1)  # Allow status log to update
                     continue
                 else:
-                    self.ap_ckb('log+vce', f"Arrived at target System: {next_wp_system}")
+                    self._log_and_speak('WAYPOINT_SYSTEM_ARRIVED', system=next_wp_system)
 
             # ====================================
             # Dock and Trade at Station
@@ -676,21 +785,20 @@ class EDWayPoint:
             # Are we at the correct station to trade?
             if docked_at_stn:  # and (next_wp_station != "" or sys_bookmark):
                 # Docked - let do trade
-                self.ap_ckb('log+vce', f"Execute trade at Station: {next_wp_station}")
+                self._log_and_speak('WAYPOINT_EXECUTE_TRADE', station=next_wp_station)
                 self.execute_trade(self.ap, dest_key)
 
             # Mark this waypoint as completed
             self.mark_waypoint_complete(dest_key)
-            self.ap_ckb('log+vce', f"Current Waypoint complete.")
+            self._log_and_speak('WAYPOINT_CURRENT_COMPLETE')
 
         # Done with waypoints
         if not _abort:
-            self.ap_ckb('log+vce',
-                           "Waypoint Route Complete, total distance jumped: " + str(self.ap.total_dist_jumped) + "LY")
-            self.ap.update_ap_status("Idle")
+            self._log_and_speak('WAYPOINT_ROUTE_COMPLETE', distance=self.ap.total_dist_jumped)
+            self.ap.update_ap_status(self.ap.STATUS_KEYS['IDLE'])
         else:
-            self.ap_ckb('log+vce', "Waypoint Route was aborted.")
-            self.ap.update_ap_status("Idle")
+            self._log_and_speak('WAYPOINT_ROUTE_ABORTED')
+            self.ap.update_ap_status(self.ap.STATUS_KEYS['IDLE'])
 
     def reset_stats(self):
         # Clear stats

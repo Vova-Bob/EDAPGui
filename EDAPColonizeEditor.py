@@ -127,6 +127,19 @@ class ColonizeEditorTab:
         self._filepath = './configs/construction.json'
         self._fleetcarrier_cargo = dict[str, FleetCarrierCargo]
 
+    def _t(self, key, **kwargs):
+        """Localized UI string via the autopilot localization manager."""
+        try:
+            text = self.ap.locale[key]
+        except Exception:
+            return key
+        if kwargs:
+            try:
+                return text.format(**kwargs)
+            except (KeyError, ValueError):
+                return text
+        return text
+
     def create_waypoints_tab(self, parent):
         self.frame = ttk.Frame(parent)
 
@@ -137,9 +150,9 @@ class ColonizeEditorTab:
         # File operations buttons
         file_ops_frame = ttk.Frame(waypoints_container)
         file_ops_frame.pack(fill="x", pady=5)
-        ttk.Button(file_ops_frame, text="Open", command=self.load_const_file).pack(side="left", padx=2)
+        ttk.Button(file_ops_frame, text=self._t('ui.waypoint_editor.open'), command=self.load_const_file).pack(side="left", padx=2)
 
-        self.save_button = ttk.Button(file_ops_frame, text="Save", command=self.save_const_file)
+        self.save_button = ttk.Button(file_ops_frame, text=self._t('ui.waypoint_editor.save'), command=self.save_const_file)
         self.save_button.pack(side="left", padx=2)
         self.save_button.config(state="disabled")
 
@@ -155,17 +168,17 @@ class ColonizeEditorTab:
         top_frame = ttk.Frame(waypoints_container)
         top_frame.pack(fill="x", expand=False, pady=5)
 
-        station_frame = ttk.LabelFrame(top_frame, text="Constructions")
+        station_frame = ttk.LabelFrame(top_frame, text=self._t('ui.colonize.constructions'))
         station_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
 
         # Waypoints list (Treeview)
         columns = ("include", "system_name", "station_name", "progress")
         self.waypoints_tree = ttk.Treeview(station_frame, columns=columns, show="headings")
 
-        self.waypoints_tree.heading("include", text="Include")
-        self.waypoints_tree.heading("system_name", text="System Name")
-        self.waypoints_tree.heading("station_name", text="Station Name")
-        self.waypoints_tree.heading("progress", text="Progress")
+        self.waypoints_tree.heading("include", text=self._t('ui.colonize.include'))
+        self.waypoints_tree.heading("system_name", text=self._t('ui.waypoint_editor.system_name'))
+        self.waypoints_tree.heading("station_name", text=self._t('ui.waypoint_editor.station_name'))
+        self.waypoints_tree.heading("progress", text=self._t('ui.colonize.progress'))
 
         self.waypoints_tree.column("include", width=15, anchor=tk.CENTER)
         self.waypoints_tree.column("system_name", width=200)
@@ -180,7 +193,7 @@ class ColonizeEditorTab:
         # Waypoint buttons
         waypoint_buttons_frame = ttk.Frame(station_frame)
         waypoint_buttons_frame.pack(side="right", fill="y", padx=(5, 5))
-        ttk.Button(waypoint_buttons_frame, text="Del", command=self.delete_waypoint).pack(padx=5, pady=2, fill="x")
+        ttk.Button(waypoint_buttons_frame, text=self._t('ui.waypoint_editor.del'), command=self.delete_waypoint).pack(padx=5, pady=2, fill="x")
 
         # Bottom frame for waypoint options and commodity lists
         bottom_frame = ttk.Frame(waypoints_container)
@@ -191,7 +204,7 @@ class ColonizeEditorTab:
         comm_frame.pack(side="top", fill="both", expand=True, pady=(5, 0))
 
         # Commodities
-        commodities_frame = ttk.LabelFrame(comm_frame, text="Commodities")
+        commodities_frame = ttk.LabelFrame(comm_frame, text=self._t('ui.colonize.commodities'))
         commodities_frame.pack(side="left", fill="both", expand=True, padx=(0, 5))
         self.commodities_tree = self.create_commodity_list(commodities_frame)
 
@@ -201,17 +214,17 @@ class ColonizeEditorTab:
 
         columns = ("name", "required", "provided", "need", "on_fleetcarrier", "to_buy")
         tree = ttk.Treeview(frame, columns=columns, show="headings")
-        tree.heading("name", text="Name")
+        tree.heading("name", text=self._t('ui.waypoint_editor.name'))
         tree.column("name", width=150)
-        tree.heading("required", text="Required")
+        tree.heading("required", text=self._t('ui.colonize.required'))
         tree.column("required", width=70, anchor=tk.W)
-        tree.heading("provided", text="Provided")
+        tree.heading("provided", text=self._t('ui.colonize.provided'))
         tree.column("provided", width=70, anchor=tk.W)
-        tree.heading("need", text="Need")
+        tree.heading("need", text=self._t('ui.colonize.need'))
         tree.column("need", width=70, anchor=tk.W)
-        tree.heading("on_fleetcarrier", text="On FleetCarrier")
+        tree.heading("on_fleetcarrier", text=self._t('ui.colonize.on_fleetcarrier'))
         tree.column("on_fleetcarrier", width=70, anchor=tk.W)
-        tree.heading("to_buy", text="To Buy")
+        tree.heading("to_buy", text=self._t('ui.colonize.to_buy'))
         tree.column("to_buy", width=70, anchor=tk.W)
         tree.pack(side="left", fill="both", expand=True)
 

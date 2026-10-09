@@ -12,5 +12,6 @@
     "ocr.nav_panel.tab.target": "ЦЕЛЬ",
     "ocr.station_services.connected_to": "ПРИСТЫКОВАН К",
     "ocr.system_map.cartographics": "CARTOGRAPHICS",
-    "ocr.galaxy_map.cartographics": "CARTOGRAPHICS"
+    "ocr.galaxy_map.cartographics": "CARTOGRAPHICS",
+    "ocr.station_services.commodities_market": "ТОВАР"
 }

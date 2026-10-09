@@ -10,6 +10,7 @@ from EDAP_data import *
 # from EDKeys import EDKeys
 from EDNavigationPanel import rects_to_quadrilateral, image_perspective_transform, image_reverse_perspective_transform
 # from OCR import OCR
+from OCR import normalize_ocr_text
 from Screen import Screen, crop_image_by_pct
 from Screen_Regions import Quad, load_calibrated_regions
 from StatusParser import StatusParser
@@ -28,12 +29,22 @@ class EDInternalStatusPanel:
         self.locale = self.ap.locale
         self.status_parser = StatusParser()
 
-        self.modules_tab_text = self.locale["INT_PNL_TAB_MODULES"]
-        self.fire_groups_tab_text = self.locale["INT_PNL_TAB_FIRE_GROUPS"]
-        self.ship_tab_text = self.locale["INT_PNL_TAB_SHIP"]
-        self.inventory_tab_text = self.locale["INT_PNL_TAB_INVENTORY"]
-        self.storage_tab_text = self.locale["INT_PNL_TAB_STORAGE"]
-        self.status_tab_text = self.locale["INT_PNL_TAB_STATUS"]
+        # OCR tab targets come from the "Game language (for OCR)" setting
+        # (OCRTokenManager), NOT from the UI language.
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self.ocr_tokens = self.ap.ocr_tokens
+        self._load_tab_texts()
+
+    @property
+    def log_keys(self):
+        return getattr(self.ap, 'LOG_KEYS', {})
+
+    def _log(self, key_name: str, *, level: str = 'info', voice: bool = False, **kwargs):
+        key = self.log_keys.get(key_name)
+        if not key:
+            logger.warning(f"Missing internal panel log key: {key_name}")
+            return ''
+        return self.ap.log_ui(key, level=level, voice=voice, **kwargs)
 
         # The rect is [L, T, R, B] top left x, y, and bottom right x, y in fraction of screen resolution
         # Nav Panel region covers the entire navigation panel.
@@ -63,14 +74,36 @@ class EDInternalStatusPanel:
         self.panel_quad_pix = copy(self.panel_quad_pct)
         self.panel_quad_pix.scale_from_origin(self.ap.scr.screen_width, self.ap.scr.screen_height)
 
+    def _load_tab_texts(self):
+        self.modules_tab_text = self.ocr_tokens["ocr.internal_panel.tab.modules"]
+        self.fire_groups_tab_text = self.ocr_tokens["ocr.internal_panel.tab.fire_groups"]
+        self.ship_tab_text = self.ocr_tokens["ocr.internal_panel.tab.ship"]
+        self.inventory_tab_text = self.ocr_tokens["ocr.internal_panel.tab.inventory"]
+        self.storage_tab_text = self.ocr_tokens["ocr.internal_panel.tab.storage"]
+        self.status_tab_text = self.ocr_tokens["ocr.internal_panel.tab.status"]
+        self._normalized_tabs = {
+            'modules': normalize_ocr_text(self.modules_tab_text, self.ocr_language),
+            'fire_groups': normalize_ocr_text(self.fire_groups_tab_text, self.ocr_language),
+            'ship': normalize_ocr_text(self.ship_tab_text, self.ocr_language),
+            'inventory': normalize_ocr_text(self.inventory_tab_text, self.ocr_language),
+            'storage': normalize_ocr_text(self.storage_tab_text, self.ocr_language),
+            'status': normalize_ocr_text(self.status_tab_text, self.ocr_language),
+        }
+
+    def update_ocr_language(self):
+        """Re-read OCR targets after the "Game language (for OCR)" setting changed."""
+        self.ocr_language = self.ap.config.get('OCRLanguage', 'en')
+        self.ocr_tokens = self.ap.ocr_tokens
+        self._load_tab_texts()
+
     def capture_panel_straightened(self):
         """ Grab the image based on the panel coordinates.
         Returns an unfiltered image, either from screenshot or provided image, or None if an image cannot
         be grabbed.
         """
         if self.panel_quad_pct is None:
-            logger.warning(f"Nav Panel Calibration has not been performed. Cannot continue.")
-            self.ap_ckb('log', 'Nav Panel Calibration has not been performed. Cannot continue.')
+            self._log('INTERNAL_PANEL_NAV_CALIBRATION_MISSING', level='warning')
+            self._log('INTERNAL_PANEL_NAV_CALIBRATION_MISSING', level='warning')
             return None
 
         # Get the nav panel image based on the region
@@ -227,23 +260,25 @@ class EDInternalStatusPanel:
                     self.ap.overlay.overlay_quad_pix('sts_panel_item', q_out, (0, 255, 0), 2)
                     self.ap.overlay.overlay_paint()
 
-                # Test OCR string
-                if self.modules_tab_text in str(ocr_textlist):
+                # Test OCR string (normalized: Cyrillic HUD text may come back as
+                # Latin look-alikes or with truncated words)
+                normalized_tab_text = normalize_ocr_text(' '.join(ocr_textlist) if ocr_textlist else '', self.ocr_language)
+                if self._normalized_tabs['modules'] and self._normalized_tabs['modules'] in normalized_tab_text:
                     tab_text = self.modules_tab_text
                     break
-                if self.fire_groups_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['fire_groups'] and self._normalized_tabs['fire_groups'] in normalized_tab_text:
                     tab_text = self.fire_groups_tab_text
                     break
-                if self.ship_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['ship'] and self._normalized_tabs['ship'] in normalized_tab_text:
                     tab_text = self.ship_tab_text
                     break
-                if self.inventory_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['inventory'] and self._normalized_tabs['inventory'] in normalized_tab_text:
                     tab_text = self.inventory_tab_text
                     break
-                if self.storage_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['storage'] and self._normalized_tabs['storage'] in normalized_tab_text:
                     tab_text = self.storage_tab_text
                     break
-                if self.status_tab_text in str(ocr_textlist):
+                if self._normalized_tabs['status'] and self._normalized_tabs['status'] in normalized_tab_text:
                     tab_text = self.status_tab_text
                     break
             else:
@@ -293,7 +328,7 @@ class EDInternalStatusPanel:
 
     def transfer_to_fleetcarrier(self, ap):
         """ Transfer all goods to Fleet Carrier """
-        self.ap_ckb('log+vce', "Executing transfer to Fleet Carrier.")
+        self._log('FC_TRANSFER_TO_START', voice=True)
         logger.debug("transfer_to_fleetcarrier: entered")
         # Go to the internal (right) panel inventory tab
         self.show_inventory_tab()
@@ -324,7 +359,7 @@ class EDInternalStatusPanel:
 
     def transfer_from_fleetcarrier(self, ap, buy_commodities):
         """ Transfer specific good from Fleet Carrier to ship"""
-        self.ap_ckb('log+vce', f"Executing transfer from Fleet Carrier.")
+        self._log('FC_TRANSFER_FROM_START', voice=True)
         logger.debug("transfer_to_fleetcarrier: entered")
         # Go to the internal (right) panel inventory tab
         self.show_inventory_tab()
